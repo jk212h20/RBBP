@@ -1,0 +1,317 @@
+// Prisma Schema for Roatan Poker League
+// Documentation: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USER & AUTHENTICATION
+// ============================================
+
+enum UserRole {
+  ADMIN
+  VENUE_MANAGER
+  TOURNAMENT_DIRECTOR
+  PLAYER
+}
+
+enum AuthProvider {
+  EMAIL
+  GOOGLE
+  LIGHTNING
+}
+
+model User {
+  id            String       @id @default(cuid())
+  email         String?      @unique
+  password      String?      // Null for OAuth/Lightning users
+  name          String
+  role          UserRole     @default(PLAYER)
+  avatar        String?
+  isActive      Boolean      @default(true)
+  emailVerified Boolean      @default(false)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  
+  // Multi-auth support
+  authProvider    AuthProvider @default(EMAIL)
+  googleId        String?      @unique
+  lightningPubkey String?      @unique
+
+  // Relations
+  profile           Profile?
+  managedVenues     Venue[]          @relation("VenueManager")
+  directedEvents    Event[]          @relation("EventDirector")
+  eventSignups      EventSignup[]
+  results           Result[]
+  standings         Standing[]
+  earnedAchievements UserAchievement[]
+  comments          Comment[]
+
+  @@map("users")
+}
+
+model Profile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  bio         String?
+  phone       String?
+  socialLinks Json?    // { facebook, twitter, instagram }
+  
+  // Stats (denormalized for quick access)
+  totalEvents     Int @default(0)
+  totalWins       Int @default(0)
+  totalPoints     Int @default(0)
+  bestFinish      Int?
+  averageFinish   Float?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+// ============================================
+// VENUES
+// ============================================
+
+model Venue {
+  id          String   @id @default(cuid())
+  name        String
+  address     String
+  description String?
+  imageUrl    String?
+  phone       String?
+  email       String?
+  isActive    Boolean  @default(true)
+  managerId   String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  manager User?   @relation("VenueManager", fields: [managerId], references: [id])
+  events  Event[]
+
+  @@map("venues")
+}
+
+// ============================================
+// SEASONS
+// ============================================
+
+model Season {
+  id          String   @id @default(cuid())
+  name        String   // e.g., "Spring 2024"
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean  @default(false)
+  
+  // Points configuration (JSON for flexibility)
+  pointsStructure Json // { "1": 100, "2": 75, "3": 60, ... "knockout": 2 }
+  
+  // Playoff configuration
+  playoffQualifyCount Int @default(10) // Top N players qualify
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  events    Event[]
+  standings Standing[]
+
+  @@map("seasons")
+}
+
+// ============================================
+// EVENTS
+// ============================================
+
+enum EventStatus {
+  SCHEDULED
+  REGISTRATION_OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model Event {
+  id          String      @id @default(cuid())
+  name        String      // e.g., "Tuesday Night Poker @ Blue Marlin"
+  description String?
+  dateTime    DateTime
+  maxPlayers  Int         @default(50)
+  buyIn       Float?      // Optional buy-in amount
+  status      EventStatus @default(SCHEDULED)
+  
+  venueId     String
+  seasonId    String
+  directorId  String?
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relations
+  venue     Venue         @relation(fields: [venueId], references: [id])
+  season    Season        @relation(fields: [seasonId], references: [id])
+  director  User?         @relation("EventDirector", fields: [directorId], references: [id])
+  signups   EventSignup[]
+  results   Result[]
+  comments  Comment[]
+
+  @@map("events")
+}
+
+// ============================================
+// EVENT SIGNUPS
+// ============================================
+
+enum SignupStatus {
+  REGISTERED
+  CONFIRMED
+  CHECKED_IN
+  CANCELLED
+  NO_SHOW
+}
+
+model EventSignup {
+  id           String       @id @default(cuid())
+  eventId      String
+  userId       String
+  status       SignupStatus @default(REGISTERED)
+  registeredAt DateTime     @default(now())
+  checkedInAt  DateTime?
+  
+  // Relations
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@map("event_signups")
+}
+
+// ============================================
+// RESULTS
+// ============================================
+
+model Result {
+  id           String   @id @default(cuid())
+  eventId      String
+  userId       String
+  position     Int      // Finishing position (1st, 2nd, etc.)
+  knockouts    Int      @default(0)
+  pointsEarned Int
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@map("results")
+}
+
+// ============================================
+// STANDINGS (Denormalized for performance)
+// ============================================
+
+model Standing {
+  id           String   @id @default(cuid())
+  seasonId     String
+  userId       String
+  totalPoints  Int      @default(0)
+  eventsPlayed Int      @default(0)
+  wins         Int      @default(0)
+  topThrees    Int      @default(0)
+  knockouts    Int      @default(0)
+  rank         Int?
+  
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  season Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([seasonId, userId])
+  @@map("standings")
+}
+
+// ============================================
+// ACHIEVEMENTS / BADGES
+// ============================================
+
+model Achievement {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String
+  icon        String   // Emoji or icon name
+  criteria    Json     // { type: "wins", count: 5 } or { type: "streak", count: 3 }
+  points      Int      @default(0) // Bonus points for earning
+  
+  createdAt   DateTime @default(now())
+
+  // Relations
+  earnedBy UserAchievement[]
+
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id            String   @id @default(cuid())
+  userId        String
+  achievementId String
+  earnedAt      DateTime @default(now())
+
+  // Relations
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+  @@map("user_achievements")
+}
+
+// ============================================
+// LIGHTNING AUTH CHALLENGES
+// ============================================
+
+model LightningChallenge {
+  id        String   @id @default(cuid())
+  k1        String   @unique  // Random challenge
+  used      Boolean  @default(false)
+  userId    String?  // Set after successful auth
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("lightning_challenges")
+}
+
+// ============================================
+// COMMENTS
+// ============================================
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  userId    String
+  eventId   String
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@map("comments")
+}

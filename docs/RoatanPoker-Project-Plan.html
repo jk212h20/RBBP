@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roatan Poker League - Project Plan</title>
+    <style>
+        @media print {
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .no-print { display: none; }
+            .page-break { page-break-before: always; }
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: #f5f5f5;
+        }
+        
+        .document {
+            background: white;
+            padding: 60px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #2563eb;
+            padding-bottom: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .logo { font-size: 48px; margin-bottom: 10px; }
+        
+        h1 {
+            color: #1e40af;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #64748b;
+            font-size: 18px;
+        }
+        
+        .date {
+            color: #94a3b8;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        
+        h2 {
+            color: #1e40af;
+            font-size: 22px;
+            margin: 35px 0 15px 0;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        h3 {
+            color: #334155;
+            font-size: 18px;
+            margin: 25px 0 12px 0;
+        }
+        
+        p { margin-bottom: 12px; }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+        
+        th, td {
+            border: 1px solid #e2e8f0;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        th {
+            background: #f1f5f9;
+            font-weight: 600;
+            color: #1e40af;
+        }
+        
+        tr:nth-child(even) { background: #f8fafc; }
+        
+        .tech-stack td:first-child { font-weight: 600; }
+        
+        code {
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+        }
+        
+        pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 13px;
+            line-height: 1.5;
+            margin: 15px 0;
+        }
+        
+        ul, ol {
+            margin: 12px 0;
+            padding-left: 25px;
+        }
+        
+        li { margin-bottom: 6px; }
+        
+        .phase-box {
+            background: #f8fafc;
+            border-left: 4px solid #2563eb;
+            padding: 15px 20px;
+            margin: 15px 0;
+        }
+        
+        .phase-box h4 {
+            color: #1e40af;
+            margin-bottom: 10px;
+        }
+        
+        .checkbox-list {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .checkbox-list li {
+            padding: 5px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+        
+        .checkbox-list li:before {
+            content: "☐";
+            position: absolute;
+            left: 0;
+            color: #64748b;
+        }
+        
+        .schema-diagram {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .btn-print {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+        }
+        
+        .btn-print:hover { background: #1d4ed8; }
+        
+        .highlight {
+            background: #fef3c7;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        
+        .footer {
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <button class="btn-print no-print" onclick="window.print()">📥 Download as PDF</button>
+    
+    <div class="document">
+        <div class="header">
+            <div class="logo">🃏♠️♥️♦️♣️</div>
+            <h1>Roatan Poker League</h1>
+            <p class="subtitle">Website Development Project Plan</p>
+            <p class="date">Generated: January 31, 2026</p>
+        </div>
+
+        <h2>🏗️ Technology Stack</h2>
+        <table class="tech-stack">
+            <thead>
+                <tr><th>Layer</th><th>Technology</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Frontend</td><td>Next.js 14 (React) with TypeScript</td></tr>
+                <tr><td>Backend</td><td>Node.js + Express.js with TypeScript</td></tr>
+                <tr><td>Database</td><td>PostgreSQL with Prisma ORM</td></tr>
+                <tr><td>Authentication</td><td>JWT + bcrypt (or NextAuth.js for OAuth)</td></tr>
+                <tr><td>Email Service</td><td>Nodemailer with SendGrid/Mailgun</td></tr>
+                <tr><td>Styling</td><td>Tailwind CSS + shadcn/ui components</td></tr>
+                <tr><td>State Management</td><td>React Context + TanStack Query</td></tr>
+                <tr><td>Deployment</td><td>Vercel (frontend) + Railway/Render (backend)</td></tr>
+            </tbody>
+        </table>
+
+        <h2>📁 Project Structure</h2>
+        <pre>
+RoatanPoker/
+├── client/                    # Next.js Frontend
+│   ├── app/                   # App router pages
+│   ├── components/            # Reusable UI components
+│   ├── lib/                   # Utilities, API clients
+│   ├── hooks/                 # Custom React hooks
+│   └── types/                 # TypeScript interfaces
+│
+├── server/                    # Express.js Backend
+│   ├── src/
+│   │   ├── controllers/       # Route handlers
+│   │   ├── middleware/        # Auth, validation
+│   │   ├── routes/            # API routes
+│   │   ├── services/          # Business logic
+│   │   └── utils/             # Helpers, email
+│   └── prisma/                # Database schema
+│
+├── docs/                      # Documentation
+└── memory-bank/               # Project context files
+        </pre>
+
+        <h2 class="page-break">🗄️ Database Schema Design</h2>
+        
+        <h3>Core Entities</h3>
+        <table>
+            <thead>
+                <tr><th>Table</th><th>Key Fields</th><th>Purpose</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>Users</code></td>
+                    <td>id, email, password, name, role, avatar</td>
+                    <td>User accounts and authentication</td>
+                </tr>
+                <tr>
+                    <td><code>Profiles</code></td>
+                    <td>userId, bio, stats, badges, socialLinks</td>
+                    <td>Extended player information</td>
+                </tr>
+                <tr>
+                    <td><code>Venues</code></td>
+                    <td>id, name, address, managerId, description</td>
+                    <td>Pub/venue information</td>
+                </tr>
+                <tr>
+                    <td><code>Seasons</code></td>
+                    <td>id, name, startDate, endDate, isActive</td>
+                    <td>League seasons tracking</td>
+                </tr>
+                <tr>
+                    <td><code>Events</code></td>
+                    <td>id, venueId, seasonId, dateTime, directorId</td>
+                    <td>Poker tournament events</td>
+                </tr>
+                <tr>
+                    <td><code>EventSignups</code></td>
+                    <td>eventId, userId, status, registeredAt</td>
+                    <td>Player registrations</td>
+                </tr>
+                <tr>
+                    <td><code>Results</code></td>
+                    <td>eventId, userId, position, pointsEarned</td>
+                    <td>Tournament results</td>
+                </tr>
+                <tr>
+                    <td><code>Standings</code></td>
+                    <td>seasonId, userId, totalPoints, rank</td>
+                    <td>Season leaderboards</td>
+                </tr>
+                <tr>
+                    <td><code>Achievements</code></td>
+                    <td>id, name, description, criteria, icon</td>
+                    <td>Badge definitions</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>👥 User Roles & Permissions</h2>
+        <table>
+            <thead>
+                <tr><th>Role</th><th>Permissions</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Admin</strong></td>
+                    <td>Full system access, manage all users/venues/seasons, configure scoring</td>
+                </tr>
+                <tr>
+                    <td><strong>Venue Manager</strong></td>
+                    <td>Manage assigned venue, create events at their venue, view venue stats</td>
+                </tr>
+                <tr>
+                    <td><strong>Tournament Director</strong></td>
+                    <td>Run events, enter results, manage player check-ins</td>
+                </tr>
+                <tr>
+                    <td><strong>Player</strong></td>
+                    <td>Register for events, view scores, manage profile, earn achievements</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 class="page-break">🎯 Development Phases</h2>
+
+        <div class="phase-box">
+            <h4>Phase 1: Foundation (Week 1-2)</h4>
+            <ul class="checkbox-list">
+                <li>Project setup (Next.js + Express + PostgreSQL)</li>
+                <li>Database schema with Prisma</li>
+                <li>User authentication (register, login, password reset)</li>
+                <li>Role-based access control</li>
+                <li>Basic UI layout and navigation</li>
+            </ul>
+        </div>
+
+        <div class="phase-box">
+            <h4>Phase 2: Core Features (Week 3-4)</h4>
+            <ul class="checkbox-list">
+                <li>Venue management (CRUD operations)</li>
+                <li>Event creation and management</li>
+                <li>Event signup/registration system</li>
+                <li>Results entry interface</li>
+                <li>Points calculation engine</li>
+            </ul>
+        </div>
+
+        <div class="phase-box">
+            <h4>Phase 3: Scoreboards & Standings (Week 5)</h4>
+            <ul class="checkbox-list">
+                <li>Season leaderboard</li>
+                <li>Event results display</li>
+                <li>Player statistics dashboard</li>
+                <li>Venue performance metrics</li>
+                <li>Historical data views</li>
+            </ul>
+        </div>
+
+        <div class="phase-box">
+            <h4>Phase 4: Social Features (Week 6)</h4>
+            <ul class="checkbox-list">
+                <li>Player profiles with avatars</li>
+                <li>Achievement/badge system</li>
+                <li>Comments on events</li>
+                <li>Player activity feed</li>
+            </ul>
+        </div>
+
+        <div class="phase-box">
+            <h4>Phase 5: Season Management (Week 7)</h4>
+            <ul class="checkbox-list">
+                <li>Season creation and configuration</li>
+                <li>Points structure customization</li>
+                <li>Playoff qualification rules</li>
+                <li>Finals bracket management</li>
+                <li>Season awards/recognition</li>
+            </ul>
+        </div>
+
+        <div class="phase-box">
+            <h4>Phase 6: Notifications & Polish (Week 8)</h4>
+            <ul class="checkbox-list">
+                <li>Email notification system</li>
+                <li>Event reminders</li>
+                <li>Results announcements</li>
+                <li>Responsive design refinement</li>
+                <li>Performance optimization</li>
+            </ul>
+        </div>
+
+        <h2 class="page-break">🏆 Points System</h2>
+        <h3>Default Points Structure</h3>
+        <table>
+            <thead>
+                <tr><th>Position</th><th>Points</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>1st Place</td><td>100</td></tr>
+                <tr><td>2nd Place</td><td>75</td></tr>
+                <tr><td>3rd Place</td><td>60</td></tr>
+                <tr><td>4th Place</td><td>50</td></tr>
+                <tr><td>5th Place</td><td>40</td></tr>
+                <tr><td>6th Place</td><td>35</td></tr>
+                <tr><td>7th Place</td><td>30</td></tr>
+                <tr><td>8th Place</td><td>25</td></tr>
+                <tr><td>9th Place</td><td>22</td></tr>
+                <tr><td>10th Place</td><td>20</td></tr>
+                <tr><td>11th+ Place</td><td>10</td></tr>
+                <tr><td><em>Bonus: Per Knockout</em></td><td>+2</td></tr>
+            </tbody>
+        </table>
+        <p><em>Note: Points structure is fully customizable per season by administrators.</em></p>
+
+        <h2>📱 Application Routes</h2>
+        
+        <h3>Public Pages</h3>
+        <table>
+            <thead>
+                <tr><th>Route</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>/</code></td><td>Home page with upcoming events</td></tr>
+                <tr><td><code>/leaderboard</code></td><td>Current season standings</td></tr>
+                <tr><td><code>/events</code></td><td>Event calendar/listing</td></tr>
+                <tr><td><code>/events/[id]</code></td><td>Event details</td></tr>
+                <tr><td><code>/venues</code></td><td>Venue directory</td></tr>
+                <tr><td><code>/players/[id]</code></td><td>Public player profile</td></tr>
+            </tbody>
+        </table>
+
+        <h3>Authenticated Pages</h3>
+        <table>
+            <thead>
+                <tr><th>Route</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>/dashboard</code></td><td>Personal player dashboard</td></tr>
+                <tr><td><code>/profile</code></td><td>Edit profile/settings</td></tr>
+                <tr><td><code>/my-events</code></td><td>My registered events</td></tr>
+            </tbody>
+        </table>
+
+        <h3>Admin/Manager Pages</h3>
+        <table>
+            <thead>
+                <tr><th>Route</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>/admin</code></td><td>Admin dashboard</td></tr>
+                <tr><td><code>/admin/users</code></td><td>User management</td></tr>
+                <tr><td><code>/admin/seasons</code></td><td>Season management</td></tr>
+                <tr><td><code>/admin/venues</code></td><td>Venue management</td></tr>
+                <tr><td><code>/venue/[id]/manage</code></td><td>Venue manager dashboard</td></tr>
+                <tr><td><code>/events/[id]/manage</code></td><td>Tournament director controls</td></tr>
+            </tbody>
+        </table>
+
+        <h2 class="page-break">📧 Email Notifications</h2>
+        <table>
+            <thead>
+                <tr><th>Trigger</th><th>Recipients</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>New event created</td><td>All players (opt-in)</td></tr>
+                <tr><td>Event reminder (24hr before)</td><td>Registered players</td></tr>
+                <tr><td>Results posted</td><td>Event participants</td></tr>
+                <tr><td>Season standings update</td><td>Top 10 players</td></tr>
+                <tr><td>Achievement earned</td><td>Individual player</td></tr>
+                <tr><td>Playoff qualification</td><td>Qualified players</td></tr>
+            </tbody>
+        </table>
+
+        <h2>🔐 Security Measures</h2>
+        <ul>
+            <li><strong>Authentication:</strong> JWT tokens with refresh token rotation</li>
+            <li><strong>Password Security:</strong> bcrypt hashing with salt rounds</li>
+            <li><strong>API Protection:</strong> Rate limiting, input validation (Zod)</li>
+            <li><strong>Database:</strong> Parameterized queries via Prisma ORM</li>
+            <li><strong>CORS:</strong> Strict origin policies</li>
+            <li><strong>Secrets:</strong> Environment variables for all sensitive data</li>
+        </ul>
+
+        <h2>🚀 Deployment Strategy</h2>
+        <table>
+            <thead>
+                <tr><th>Component</th><th>Platform</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Frontend</td><td>Vercel</td><td>Automatic deployments from GitHub</td></tr>
+                <tr><td>Backend API</td><td>Railway / Render</td><td>Docker container support</td></tr>
+                <tr><td>Database</td><td>Railway / Supabase</td><td>Managed PostgreSQL</td></tr>
+                <tr><td>Email</td><td>SendGrid / Mailgun</td><td>Transactional email service</td></tr>
+                <tr><td>File Storage</td><td>Cloudinary / S3</td><td>User avatars, venue images</td></tr>
+            </tbody>
+        </table>
+
+        <div class="footer">
+            <p>Roatan Poker League - Project Plan v1.0</p>
+            <p>Generated by Cline AI Assistant</p>
+        </div>
+    </div>
+</body>
+</html>

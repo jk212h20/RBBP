@@ -1,0 +1,55 @@
+{
+  "name": "roatan-poker-server",
+  "version": "1.0.0",
+  "description": "Roatan Poker League API Server",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio"
+  },
+  "keywords": [
+    "poker",
+    "league",
+    "roatan",
+    "api"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@noble/secp256k1": "^3.0.0",
+    "@prisma/client": "^5.9.0",
+    "bcryptjs": "^2.4.3",
+    "bech32": "^2.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "express-session": "^1.19.0",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^6.9.8",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
+    "qrcode": "^1.5.4",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/express-session": "^1.18.2",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/node": "^20.11.5",
+    "@types/nodemailer": "^6.4.14",
+    "@types/passport": "^1.0.17",
+    "@types/passport-google-oauth20": "^2.0.17",
+    "@types/qrcode": "^1.5.6",
+    "prisma": "^5.9.0",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.3.3"
+  }
+}
