@@ -1,8 +1,7 @@
 import { Router, Request, Response } from 'express';
 import passport from 'passport';
 import QRCode from 'qrcode';
-import '../types/express';
-import { 
+import {
   register, 
   login, 
   getUserById, 

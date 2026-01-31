@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken, JwtPayload } from '../services/auth.service';
 import { UserRole } from '@prisma/client';
-import '../types/express';
 
 /**
  * Middleware to authenticate JWT token
