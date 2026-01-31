@@ -20,7 +20,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@noble/secp256k1": "^3.0.0",
+"@noble/secp256k1": "^1.7.1",
     "@prisma/client": "^5.9.0",
     "bcryptjs": "^2.4.3",
     "bech32": "^2.0.0",
