@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/context/AuthContext';
+import MobileNav from '@/components/MobileNav';
 import { venuesAPI } from '@/lib/api';
 
 interface Venue {
@@ -22,7 +22,6 @@ export default function VenuesPage() {
   const [venues, setVenues] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
     loadVenues();
@@ -43,28 +42,7 @@ export default function VenuesPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-black">
-      {/* Header */}
-      <header className="bg-black/30 backdrop-blur-sm border-b border-green-700/50">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/" className="text-2xl font-bold text-white">
-            🃏 Roatan Poker
-          </Link>
-          <nav className="flex items-center gap-4">
-            <Link href="/events" className="text-white/80 hover:text-white">Events</Link>
-            <Link href="/leaderboard" className="text-white/80 hover:text-white">Leaderboard</Link>
-            <Link href="/venues" className="text-green-400 font-medium">Venues</Link>
-            {isAuthenticated ? (
-              <Link href="/dashboard" className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
-                Dashboard
-              </Link>
-            ) : (
-              <Link href="/login" className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
-                Sign In
-              </Link>
-            )}
-          </nav>
-        </div>
-      </header>
+      <MobileNav currentPage="venues" />
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Page Title */}

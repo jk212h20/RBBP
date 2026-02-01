@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import MobileNav from '@/components/MobileNav';
 import { useAuth } from '@/context/AuthContext';
 import { eventsAPI, seasonsAPI } from '@/lib/api';
 
@@ -66,50 +67,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-black">
-      {/* Navigation */}
-      <nav className="bg-black/30 border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">🃏</span>
-              <span className="text-white font-bold text-xl">Roatan Poker</span>
-            </div>
-            <div className="flex items-center gap-4">
-              <Link href="/events" className="text-white/80 hover:text-white transition">
-                Events
-              </Link>
-              <Link href="/leaderboard" className="text-white/80 hover:text-white transition">
-                Leaderboard
-              </Link>
-              {loading ? (
-                <span className="text-white/50">Loading...</span>
-              ) : isAuthenticated ? (
-                <Link
-                  href="/dashboard"
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition"
-                >
-                  Dashboard
-                </Link>
-              ) : (
-                <>
-                  <Link
-                    href="/login"
-                    className="text-white/80 hover:text-white transition"
-                  >
-                    Login
-                  </Link>
-                  <Link
-                    href="/register"
-                    className="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition"
-                  >
-                    Sign Up
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </nav>
+      <MobileNav currentPage="home" />
 
       {/* Hero Section */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">

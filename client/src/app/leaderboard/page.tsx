@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/context/AuthContext';
+import MobileNav from '@/components/MobileNav';
 import { seasonsAPI } from '@/lib/api';
 
 interface Standing {
@@ -39,7 +39,6 @@ export default function LeaderboardPage() {
   const [currentSeason, setCurrentSeason] = useState<Season | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
     loadSeasons();
@@ -56,18 +55,25 @@ export default function LeaderboardPage() {
       const data = await seasonsAPI.getAll();
       setSeasons(data);
       
+      // If no seasons exist, stop loading
+      if (data.length === 0) {
+        setLoading(false);
+        return;
+      }
+      
       // Select active season by default
       const activeSeason = data.find((s: Season) => s.isActive);
       if (activeSeason) {
         setSelectedSeason(activeSeason.id);
         setCurrentSeason(activeSeason);
-      } else if (data.length > 0) {
+      } else {
         setSelectedSeason(data[0].id);
         setCurrentSeason(data[0]);
       }
     } catch (err) {
       console.error('Failed to load seasons:', err);
       setError('Failed to load seasons');
+      setLoading(false);
     }
   };
 
@@ -99,27 +105,7 @@ export default function LeaderboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-black">
-      {/* Header */}
-      <header className="bg-black/30 backdrop-blur-sm border-b border-green-700/50">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/" className="text-2xl font-bold text-white">
-            🃏 Roatan Poker
-          </Link>
-          <nav className="flex items-center gap-4">
-            <Link href="/events" className="text-white/80 hover:text-white">Events</Link>
-            <Link href="/leaderboard" className="text-green-400 font-medium">Leaderboard</Link>
-            {isAuthenticated ? (
-              <Link href="/dashboard" className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
-                Dashboard
-              </Link>
-            ) : (
-              <Link href="/login" className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
-                Sign In
-              </Link>
-            )}
-          </nav>
-        </div>
-      </header>
+      <MobileNav currentPage="leaderboard" />
 
       <main className="max-w-4xl mx-auto px-4 py-8">
         {/* Page Title */}
@@ -183,124 +169,127 @@ export default function LeaderboardPage() {
             <p className="text-green-300/60 mt-2">Play in events to appear on the leaderboard!</p>
           </div>
         ) : (
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 overflow-hidden">
-            {/* Table Header */}
-            <div className="hidden md:grid grid-cols-12 gap-4 p-4 bg-black/20 text-green-300 text-sm font-medium">
-              <div className="col-span-1">Rank</div>
-              <div className="col-span-4">Player</div>
-              <div className="col-span-2 text-center">Points</div>
-              <div className="col-span-1 text-center">Events</div>
-              <div className="col-span-1 text-center">Wins</div>
-              <div className="col-span-1 text-center">Top 3</div>
-              <div className="col-span-2 text-center">Knockouts</div>
+          <>
+            {/* Desktop Table View */}
+            <div className="hidden md:block bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 overflow-hidden">
+              {/* Table Header */}
+              <div className="grid grid-cols-12 gap-4 p-4 bg-black/20 text-green-300 text-sm font-medium">
+                <div className="col-span-1">Rank</div>
+                <div className="col-span-4">Player</div>
+                <div className="col-span-2 text-center">Points</div>
+                <div className="col-span-1 text-center">Events</div>
+                <div className="col-span-1 text-center">Wins</div>
+                <div className="col-span-1 text-center">Top 3</div>
+                <div className="col-span-2 text-center">Knockouts</div>
+              </div>
+
+              {/* Table Body */}
+              <div className="divide-y divide-green-600/20">
+                {standings.map((standing, index) => {
+                  const rankInfo = getRankDisplay(index);
+                  return (
+                    <div
+                      key={standing.id}
+                      className={`grid grid-cols-12 gap-4 p-4 items-center hover:bg-white/5 transition ${rankInfo.bg} border-l-4`}
+                    >
+                      {/* Rank */}
+                      <div className="col-span-1">
+                        <span className="text-xl font-bold text-white">
+                          {index < 3 ? rankInfo.emoji : `#${index + 1}`}
+                        </span>
+                      </div>
+
+                      {/* Player */}
+                      <div className="col-span-4 flex items-center gap-3">
+                        <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center text-white font-bold">
+                          {standing.user.name.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="text-white font-medium truncate">{standing.user.name}</span>
+                      </div>
+
+                      {/* Points */}
+                      <div className="col-span-2 text-center">
+                        <span className="text-xl font-bold text-green-400">{standing.totalPoints}</span>
+                        <span className="text-green-300 text-sm ml-1">pts</span>
+                      </div>
+
+                      {/* Events */}
+                      <div className="col-span-1 text-center text-white">
+                        {standing.eventsPlayed}
+                      </div>
+
+                      {/* Wins */}
+                      <div className="col-span-1 text-center">
+                        {standing.wins > 0 ? (
+                          <span className="text-yellow-400 font-bold">{standing.wins}</span>
+                        ) : (
+                          <span className="text-gray-500">0</span>
+                        )}
+                      </div>
+
+                      {/* Top 3 */}
+                      <div className="col-span-1 text-center text-white">
+                        {standing.topThrees}
+                      </div>
+
+                      {/* Knockouts */}
+                      <div className="col-span-2 text-center text-white">
+                        {standing.knockouts}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
-            {/* Table Body */}
-            <div className="divide-y divide-green-600/20">
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-3">
               {standings.map((standing, index) => {
                 const rankInfo = getRankDisplay(index);
                 return (
                   <div
                     key={standing.id}
-                    className={`grid grid-cols-12 gap-4 p-4 items-center hover:bg-white/5 transition ${rankInfo.bg} border-l-4`}
+                    className={`p-4 rounded-xl ${rankInfo.bg} border`}
                   >
-                    {/* Rank */}
-                    <div className="col-span-1">
-                      <span className="text-xl font-bold text-white">
-                        {index < 3 ? rankInfo.emoji : `#${index + 1}`}
-                      </span>
-                    </div>
-
-                    {/* Player */}
-                    <div className="col-span-4 flex items-center gap-3">
-                      <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center text-white font-bold">
-                        {standing.user.name.charAt(0).toUpperCase()}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl font-bold">
+                          {index < 3 ? rankInfo.emoji : `#${index + 1}`}
+                        </span>
+                        <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center text-white font-bold">
+                          {standing.user.name.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="text-white font-medium">{standing.user.name}</span>
                       </div>
-                      <span className="text-white font-medium truncate">{standing.user.name}</span>
+                      <div className="text-right">
+                        <p className="text-xl font-bold text-green-400">{standing.totalPoints}</p>
+                        <p className="text-xs text-green-300">points</p>
+                      </div>
                     </div>
-
-                    {/* Points */}
-                    <div className="col-span-2 text-center">
-                      <span className="text-xl font-bold text-green-400">{standing.totalPoints}</span>
-                      <span className="text-green-300 text-sm ml-1">pts</span>
-                    </div>
-
-                    {/* Events */}
-                    <div className="col-span-1 text-center text-white">
-                      {standing.eventsPlayed}
-                    </div>
-
-                    {/* Wins */}
-                    <div className="col-span-1 text-center">
-                      {standing.wins > 0 ? (
-                        <span className="text-yellow-400 font-bold">{standing.wins}</span>
-                      ) : (
-                        <span className="text-gray-500">0</span>
-                      )}
-                    </div>
-
-                    {/* Top 3 */}
-                    <div className="col-span-1 text-center text-white">
-                      {standing.topThrees}
-                    </div>
-
-                    {/* Knockouts */}
-                    <div className="col-span-2 text-center text-white">
-                      {standing.knockouts}
+                    <div className="grid grid-cols-4 gap-2 text-center text-sm">
+                      <div>
+                        <p className="text-white font-medium">{standing.eventsPlayed}</p>
+                        <p className="text-green-300/60 text-xs">Events</p>
+                      </div>
+                      <div>
+                        <p className="text-yellow-400 font-medium">{standing.wins}</p>
+                        <p className="text-green-300/60 text-xs">Wins</p>
+                      </div>
+                      <div>
+                        <p className="text-white font-medium">{standing.topThrees}</p>
+                        <p className="text-green-300/60 text-xs">Top 3</p>
+                      </div>
+                      <div>
+                        <p className="text-white font-medium">{standing.knockouts}</p>
+                        <p className="text-green-300/60 text-xs">KOs</p>
+                      </div>
                     </div>
                   </div>
                 );
               })}
             </div>
-          </div>
+          </>
         )}
-
-        {/* Mobile View */}
-        <div className="md:hidden mt-4 space-y-3">
-          {standings.map((standing, index) => {
-            const rankInfo = getRankDisplay(index);
-            return (
-              <div
-                key={standing.id}
-                className={`p-4 rounded-xl ${rankInfo.bg} border`}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl font-bold">
-                      {index < 3 ? rankInfo.emoji : `#${index + 1}`}
-                    </span>
-                    <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center text-white font-bold">
-                      {standing.user.name.charAt(0).toUpperCase()}
-                    </div>
-                    <span className="text-white font-medium">{standing.user.name}</span>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xl font-bold text-green-400">{standing.totalPoints}</p>
-                    <p className="text-xs text-green-300">points</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-4 gap-2 text-center text-sm">
-                  <div>
-                    <p className="text-white font-medium">{standing.eventsPlayed}</p>
-                    <p className="text-green-300/60 text-xs">Events</p>
-                  </div>
-                  <div>
-                    <p className="text-yellow-400 font-medium">{standing.wins}</p>
-                    <p className="text-green-300/60 text-xs">Wins</p>
-                  </div>
-                  <div>
-                    <p className="text-white font-medium">{standing.topThrees}</p>
-                    <p className="text-green-300/60 text-xs">Top 3</p>
-                  </div>
-                  <div>
-                    <p className="text-white font-medium">{standing.knockouts}</p>
-                    <p className="text-green-300/60 text-xs">KOs</p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
       </main>
     </div>
   );
