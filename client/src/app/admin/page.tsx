@@ -232,7 +232,7 @@ export default function AdminPage() {
       {/* Header */}
       <header className="bg-gray-800 border-b border-gray-700 p-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <h1 className="text-2xl font-bold">🎰 Admin Dashboard</h1>
+          <h1 className="text-2xl font-bold">🃏 Admin Dashboard</h1>
           <Link href="/dashboard" className="text-green-400 hover:text-green-300">
             ← Back to Dashboard
           </Link>

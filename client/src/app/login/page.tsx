@@ -118,9 +118,15 @@ export default function LoginPage() {
                   <img
                     src={lightningData.qrCode}
                     alt="Lightning Auth QR Code"
-                    className="w-40 h-40 rounded-lg border-2 border-yellow-400 shadow-md"
+                    className="w-32 h-32 sm:w-40 sm:h-40 rounded-lg border-2 border-yellow-400 shadow-md"
                   />
                 </div>
+                <a
+                  href={`lightning:${lightningData.lnurl}`}
+                  className="block text-center text-sm text-yellow-600 hover:text-yellow-700 font-medium mb-2 underline"
+                >
+                  📱 Tap to open wallet (mobile)
+                </a>
                 <p className="text-xs text-gray-500 mb-1">
                   Phoenix • Wallet of Satoshi • Zeus • Blue Wallet
                 </p>

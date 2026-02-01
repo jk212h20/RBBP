@@ -125,7 +125,7 @@ export default function VenuesPage() {
                     )}
                     {venue._count && (
                       <p className="flex items-center gap-2">
-                        🎰 {venue._count.events} events hosted
+                        🃏 {venue._count.events} events hosted
                       </p>
                     )}
                   </div>
