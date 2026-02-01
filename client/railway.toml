@@ -1,5 +1,9 @@
 [build]
 builder = "nixpacks"
+watchPatterns = ["client/**"]
+
+[build.nixpacks]
+nixPkgs = ["nodejs_20"]
 
 [deploy]
 startCommand = "npm start"
