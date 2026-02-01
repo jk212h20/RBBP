@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { eventsAPI } from '@/lib/api';
+import { eventsAPI, adminAPI } from '@/lib/api';
 
 interface UserEvent {
   id: string;
@@ -16,10 +16,12 @@ interface UserEvent {
 }
 
 export default function ProfilePage() {
-  const { user, isAuthenticated, loading } = useAuth();
+  const { user, isAuthenticated, loading, refreshUser } = useAuth();
   const router = useRouter();
   const [myEvents, setMyEvents] = useState<UserEvent[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
+  const [promoting, setPromoting] = useState(false);
+  const [promoteMessage, setPromoteMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [stats, setStats] = useState({
     eventsPlayed: 0,
     totalPoints: 0,
@@ -93,6 +95,20 @@ export default function ProfilePage() {
     }
   };
 
+  const handleBecomeAdmin = async () => {
+    setPromoting(true);
+    setPromoteMessage(null);
+    try {
+      await adminAPI.promoteToAdmin('roatan-poker-setup-2024');
+      await refreshUser();
+      setPromoteMessage({ type: 'success', text: 'You are now an admin! 🎉' });
+    } catch (err: any) {
+      setPromoteMessage({ type: 'error', text: err.message || 'Failed to become admin. An admin may already exist.' });
+    } finally {
+      setPromoting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-green-800 to-black">
@@ -147,6 +163,36 @@ export default function ProfilePage() {
               </p>
             </div>
           </div>
+
+          {/* Become Admin Button - only show if not already admin */}
+          {user.role !== 'ADMIN' && (
+            <div className="mt-6 pt-6 border-t border-green-600/30">
+              <button
+                onClick={handleBecomeAdmin}
+                disabled={promoting}
+                className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-medium transition"
+              >
+                {promoting ? 'Promoting...' : '🔐 Become Admin'}
+              </button>
+              {promoteMessage && (
+                <p className={`mt-2 text-sm ${promoteMessage.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
+                  {promoteMessage.text}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Admin badge if already admin */}
+          {user.role === 'ADMIN' && (
+            <div className="mt-6 pt-6 border-t border-green-600/30">
+              <span className="inline-flex items-center gap-2 bg-purple-600/20 text-purple-300 px-4 py-2 rounded-lg">
+                👑 You are an Admin
+              </span>
+              <Link href="/admin" className="ml-4 text-purple-400 hover:text-purple-300 underline">
+                Go to Admin Panel →
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* Stats */}
