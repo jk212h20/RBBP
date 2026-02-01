@@ -185,12 +185,23 @@ async function verifySignature(
     compactSig.set(r, 0);
     compactSig.set(s, 32);
     
-    // Hash the message (k1) with SHA-256 for verification  
+    // LNURL-auth: The k1 (32 bytes) IS the message hash
+    // The wallet signs sha256(k1), so we hash it for verification
     const msgHash = sha256(message);
     
-    // secp256k1 v1.7.x verify(signature, msgHash, publicKey)
-    // signature should be 64-byte compact format
-    const result = secp256k1.verify(compactSig, msgHash, publicKey);
+    console.log('Verifying signature...');
+    console.log('Message (k1) length:', message.length);
+    console.log('Signature length:', compactSig.length);
+    console.log('PublicKey length:', publicKey.length);
+    
+    // Try both: with hash and without (different wallets may behave differently)
+    let result = secp256k1.verify(compactSig, msgHash, publicKey);
+    if (!result) {
+      // Some wallets sign the k1 directly without hashing
+      result = secp256k1.verify(compactSig, message, publicKey);
+      console.log('Tried direct message verification:', result);
+    }
+    
     console.log('Signature verification result:', result);
     return result;
   } catch (error) {
