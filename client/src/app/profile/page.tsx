@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { eventsAPI, adminAPI } from '@/lib/api';
+import { eventsAPI, authAPI } from '@/lib/api';
 
 interface UserEvent {
   id: string;
@@ -20,8 +20,11 @@ export default function ProfilePage() {
   const router = useRouter();
   const [myEvents, setMyEvents] = useState<UserEvent[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
-  const [promoting, setPromoting] = useState(false);
-  const [promoteMessage, setPromoteMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [stats, setStats] = useState({
     eventsPlayed: 0,
     totalPoints: 0,
@@ -95,21 +98,48 @@ export default function ProfilePage() {
     }
   };
 
-  const handleBecomeAdmin = async () => {
-    setPromoting(true);
-    setPromoteMessage(null);
+  const startEditing = () => {
+    setEditName(user?.name || '');
+    setEditEmail(user?.email || '');
+    setIsEditing(true);
+    setSaveMessage(null);
+  };
+
+  const cancelEditing = () => {
+    setIsEditing(false);
+    setSaveMessage(null);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!editName.trim()) {
+      setSaveMessage({ type: 'error', text: 'Name is required' });
+      return;
+    }
+
+    setSaving(true);
+    setSaveMessage(null);
     try {
-      const result = await adminAPI.promoteToAdmin('roatan-poker-setup-2024');
-      // If a new token is returned, save it to get the updated role
+      const updateData: { name?: string; email?: string } = {};
+      if (editName !== user?.name) updateData.name = editName;
+      if (editEmail !== user?.email) updateData.email = editEmail || undefined;
+
+      if (Object.keys(updateData).length === 0) {
+        setIsEditing(false);
+        return;
+      }
+
+      const result = await authAPI.updateProfile(updateData);
+      // Save new token
       if (result.token) {
         localStorage.setItem('token', result.token);
       }
       await refreshUser();
-      setPromoteMessage({ type: 'success', text: 'You are now an admin! 🎉' });
+      setSaveMessage({ type: 'success', text: 'Profile updated successfully!' });
+      setIsEditing(false);
     } catch (err: any) {
-      setPromoteMessage({ type: 'error', text: err.message || 'Failed to become admin. An admin may already exist.' });
+      setSaveMessage({ type: 'error', text: err.message || 'Failed to update profile' });
     } finally {
-      setPromoting(false);
+      setSaving(false);
     }
   };
 
@@ -151,50 +181,106 @@ export default function ProfilePage() {
 
         {/* Profile Header */}
         <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 p-6 mb-6">
-          <div className="flex items-center gap-6">
-            <div className="w-24 h-24 bg-green-600 rounded-full flex items-center justify-center text-white text-4xl font-bold">
-              {user.avatar ? (
-                <img src={user.avatar} alt={user.name} className="w-full h-full rounded-full" />
-              ) : (
-                user.name.charAt(0).toUpperCase()
+          {!isEditing ? (
+            <>
+              <div className="flex items-center gap-6">
+                <div className="w-24 h-24 bg-green-600 rounded-full flex items-center justify-center text-white text-4xl font-bold">
+                  {user.avatar ? (
+                    <img src={user.avatar} alt={user.name} className="w-full h-full rounded-full" />
+                  ) : (
+                    user.name.charAt(0).toUpperCase()
+                  )}
+                </div>
+                <div className="flex-1">
+                  <h1 className="text-3xl font-bold text-white">{user.name}</h1>
+                  <p className="text-green-200">{user.email || 'No email set'}</p>
+                  <p className="text-green-300/60 text-sm mt-1">
+                    Logged in with {getAuthBadge()} • {user.role}
+                  </p>
+                </div>
+                <button
+                  onClick={startEditing}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition"
+                >
+                  ✏️ Edit Profile
+                </button>
+              </div>
+
+              {saveMessage && (
+                <div className={`mt-4 p-3 rounded-lg ${saveMessage.type === 'success' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                  {saveMessage.text}
+                </div>
               )}
-            </div>
+
+              {/* Admin badge if already admin */}
+              {user.role === 'ADMIN' && (
+                <div className="mt-6 pt-6 border-t border-green-600/30">
+                  <span className="inline-flex items-center gap-2 bg-purple-600/20 text-purple-300 px-4 py-2 rounded-lg">
+                    👑 You are an Admin
+                  </span>
+                  <Link href="/admin" className="ml-4 text-purple-400 hover:text-purple-300 underline">
+                    Go to Admin Panel →
+                  </Link>
+                </div>
+              )}
+            </>
+          ) : (
             <div>
-              <h1 className="text-3xl font-bold text-white">{user.name}</h1>
-              <p className="text-green-200">{user.email || 'No email set'}</p>
-              <p className="text-green-300/60 text-sm mt-1">
-                Logged in with {getAuthBadge()} • {user.role}
-              </p>
-            </div>
-          </div>
+              <h2 className="text-xl font-bold text-white mb-4">✏️ Edit Profile</h2>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-green-200 text-sm mb-1">Display Name *</label>
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="w-full p-3 bg-white/10 border border-green-600/50 rounded-lg text-white placeholder-green-300/50 focus:outline-none focus:border-green-500"
+                    placeholder="Your display name"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-green-200 text-sm mb-1">
+                    Email {!user.email && <span className="text-yellow-400">(not set)</span>}
+                  </label>
+                  <input
+                    type="email"
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    className="w-full p-3 bg-white/10 border border-green-600/50 rounded-lg text-white placeholder-green-300/50 focus:outline-none focus:border-green-500"
+                    placeholder="your@email.com"
+                  />
+                  {user.authProvider === 'LIGHTNING' && !user.email && (
+                    <p className="text-yellow-400/80 text-sm mt-1">
+                      💡 Adding an email lets you recover your account and receive notifications
+                    </p>
+                  )}
+                </div>
 
-          {/* Become Admin Button - only show if not already admin */}
-          {user.role !== 'ADMIN' && (
-            <div className="mt-6 pt-6 border-t border-green-600/30">
-              <button
-                onClick={handleBecomeAdmin}
-                disabled={promoting}
-                className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-medium transition"
-              >
-                {promoting ? 'Promoting...' : '🔐 Become Admin'}
-              </button>
-              {promoteMessage && (
-                <p className={`mt-2 text-sm ${promoteMessage.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
-                  {promoteMessage.text}
-                </p>
-              )}
-            </div>
-          )}
+                {saveMessage && (
+                  <div className={`p-3 rounded-lg ${saveMessage.type === 'success' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                    {saveMessage.text}
+                  </div>
+                )}
 
-          {/* Admin badge if already admin */}
-          {user.role === 'ADMIN' && (
-            <div className="mt-6 pt-6 border-t border-green-600/30">
-              <span className="inline-flex items-center gap-2 bg-purple-600/20 text-purple-300 px-4 py-2 rounded-lg">
-                👑 You are an Admin
-              </span>
-              <Link href="/admin" className="ml-4 text-purple-400 hover:text-purple-300 underline">
-                Go to Admin Panel →
-              </Link>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={handleSaveProfile}
+                    disabled={saving}
+                    className="bg-green-600 hover:bg-green-700 disabled:bg-green-800 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-medium transition"
+                  >
+                    {saving ? 'Saving...' : 'Save Changes'}
+                  </button>
+                  <button
+                    onClick={cancelEditing}
+                    disabled={saving}
+                    className="bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-lg font-medium transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>

@@ -5,7 +5,8 @@ import {
   register, 
   login, 
   getUserById, 
-  findOrCreateLightningUser 
+  findOrCreateLightningUser,
+  updateProfile
 } from '../services/auth.service';
 import { 
   createChallenge, 
@@ -13,7 +14,7 @@ import {
   getChallengeStatus 
 } from '../services/lightning.service';
 import { authenticate } from '../middleware/auth.middleware';
-import { registerSchema, loginSchema } from '../validators/auth.validator';
+import { registerSchema, loginSchema, updateProfileSchema } from '../validators/auth.validator';
 import { isGoogleConfigured } from '../config/passport';
 
 const router = Router();
@@ -259,6 +260,35 @@ router.post('/logout', authenticate, (req: Request, res: Response) => {
   // With JWT, logout is handled client-side by discarding the token
   // This endpoint exists for API consistency and potential future token blacklisting
   res.json({ message: 'Logged out successfully' });
+});
+
+/**
+ * PUT /api/auth/profile
+ * Update user profile (name, email)
+ */
+router.put('/profile', authenticate, async (req: Request, res: Response) => {
+  try {
+    const validation = updateProfileSchema.safeParse(req.body);
+    
+    if (!validation.success) {
+      res.status(400).json({ 
+        error: 'Validation failed', 
+        details: validation.error.errors 
+      });
+      return;
+    }
+
+    const result = await updateProfile(req.user!.userId, validation.data);
+    
+    res.json({
+      message: 'Profile updated successfully',
+      user: result.user,
+      token: result.token,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to update profile';
+    res.status(400).json({ error: message });
+  }
 });
 
 /**

@@ -1,6 +1,6 @@
 # Roatan Poker League - Progress
 
-## 🎉 Current Status: PHASE 2 COMPLETE
+## 🎉 Current Status: PHASE 2 COMPLETE + TD FEATURES
 
 ### Live URLs
 - **Frontend**: https://client-production-41b3.up.railway.app
@@ -15,6 +15,7 @@
 - [x] **Email/Password Login** - Fully working
 - [x] **Email/Password Registration** - Fully working  
 - [x] **Lightning Login (LNURL-auth)** - Fully working ⚡ (auto-shows QR)
+- [x] **Profile Editing** - Users can update name/email (especially for Lightning users)
 - [ ] **Google OAuth** - UI ready, awaiting Google credentials
 
 ### Backend (Express.js + PostgreSQL)
@@ -27,6 +28,7 @@
 - [x] **Venues API** - Full CRUD
 - [x] **Seasons API** - Full CRUD with standings
 - [x] **Events API** - Full CRUD with signups/results
+- [x] **Profile Update API** - PUT /api/auth/profile
 
 ### Frontend (Next.js 16)
 - [x] Client deployed to Railway
@@ -37,8 +39,19 @@
 - [x] **Events list page** - With season filtering
 - [x] **Event detail page** - With signup/cancel
 - [x] **Leaderboard page** - Season standings
+- [x] **Profile page** - With edit functionality for name/email
+- [x] **Tournament Director Panel** - Results entry UI on event page
 - [x] Auth callback handler
 - [x] Responsive design
+
+### Tournament Director Features
+- [x] TD Panel visible on event detail page (for TD/Admin/Venue Manager)
+- [x] Event status controls (Scheduled → Registration Open → In Progress)
+- [x] Attendance tracking (mark who showed up)
+- [x] Position entry for each player
+- [x] Knockout tracking
+- [x] Save Draft (editable results)
+- [x] Finalize Results (locks results, updates standings)
 
 ### Database Schema
 All tables created:
@@ -63,13 +76,13 @@ All tables created:
 - [ ] Google OAuth (needs CLIENT_ID & CLIENT_SECRET from Google Console)
 
 ### Admin Features
-- [ ] Admin dashboard for managing venues/seasons/events
-- [ ] User role management UI
-- [ ] Bulk result entry interface
+- [x] Admin dashboard for managing venues/seasons/events
+- [x] User role management UI
+- [x] Result entry interface (via TD Panel)
 
 ### User Features
-- [ ] User profile page with stats
-- [ ] Event history
+- [x] User profile page with stats
+- [x] Event history
 - [ ] Achievement/badge display
 
 ### Nice to Have
@@ -85,6 +98,7 @@ All tables created:
 - POST /register - Create account
 - POST /login - Email/password login
 - GET /me - Get current user
+- PUT /profile - Update user profile (name, email)
 - GET /lightning/challenge - Get LNURL QR
 - GET /lightning/callback - Wallet callback
 - GET /lightning/status/:k1 - Check auth status
@@ -168,7 +182,23 @@ NEXT_PUBLIC_API_URL=https://rbbp-production.up.railway.app/api
 
 ## Recent Changes (Feb 1, 2026)
 
-### Phase 2 Implementation
+### Latest Updates
+1. **Removed "Become Admin" button** from profile page (admin already exists)
+2. **Removed "multi-provider authentication" text** from dashboard
+3. **Added profile editing** - Users can now update their name and email
+   - Especially useful for Lightning users who get auto-generated names
+   - Backend: PUT /api/auth/profile endpoint
+   - Frontend: Edit Profile button on profile page
+4. **Tournament Director Results Entry UI**
+   - TD Panel on event detail page (visible to TD/Admin/Venue Manager)
+   - Event status controls (change between Scheduled/Registration Open/In Progress)
+   - Attendance tracking with checkboxes
+   - Position entry for each player who attended
+   - Knockout counter (+/- buttons)
+   - Save Draft button (saves results but keeps event editable)
+   - Finalize Results button (locks results, marks event COMPLETED, updates standings)
+
+### Phase 2 Implementation (Earlier)
 1. Created Venues API with full CRUD
 2. Created Seasons API with standings management
 3. Created Events API with signups and results

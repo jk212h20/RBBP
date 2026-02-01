@@ -228,3 +228,49 @@ function sanitizeUser(user: User & { profile?: any }) {
   const { password, ...sanitized } = user;
   return sanitized;
 }
+
+// ============================================
+// PROFILE UPDATE
+// ============================================
+
+export interface UpdateProfileInput {
+  name?: string;
+  email?: string;
+}
+
+export async function updateProfile(userId: string, input: UpdateProfileInput) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  // If email is being set, check it's not already taken
+  if (input.email && input.email !== user.email) {
+    const existingUser = await prisma.user.findUnique({
+      where: { email: input.email },
+    });
+    if (existingUser) {
+      throw new Error('Email is already in use');
+    }
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      ...(input.name && { name: input.name }),
+      ...(input.email && { email: input.email }),
+    },
+    include: { profile: true },
+  });
+
+  // Generate new token with updated info
+  const token = generateToken(updatedUser);
+
+  return {
+    user: sanitizeUser(updatedUser),
+    token,
+  };
+}

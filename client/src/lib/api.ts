@@ -68,6 +68,12 @@ export const authAPI = {
     fetchAPI<{ status: string; token?: string; user?: any; isNew?: boolean }>(
       `/auth/lightning/status/${k1}`
     ),
+
+  updateProfile: (data: { name?: string; email?: string }) =>
+    fetchAPI<{ message: string; user: any; token: string }>('/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
 };
 
 // Google OAuth URL

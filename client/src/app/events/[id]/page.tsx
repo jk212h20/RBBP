@@ -23,6 +23,7 @@ interface EventDetail {
   season: {
     id: string;
     name: string;
+    pointsStructure?: Record<string, number>;
   };
   director?: {
     id: string;
@@ -32,6 +33,7 @@ interface EventDetail {
     id: string;
     status: string;
     registeredAt: string;
+    checkedInAt?: string;
     user: {
       id: string;
       name: string;
@@ -56,6 +58,14 @@ interface EventDetail {
   };
 }
 
+interface PlayerResult {
+  userId: string;
+  name: string;
+  attended: boolean;
+  position: number | null;
+  knockouts: number;
+}
+
 export default function EventDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -67,6 +77,14 @@ export default function EventDetailPage() {
   const [isSignedUp, setIsSignedUp] = useState(false);
   const { isAuthenticated, user } = useAuth();
 
+  // Tournament Director state
+  const [showManagement, setShowManagement] = useState(false);
+  const [playerResults, setPlayerResults] = useState<PlayerResult[]>([]);
+  const [savingResults, setSavingResults] = useState(false);
+  const [resultMessage, setResultMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const canManageEvent = user && (user.role === 'ADMIN' || user.role === 'TOURNAMENT_DIRECTOR' || user.role === 'VENUE_MANAGER');
+
   useEffect(() => {
     loadEvent();
   }, [eventId]);
@@ -77,6 +95,24 @@ export default function EventDetailPage() {
       setIsSignedUp(!!userSignup);
     }
   }, [event, user]);
+
+  useEffect(() => {
+    // Initialize player results from signups when event loads
+    if (event && canManageEvent) {
+      const existingResults = event.results || [];
+      const initialResults: PlayerResult[] = event.signups.map(signup => {
+        const existingResult = existingResults.find(r => r.user.id === signup.user.id);
+        return {
+          userId: signup.user.id,
+          name: signup.user.name,
+          attended: existingResult ? true : signup.status === 'CHECKED_IN',
+          position: existingResult?.position || null,
+          knockouts: existingResult?.knockouts || 0,
+        };
+      });
+      setPlayerResults(initialResults);
+    }
+  }, [event, canManageEvent]);
 
   const loadEvent = async () => {
     setLoading(true);
@@ -111,6 +147,86 @@ export default function EventDetailPage() {
       loadEvent();
     } catch (err: any) {
       alert(err.message || 'Failed to cancel signup');
+    }
+  };
+
+  const handleStatusChange = async (newStatus: string) => {
+    try {
+      await eventsAPI.updateStatus(eventId, newStatus);
+      loadEvent();
+      setResultMessage({ type: 'success', text: `Event status updated to ${newStatus}` });
+    } catch (err: any) {
+      setResultMessage({ type: 'error', text: err.message || 'Failed to update status' });
+    }
+  };
+
+  const toggleAttendance = (userId: string) => {
+    setPlayerResults(prev => prev.map(p => 
+      p.userId === userId ? { ...p, attended: !p.attended, position: !p.attended ? p.position : null } : p
+    ));
+  };
+
+  const updatePosition = (userId: string, position: number | null) => {
+    setPlayerResults(prev => prev.map(p => 
+      p.userId === userId ? { ...p, position } : p
+    ));
+  };
+
+  const updateKnockouts = (userId: string, knockouts: number) => {
+    setPlayerResults(prev => prev.map(p => 
+      p.userId === userId ? { ...p, knockouts: Math.max(0, knockouts) } : p
+    ));
+  };
+
+  const handleSaveResults = async (finalize: boolean = false) => {
+    const attendedPlayers = playerResults.filter(p => p.attended);
+    
+    // Validate positions for attended players
+    const playersWithPositions = attendedPlayers.filter(p => p.position !== null);
+    
+    if (finalize) {
+      // For finalization, all attended players must have positions
+      if (playersWithPositions.length !== attendedPlayers.length) {
+        setResultMessage({ type: 'error', text: 'All attended players must have a position to finalize' });
+        return;
+      }
+      
+      // Check for duplicate positions
+      const positions = playersWithPositions.map(p => p.position);
+      const uniquePositions = new Set(positions);
+      if (positions.length !== uniquePositions.size) {
+        setResultMessage({ type: 'error', text: 'Each player must have a unique position' });
+        return;
+      }
+    }
+
+    setSavingResults(true);
+    setResultMessage(null);
+
+    try {
+      // Only submit players with positions
+      const resultsToSubmit = playersWithPositions.map(p => ({
+        userId: p.userId,
+        position: p.position!,
+        knockouts: p.knockouts,
+      }));
+
+      if (resultsToSubmit.length > 0) {
+        await eventsAPI.enterResults(eventId, resultsToSubmit);
+      }
+
+      if (finalize) {
+        await eventsAPI.updateStatus(eventId, 'COMPLETED');
+        setResultMessage({ type: 'success', text: 'Results finalized! Standings have been updated.' });
+      } else {
+        setResultMessage({ type: 'success', text: 'Results saved. You can continue editing.' });
+      }
+      
+      loadEvent();
+    } catch (err: any) {
+      setResultMessage({ type: 'error', text: err.message || 'Failed to save results' });
+    } finally {
+      setSavingResults(false);
     }
   };
 
@@ -164,6 +280,8 @@ export default function EventDetailPage() {
   const statusInfo = getStatusBadge(event.status);
   const canSignup = (event.status === 'SCHEDULED' || event.status === 'REGISTRATION_OPEN') && 
                     event._count.signups < event.maxPlayers;
+  const canEnterResults = canManageEvent && (event.status === 'IN_PROGRESS' || event.status === 'REGISTRATION_OPEN' || event.status === 'SCHEDULED');
+  const isFinalized = event.status === 'COMPLETED';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-black">
@@ -280,10 +398,158 @@ export default function EventDetailPage() {
           )}
         </div>
 
+        {/* Tournament Director Management Panel */}
+        {canManageEvent && !isFinalized && (
+          <div className="bg-orange-500/10 backdrop-blur-sm rounded-xl border border-orange-500/30 p-6 mb-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-orange-300">🎯 Tournament Director Panel</h2>
+              <button
+                onClick={() => setShowManagement(!showManagement)}
+                className="text-orange-400 hover:text-orange-300"
+              >
+                {showManagement ? 'Hide' : 'Show'} Management
+              </button>
+            </div>
+
+            {showManagement && (
+              <div className="space-y-6">
+                {/* Status Controls */}
+                <div>
+                  <h3 className="text-white font-medium mb-2">Event Status</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {['SCHEDULED', 'REGISTRATION_OPEN', 'IN_PROGRESS'].map(status => (
+                      <button
+                        key={status}
+                        onClick={() => handleStatusChange(status)}
+                        disabled={event.status === status}
+                        className={`px-4 py-2 rounded-lg font-medium transition ${
+                          event.status === status 
+                            ? 'bg-green-600 text-white cursor-default' 
+                            : 'bg-white/10 text-white hover:bg-white/20'
+                        }`}
+                      >
+                        {status.replace('_', ' ')}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Results Entry */}
+                <div>
+                  <h3 className="text-white font-medium mb-3">📋 Attendance & Results</h3>
+                  <p className="text-orange-200/70 text-sm mb-4">
+                    Mark who attended, then enter their finishing positions. You can save and edit until you click "Finalize Results".
+                  </p>
+
+                  {playerResults.length === 0 ? (
+                    <p className="text-orange-200/60">No registered players yet</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {/* Header */}
+                      <div className="grid grid-cols-12 gap-2 text-orange-200/70 text-sm font-medium px-3 py-2">
+                        <div className="col-span-1">Came</div>
+                        <div className="col-span-5">Player</div>
+                        <div className="col-span-3">Position</div>
+                        <div className="col-span-3">Knockouts</div>
+                      </div>
+
+                      {playerResults.map((player) => (
+                        <div 
+                          key={player.userId}
+                          className={`grid grid-cols-12 gap-2 items-center p-3 rounded-lg ${
+                            player.attended ? 'bg-green-500/20' : 'bg-white/5'
+                          }`}
+                        >
+                          <div className="col-span-1">
+                            <input
+                              type="checkbox"
+                              checked={player.attended}
+                              onChange={() => toggleAttendance(player.userId)}
+                              className="w-5 h-5 rounded border-green-600 bg-white/10 text-green-600 focus:ring-green-500"
+                            />
+                          </div>
+                          <div className="col-span-5">
+                            <span className={`font-medium ${player.attended ? 'text-white' : 'text-gray-400'}`}>
+                              {player.name}
+                            </span>
+                          </div>
+                          <div className="col-span-3">
+                            {player.attended ? (
+                              <input
+                                type="number"
+                                min="1"
+                                max={playerResults.filter(p => p.attended).length}
+                                value={player.position || ''}
+                                onChange={(e) => updatePosition(player.userId, e.target.value ? parseInt(e.target.value) : null)}
+                                placeholder="#"
+                                className="w-full p-2 bg-white/10 border border-green-600/50 rounded text-white text-center"
+                              />
+                            ) : (
+                              <span className="text-gray-500">-</span>
+                            )}
+                          </div>
+                          <div className="col-span-3">
+                            {player.attended ? (
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => updateKnockouts(player.userId, player.knockouts - 1)}
+                                  className="w-8 h-8 bg-white/10 rounded text-white hover:bg-white/20"
+                                >
+                                  -
+                                </button>
+                                <span className="w-8 text-center text-white">{player.knockouts}</span>
+                                <button
+                                  onClick={() => updateKnockouts(player.userId, player.knockouts + 1)}
+                                  className="w-8 h-8 bg-white/10 rounded text-white hover:bg-white/20"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-gray-500">-</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {resultMessage && (
+                    <div className={`mt-4 p-3 rounded-lg ${
+                      resultMessage.type === 'success' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                    }`}>
+                      {resultMessage.text}
+                    </div>
+                  )}
+
+                  {playerResults.length > 0 && (
+                    <div className="flex gap-3 mt-4">
+                      <button
+                        onClick={() => handleSaveResults(false)}
+                        disabled={savingResults}
+                        className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white px-6 py-2 rounded-lg font-medium transition"
+                      >
+                        {savingResults ? 'Saving...' : '💾 Save Draft'}
+                      </button>
+                      <button
+                        onClick={() => handleSaveResults(true)}
+                        disabled={savingResults}
+                        className="bg-green-600 hover:bg-green-700 disabled:bg-green-800 text-white px-6 py-2 rounded-lg font-medium transition"
+                      >
+                        {savingResults ? 'Finalizing...' : '✅ Finalize Results'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Results (if completed) */}
         {event.results.length > 0 && (
           <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 p-6 mb-6">
-            <h2 className="text-xl font-bold text-white mb-4">🏆 Results</h2>
+            <h2 className="text-xl font-bold text-white mb-4">🏆 Results {isFinalized && <span className="text-green-400 text-sm font-normal">(Final)</span>}</h2>
             <div className="space-y-2">
               {event.results.map((result, index) => (
                 <div

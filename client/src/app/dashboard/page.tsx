@@ -131,14 +131,6 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        {/* Auth Success Message */}
-        <div className="mt-8 bg-green-500/20 backdrop-blur border border-green-400/30 rounded-xl p-6">
-          <h3 className="text-green-300 font-semibold mb-2">✅ Authentication Working!</h3>
-          <p className="text-white/80">
-            You successfully logged in using <strong>{getAuthBadge()}</strong>. 
-            The multi-provider authentication system is fully functional.
-          </p>
-        </div>
       </main>
     </div>
   );

@@ -21,14 +21,8 @@ export const loginSchema = z.object({
 });
 
 export const updateProfileSchema = z.object({
-  name: z
-    .string()
-    .min(2, 'Name must be at least 2 characters')
-    .max(100, 'Name must be less than 100 characters')
-    .optional(),
-  bio: z.string().max(500, 'Bio must be less than 500 characters').optional(),
-  phone: z.string().max(20, 'Phone must be less than 20 characters').optional(),
-  avatar: z.string().url('Invalid avatar URL').optional(),
+  name: z.string().min(2, 'Name must be at least 2 characters').max(100, 'Name must be less than 100 characters').optional(),
+  email: z.string().email('Invalid email address').optional(),
 });
 
 export type RegisterInput = z.infer<typeof registerSchema>;
