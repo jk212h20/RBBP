@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 
 export default function DashboardPage() {
@@ -108,26 +109,26 @@ export default function DashboardPage() {
         {/* Quick Actions */}
         <h2 className="text-white text-xl font-bold mb-4">Quick Actions</h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white/10 backdrop-blur rounded-xl p-6 hover:bg-white/20 transition cursor-pointer">
+          <Link href="/leaderboard" className="bg-white/10 backdrop-blur rounded-xl p-6 hover:bg-white/20 transition">
             <div className="text-3xl mb-2">🏆</div>
             <h3 className="text-white font-semibold">Leaderboard</h3>
             <p className="text-white/60 text-sm">View current standings</p>
-          </div>
-          <div className="bg-white/10 backdrop-blur rounded-xl p-6 hover:bg-white/20 transition cursor-pointer">
+          </Link>
+          <Link href="/events" className="bg-white/10 backdrop-blur rounded-xl p-6 hover:bg-white/20 transition">
             <div className="text-3xl mb-2">📅</div>
             <h3 className="text-white font-semibold">Events</h3>
             <p className="text-white/60 text-sm">Browse upcoming games</p>
-          </div>
-          <div className="bg-white/10 backdrop-blur rounded-xl p-6 hover:bg-white/20 transition cursor-pointer">
+          </Link>
+          <Link href="/venues" className="bg-white/10 backdrop-blur rounded-xl p-6 hover:bg-white/20 transition">
             <div className="text-3xl mb-2">📍</div>
             <h3 className="text-white font-semibold">Venues</h3>
             <p className="text-white/60 text-sm">Find poker nights</p>
-          </div>
-          <div className="bg-white/10 backdrop-blur rounded-xl p-6 hover:bg-white/20 transition cursor-pointer">
+          </Link>
+          <Link href="/profile" className="bg-white/10 backdrop-blur rounded-xl p-6 hover:bg-white/20 transition">
             <div className="text-3xl mb-2">👤</div>
             <h3 className="text-white font-semibold">Profile</h3>
             <p className="text-white/60 text-sm">Edit your details</p>
-          </div>
+          </Link>
         </div>
 
         {/* Auth Success Message */}

@@ -1,6 +1,6 @@
 # Roatan Poker League - Progress
 
-## 🎉 Current Status: DEPLOYED & WORKING
+## 🎉 Current Status: PHASE 2 COMPLETE
 
 ### Live URLs
 - **Frontend**: https://client-production-41b3.up.railway.app
@@ -14,7 +14,7 @@
 ### Authentication System
 - [x] **Email/Password Login** - Fully working
 - [x] **Email/Password Registration** - Fully working  
-- [x] **Lightning Login (LNURL-auth)** - Fully working ⚡
+- [x] **Lightning Login (LNURL-auth)** - Fully working ⚡ (auto-shows QR)
 - [ ] **Google OAuth** - UI ready, awaiting Google credentials
 
 ### Backend (Express.js + PostgreSQL)
@@ -24,13 +24,19 @@
 - [x] JWT token authentication
 - [x] Health check endpoint
 - [x] CORS configured for client
+- [x] **Venues API** - Full CRUD
+- [x] **Seasons API** - Full CRUD with standings
+- [x] **Events API** - Full CRUD with signups/results
 
 ### Frontend (Next.js 16)
 - [x] Client deployed to Railway
-- [x] Homepage with poker theme
-- [x] Login page with all auth methods
+- [x] Homepage with upcoming events & top players
+- [x] Login page with auto Lightning QR
 - [x] Registration page
 - [x] Dashboard (protected route)
+- [x] **Events list page** - With season filtering
+- [x] **Event detail page** - With signup/cancel
+- [x] **Leaderboard page** - Season standings
 - [x] Auth callback handler
 - [x] Responsive design
 
@@ -39,11 +45,11 @@ All tables created:
 - `users` - User accounts with multi-auth support
 - `profiles` - User profiles/stats
 - `venues` - Poker venues
-- `seasons` - League seasons
+- `seasons` - League seasons with points config
 - `events` - Tournament events
 - `event_signups` - Registrations
 - `results` - Tournament results
-- `standings` - Season standings
+- `standings` - Season standings (auto-calculated)
 - `achievements` - Badges
 - `user_achievements` - Earned badges
 - `lightning_challenges` - LNURL-auth challenges
@@ -56,19 +62,67 @@ All tables created:
 ### Authentication
 - [ ] Google OAuth (needs CLIENT_ID & CLIENT_SECRET from Google Console)
 
-### Core Features (Phase 2)
-- [ ] Events management (CRUD)
-- [ ] Season management
-- [ ] Tournament scoring system
-- [ ] Real-time leaderboards
-- [ ] Venue management
-- [ ] User profiles
+### Admin Features
+- [ ] Admin dashboard for managing venues/seasons/events
+- [ ] User role management UI
+- [ ] Bulk result entry interface
+
+### User Features
+- [ ] User profile page with stats
+- [ ] Event history
+- [ ] Achievement/badge display
 
 ### Nice to Have
-- [ ] Achievement/badge system
-- [ ] Event comments
 - [ ] Email notifications
-- [ ] Admin dashboard
+- [ ] Event comments
+- [ ] Mobile app (React Native)
+
+---
+
+## API Endpoints Summary
+
+### Auth (`/api/auth`)
+- POST /register - Create account
+- POST /login - Email/password login
+- GET /me - Get current user
+- GET /lightning/challenge - Get LNURL QR
+- GET /lightning/callback - Wallet callback
+- GET /lightning/status/:k1 - Check auth status
+- GET /google - Start Google OAuth
+- GET /google/callback - Google callback
+
+### Venues (`/api/venues`)
+- GET / - List venues
+- GET /:id - Get venue
+- POST / - Create (Admin)
+- PUT /:id - Update (Admin/Manager)
+- DELETE /:id - Delete (Admin)
+
+### Seasons (`/api/seasons`)
+- GET / - List seasons
+- GET /current - Active season
+- GET /:id - Season details
+- GET /:id/standings - Leaderboard
+- POST / - Create (Admin)
+- PUT /:id - Update (Admin)
+- PUT /:id/activate - Set active
+- POST /:id/recalculate - Recalc standings
+
+### Events (`/api/events`)
+- GET / - List events
+- GET /upcoming - Upcoming events
+- GET /my - User's events
+- GET /:id - Event details
+- POST / - Create (Admin/Director)
+- PUT /:id - Update
+- PUT /:id/status - Update status
+- DELETE /:id - Delete (Admin)
+- POST /:id/signup - Register
+- DELETE /:id/signup - Cancel
+- GET /:id/signups - Get players
+- PUT /:id/checkin/:userId - Check in
+- POST /:id/results - Enter results
+- GET /:id/results - Get results
 
 ---
 
@@ -89,20 +143,39 @@ LIGHTNING_AUTH_URL=https://rbbp-production.up.railway.app/api/auth/lightning
 NEXT_PUBLIC_API_URL=https://rbbp-production.up.railway.app/api
 ```
 
-### Google OAuth Setup (When Ready)
-Need to:
-1. Create project in Google Cloud Console
-2. Enable OAuth consent screen
-3. Create OAuth 2.0 credentials
-4. Add authorized redirect URI: `https://rbbp-production.up.railway.app/api/auth/google/callback`
-5. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in Railway
+### Points Structure (Default)
+```json
+{
+  "1": 100,
+  "2": 80,
+  "3": 65,
+  "4": 55,
+  "5": 45,
+  "6": 40,
+  "7": 35,
+  "8": 30,
+  "9": 25,
+  "10": 20,
+  "11-15": 15,
+  "16-20": 10,
+  "21+": 5,
+  "knockout": 2,
+  "participation": 5
+}
+```
 
 ---
 
-## Recent Fixes Applied
-1. ESM/CommonJS compatibility - Downgraded @noble/secp256k1 to v1.7.1
-2. Next.js 16 Suspense boundary for useSearchParams
-3. Node.js 22 for Next.js 16 compatibility
-4. Lightning signature verification (tries both hashed and raw k1)
-5. LIGHTNING_AUTH_URL environment variable set correctly
-6. Database schema pushed to Railway PostgreSQL
+## Recent Changes (Feb 1, 2026)
+
+### Phase 2 Implementation
+1. Created Venues API with full CRUD
+2. Created Seasons API with standings management
+3. Created Events API with signups and results
+4. Automatic points calculation from season config
+5. Standings auto-recalculate on result entry
+6. Events list page with season filtering
+7. Event detail page with signup/cancel
+8. Leaderboard page with season standings
+9. Updated homepage with live data
+10. Login page auto-shows Lightning QR
