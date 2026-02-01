@@ -73,7 +73,7 @@ export default function HomePage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-16">
           <h1 className="text-5xl md:text-7xl font-bold text-white mb-6">
-            🃏 Roatan Poker League
+            🃏 Roatan Bitcoin Bar Poker
           </h1>
           <p className="text-xl md:text-2xl text-white/80 max-w-2xl mx-auto mb-8">
             Track tournaments, climb the leaderboard, and join the best pub poker community in Roatan.
@@ -205,7 +205,7 @@ export default function HomePage() {
         {!isAuthenticated && (
           <div className="text-center bg-white/5 backdrop-blur rounded-2xl p-8 border border-white/10">
             <h3 className="text-2xl font-bold text-white mb-4">Ready to play?</h3>
-            <p className="text-white/70 mb-6">Join the Roatan Poker League today and start competing!</p>
+            <p className="text-white/70 mb-6">Join Roatan Bitcoin Bar Poker today and start competing!</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
                 href="/register"
@@ -228,7 +228,7 @@ export default function HomePage() {
       <footer className="border-t border-white/10 mt-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <p className="text-center text-white/50">
-            © 2026 Roatan Poker League. All rights reserved.
+            © 2026 Roatan Bitcoin Bar Poker. All rights reserved.
           </p>
         </div>
       </footer>

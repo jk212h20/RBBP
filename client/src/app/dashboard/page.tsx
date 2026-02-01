@@ -51,7 +51,7 @@ export default function DashboardPage() {
           <div className="flex justify-between h-16 items-center">
             <div className="flex items-center gap-2">
               <span className="text-2xl">🃏</span>
-              <span className="text-white font-bold text-xl">Roatan Poker</span>
+              <span className="text-white font-bold text-xl">RBBP</span>
             </div>
             <div className="flex items-center gap-4">
               <span className="text-white/70">{user.name}</span>

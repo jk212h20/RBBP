@@ -25,7 +25,7 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
         <div className="flex justify-between items-center">
           {/* Logo */}
           <Link href="/" className="text-xl sm:text-2xl font-bold text-white">
-            🃏 Roatan Poker
+            🃏 Roatan Bitcoin Bar Poker
           </Link>
 
           {/* Desktop Navigation */}

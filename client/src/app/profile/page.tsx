@@ -185,7 +185,7 @@ export default function ProfilePage() {
       <header className="bg-black/30 backdrop-blur-sm border-b border-green-700/50">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="text-xl md:text-2xl font-bold text-white">
-            🃏 Roatan Poker
+            🃏 RBBP
           </Link>
           <nav className="flex items-center gap-2 md:gap-4">
             <Link href="/events" className="text-white/80 hover:text-white text-sm md:text-base">Events</Link>

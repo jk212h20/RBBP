@@ -103,7 +103,7 @@ export default function LoginPage() {
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           {/* Header */}
           <div className="text-center mb-6">
-            <h1 className="text-3xl font-bold text-gray-900">🃏 Roatan Poker</h1>
+            <h1 className="text-3xl font-bold text-gray-900">🃏 Roatan Bitcoin Bar Poker</h1>
             <p className="text-gray-600 mt-2">Sign in to your account</p>
           </div>
 

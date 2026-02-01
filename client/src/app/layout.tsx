@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Roatan Poker League",
+  title: "Roatan Bitcoin Bar Poker",
   description: "Pub poker league management for Roatan",
 };
 
