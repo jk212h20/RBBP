@@ -131,6 +131,20 @@ export default function DashboardPage() {
           </Link>
         </div>
 
+        {/* Admin Quick Access */}
+        {user.role === 'ADMIN' && (
+          <>
+            <h2 className="text-white text-xl font-bold mb-4 mt-8">Admin</h2>
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Link href="/admin" className="bg-purple-600/20 backdrop-blur rounded-xl p-6 hover:bg-purple-600/30 transition border border-purple-500/30">
+                <div className="text-3xl mb-2">👑</div>
+                <h3 className="text-purple-300 font-semibold">Admin Panel</h3>
+                <p className="text-purple-300/60 text-sm">Manage everything</p>
+              </Link>
+            </div>
+          </>
+        )}
+
       </main>
     </div>
   );
