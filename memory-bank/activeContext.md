@@ -1,94 +1,85 @@
 # Roatan Poker League - Active Context
 
-## Current Focus
-Building the authentication system with multiple providers.
+## Current State (Updated: Feb 1, 2026)
 
-## Recent Changes
+The Roatan Poker League application is **LIVE and DEPLOYED** on Railway!
 
-### Authentication System Implemented (Jan 31, 2026)
-Added complete multi-provider authentication:
+### What's Working ✅
+1. **Email/Password Authentication** - Users can register and login with email/password
+2. **Lightning Login (LNURL-auth)** - Bitcoin Lightning wallet authentication is fully functional
+3. **Full Frontend** - Next.js 16 app with poker-themed UI
+4. **Full Backend** - Express.js API with PostgreSQL database
+5. **All database tables** - Complete Prisma schema deployed
 
-1. **Email/Password Authentication**
-   - Registration with validation (Zod)
-   - Login with JWT tokens
-   - Password hashing with bcrypt (12 rounds)
+### Live URLs
+- **Frontend**: https://client-production-41b3.up.railway.app
+- **Backend API**: https://rbbp-production.up.railway.app/api
+- **Login Page**: https://client-production-41b3.up.railway.app/login
 
-2. **Google OAuth**
-   - Passport.js with Google Strategy
-   - Automatic account linking by email
-   - Redirect flow to frontend callback
+---
 
-3. **Lightning Login (LNURL-auth)**
-   - QR code generation for wallet scanning
-   - LNURL-auth spec compliant
-   - Polling endpoint for frontend
-   - secp256k1 signature verification
+## Pending Items
 
-### Files Created
-```
-server/src/
-├── config/
-│   └── passport.ts         # Google OAuth configuration
-├── lib/
-│   └── prisma.ts          # Prisma client singleton
-├── middleware/
-│   └── auth.middleware.ts  # JWT auth middleware
-├── routes/
-│   └── auth.routes.ts     # All auth endpoints
-├── services/
-│   ├── auth.service.ts    # JWT, passwords, user creation
-│   └── lightning.service.ts # LNURL-auth implementation
-├── types/
-│   └── express.d.ts       # Express type extensions
-└── validators/
-    └── auth.validator.ts  # Zod validation schemas
-```
+### Google OAuth (Waiting on User)
+The Google OAuth UI is complete but needs credentials:
+- Need `GOOGLE_CLIENT_ID` 
+- Need `GOOGLE_CLIENT_SECRET`
+- Redirect URI to configure: `https://rbbp-production.up.railway.app/api/auth/google/callback`
 
-### Database Schema Updates
-- Added `AuthProvider` enum (EMAIL, GOOGLE, LIGHTNING)
-- Added `googleId` and `lightningPubkey` to User model
-- Made `email` and `password` optional for social logins
-- Added `LightningChallenge` model for LNURL-auth
+When ready, add these to Railway RBBP service environment variables.
 
-## Next Steps
-1. **Database Migration** - Need PostgreSQL running to migrate
-2. **Test Auth Endpoints** - Verify all routes work
-3. **Frontend Setup** - Create Next.js client
-4. **Build CRUD Routes** - Events, Venues, Seasons, etc.
+---
 
-## API Endpoints Available
+## Architecture Summary
 
-### Auth Routes (`/api/auth`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/register` | Email/password signup |
-| POST | `/login` | Email/password login |
-| GET | `/google` | Start Google OAuth |
-| GET | `/google/callback` | Google OAuth callback |
-| GET | `/lightning/challenge` | Get LNURL-auth QR code |
-| GET | `/lightning/callback` | Lightning wallet callback |
-| GET | `/lightning/status/:k1` | Poll auth status |
-| GET | `/me` | Get current user (auth required) |
-| POST | `/logout` | Logout |
-| GET | `/providers` | List available auth methods |
+### Backend (server/)
+- **Framework**: Express.js with TypeScript
+- **Database**: PostgreSQL on Railway
+- **ORM**: Prisma
+- **Auth**: JWT tokens + Lightning LNURL-auth
+- **Key Files**:
+  - `src/index.ts` - Main server entry
+  - `src/routes/auth.routes.ts` - All auth endpoints
+  - `src/services/lightning.service.ts` - LNURL-auth implementation
+  - `prisma/schema.prisma` - Database schema
 
-## Environment Variables Required
-```env
-# Required
-DATABASE_URL=postgresql://...
-JWT_SECRET=your-secret
+### Frontend (client/)
+- **Framework**: Next.js 16 with TypeScript
+- **Styling**: Tailwind CSS
+- **State**: React Context for auth
+- **Key Files**:
+  - `src/app/page.tsx` - Homepage
+  - `src/app/login/page.tsx` - Login page
+  - `src/app/register/page.tsx` - Registration
+  - `src/context/AuthContext.tsx` - Auth state management
 
-# For Google OAuth
-GOOGLE_CLIENT_ID=your-client-id
-GOOGLE_CLIENT_SECRET=your-client-secret
+---
 
-# Optional
-CLIENT_URL=http://localhost:3000
-SESSION_SECRET=your-session-secret
-```
+## Recent Session Work
 
-## Important Patterns
-- JWT tokens expire in 7 days (configurable)
-- Google OAuth auto-links accounts by email
-- Lightning auth creates users with pubkey as identifier
-- All passwords hashed with bcrypt (12 rounds)
+### Issues Fixed
+1. **ESM/CommonJS compatibility** - `@noble/secp256k1` v3.x is ESM-only, downgraded to v1.7.1
+2. **Next.js 16 Suspense** - `useSearchParams()` requires Suspense boundary in auth callback
+3. **Node.js version** - Upgraded to Node 22 for Next.js 16 compatibility
+4. **Lightning signature verification** - Now tries both SHA256(k1) and raw k1
+5. **Missing database tables** - Pushed full Prisma schema to Railway PostgreSQL
+6. **LIGHTNING_AUTH_URL** - Set correct public URL for LNURL callback
+
+---
+
+## Next Steps When Returning
+
+1. **Google OAuth** - Once credentials are provided:
+   ```bash
+   cd server
+   railway service link RBBP
+   railway variables set GOOGLE_CLIENT_ID=xxx GOOGLE_CLIENT_SECRET=xxx
+   railway redeploy
+   ```
+
+2. **Phase 2 Features** - Events, seasons, scoring, leaderboards
+
+3. **Production Hardening**:
+   - Replace MemoryStore session with Redis
+   - Add rate limiting
+   - Set up proper logging

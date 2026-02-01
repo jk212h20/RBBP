@@ -1,81 +1,108 @@
 # Roatan Poker League - Progress
 
-## What Works ✅
+## 🎉 Current Status: DEPLOYED & WORKING
 
-### Server Infrastructure
-- [x] Express.js server with TypeScript
-- [x] Security middleware (helmet, CORS, rate limiting)
-- [x] Health check endpoint
-- [x] Error handling middleware
+### Live URLs
+- **Frontend**: https://client-production-41b3.up.railway.app
+- **Backend API**: https://rbbp-production.up.railway.app/api
+- **GitHub**: https://github.com/jk212h20/RBBP
 
-### Database
-- [x] Prisma schema designed with all models
-- [x] User, Profile, Venue, Season, Event, Result, Standing models
-- [x] Achievement system models
-- [x] Comment system
-- [x] Prisma client generated
-- [ ] Database migration (needs PostgreSQL running)
+---
+
+## ✅ What Works
 
 ### Authentication System
-- [x] Email/password registration with validation
-- [x] Email/password login with JWT
-- [x] Google OAuth integration (Passport.js)
-- [x] Lightning Login (LNURL-auth) implementation
-- [x] JWT middleware for protected routes
-- [x] Role-based access control middleware
-- [x] QR code generation for Lightning auth
+- [x] **Email/Password Login** - Fully working
+- [x] **Email/Password Registration** - Fully working  
+- [x] **Lightning Login (LNURL-auth)** - Fully working ⚡
+- [ ] **Google OAuth** - UI ready, awaiting Google credentials
 
-## What's Left to Build 🚧
+### Backend (Express.js + PostgreSQL)
+- [x] Server deployed to Railway
+- [x] PostgreSQL database connected
+- [x] Prisma ORM with full schema
+- [x] JWT token authentication
+- [x] Health check endpoint
+- [x] CORS configured for client
 
-### Backend Routes
-- [ ] Users CRUD (`/api/users`)
-- [ ] Venues CRUD (`/api/venues`)
-- [ ] Seasons CRUD (`/api/seasons`)
-- [ ] Events CRUD (`/api/events`)
-- [ ] Event signup/registration
-- [ ] Results entry
-- [ ] Standings calculation
-- [ ] Achievements awarding
+### Frontend (Next.js 16)
+- [x] Client deployed to Railway
+- [x] Homepage with poker theme
+- [x] Login page with all auth methods
+- [x] Registration page
+- [x] Dashboard (protected route)
+- [x] Auth callback handler
+- [x] Responsive design
 
-### Frontend (Not Started)
-- [ ] Next.js 14 setup
-- [ ] Authentication pages (login, register)
-- [ ] Google OAuth callback page
-- [ ] Lightning login component with QR
-- [ ] Dashboard
-- [ ] Event listing/details
-- [ ] Leaderboard
-- [ ] Player profiles
-- [ ] Venue pages
-- [ ] Admin panel
+### Database Schema
+All tables created:
+- `users` - User accounts with multi-auth support
+- `profiles` - User profiles/stats
+- `venues` - Poker venues
+- `seasons` - League seasons
+- `events` - Tournament events
+- `event_signups` - Registrations
+- `results` - Tournament results
+- `standings` - Season standings
+- `achievements` - Badges
+- `user_achievements` - Earned badges
+- `lightning_challenges` - LNURL-auth challenges
+- `comments` - Event comments
 
-### Additional Features
-- [ ] Email notifications (SendGrid)
-- [ ] Password reset flow
-- [ ] Email verification
-- [ ] Profile editing
-- [ ] Avatar upload
+---
+
+## 🚧 What's Left to Build
+
+### Authentication
+- [ ] Google OAuth (needs CLIENT_ID & CLIENT_SECRET from Google Console)
+
+### Core Features (Phase 2)
+- [ ] Events management (CRUD)
+- [ ] Season management
+- [ ] Tournament scoring system
+- [ ] Real-time leaderboards
+- [ ] Venue management
+- [ ] User profiles
+
+### Nice to Have
+- [ ] Achievement/badge system
 - [ ] Event comments
-- [ ] Achievement notifications
+- [ ] Email notifications
+- [ ] Admin dashboard
 
-## Current Status
-**Phase:** Backend Authentication Complete
-**Next:** Database migration → CRUD routes → Frontend
+---
 
-## Known Issues
-- None yet (need to test with real database)
+## Technical Notes
 
-## Technical Decisions Made
+### Environment Variables (Railway - RBBP Server)
+```
+DATABASE_URL=<auto-set by Railway>
+JWT_SECRET=<set>
+JWT_REFRESH_SECRET=<set>
+SESSION_SECRET=<set>
+CORS_ORIGIN=https://client-production-41b3.up.railway.app
+LIGHTNING_AUTH_URL=https://rbbp-production.up.railway.app/api/auth/lightning
+```
 
-1. **Multi-Auth Strategy**: Support email, Google, and Lightning to maximize user options
-2. **JWT over Sessions**: Stateless auth for better scalability
-3. **LNURL-auth**: Unique Bitcoin Lightning authentication for crypto-savvy users
-4. **Prisma ORM**: Type-safe database access with great DX
-5. **Zod Validation**: Runtime validation with TypeScript inference
+### Environment Variables (Railway - Client)
+```
+NEXT_PUBLIC_API_URL=https://rbbp-production.up.railway.app/api
+```
 
-## Evolution Notes
+### Google OAuth Setup (When Ready)
+Need to:
+1. Create project in Google Cloud Console
+2. Enable OAuth consent screen
+3. Create OAuth 2.0 credentials
+4. Add authorized redirect URI: `https://rbbp-production.up.railway.app/api/auth/google/callback`
+5. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in Railway
 
-### Jan 31, 2026
-- Initial project structure was basic Express server with placeholders
-- Added complete authentication system with 3 providers
-- Designed comprehensive database schema
+---
+
+## Recent Fixes Applied
+1. ESM/CommonJS compatibility - Downgraded @noble/secp256k1 to v1.7.1
+2. Next.js 16 Suspense boundary for useSearchParams
+3. Node.js 22 for Next.js 16 compatibility
+4. Lightning signature verification (tries both hashed and raw k1)
+5. LIGHTNING_AUTH_URL environment variable set correctly
+6. Database schema pushed to Railway PostgreSQL
