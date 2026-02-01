@@ -99,7 +99,11 @@ export default function ProfilePage() {
     setPromoting(true);
     setPromoteMessage(null);
     try {
-      await adminAPI.promoteToAdmin('roatan-poker-setup-2024');
+      const result = await adminAPI.promoteToAdmin('roatan-poker-setup-2024');
+      // If a new token is returned, save it to get the updated role
+      if (result.token) {
+        localStorage.setItem('token', result.token);
+      }
       await refreshUser();
       setPromoteMessage({ type: 'success', text: 'You are now an admin! 🎉' });
     } catch (err: any) {

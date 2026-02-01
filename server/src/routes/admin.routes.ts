@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { authenticate, requireAdmin } from '../middleware/auth.middleware';
 import prisma from '../lib/prisma';
+import { generateToken } from '../services/auth.service';
 
 const router = Router();
 
@@ -28,9 +29,13 @@ router.post('/promote', authenticate, async (req: Request, res: Response) => {
         data: { role: 'ADMIN' }
       });
 
+      // Generate new token with updated role
+      const newToken = generateToken(updatedUser);
+
       return res.json({ 
         message: 'You are now the first admin!',
-        user: { id: updatedUser.id, email: updatedUser.email, role: updatedUser.role }
+        user: { id: updatedUser.id, email: updatedUser.email, role: updatedUser.role },
+        token: newToken
       });
     }
 

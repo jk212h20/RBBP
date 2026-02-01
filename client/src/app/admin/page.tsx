@@ -36,13 +36,25 @@ interface EventForm {
   buyIn: number;
 }
 
+interface User {
+  id: string;
+  email: string | null;
+  name: string;
+  role: string;
+  isActive: boolean;
+  createdAt: string;
+  authProvider: string;
+}
+
 export default function AdminPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'overview' | 'venues' | 'seasons' | 'events' | 'setup'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'venues' | 'seasons' | 'events' | 'users' | 'setup'>('overview');
   const [stats, setStats] = useState<Stats | null>(null);
   const [venues, setVenues] = useState<any[]>([]);
   const [seasons, setSeasons] = useState<any[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -103,6 +115,31 @@ export default function AdminPage() {
       setSeasons(data);
     } catch (err) {
       console.error('Failed to fetch seasons:', err);
+    }
+  };
+
+  const fetchUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      const data = await adminAPI.getUsers();
+      setUsers(data);
+    } catch (err) {
+      console.error('Failed to fetch users:', err);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    try {
+      setError('');
+      setMessage('');
+      await adminAPI.updateUserRole(userId, newRole);
+      setMessage('User role updated successfully!');
+      fetchUsers();
+      fetchStats();
+    } catch (err: any) {
+      setError(err.message || 'Failed to update user role');
     }
   };
 
@@ -241,11 +278,16 @@ export default function AdminPage() {
 
       <div className="max-w-7xl mx-auto p-6">
         {/* Tabs */}
-        <div className="flex space-x-4 mb-6 border-b border-gray-700 pb-4">
-          {['overview', 'venues', 'seasons', 'events'].map((tab) => (
+        <div className="flex flex-wrap gap-2 mb-6 border-b border-gray-700 pb-4">
+          {['overview', 'users', 'venues', 'seasons', 'events'].map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab as any)}
+              onClick={() => {
+                setActiveTab(tab as any);
+                if (tab === 'users' && users.length === 0) {
+                  fetchUsers();
+                }
+              }}
               className={`px-4 py-2 rounded-t font-semibold capitalize ${
                 activeTab === tab 
                   ? 'bg-green-600 text-white' 
@@ -434,6 +476,95 @@ export default function AdminPage() {
                   ))
                 )}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Users Tab */}
+        {activeTab === 'users' && (
+          <div className="bg-gray-800 rounded-lg p-6">
+            <h2 className="text-xl font-bold mb-4">👥 User Management</h2>
+            
+            {loadingUsers ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-400 mx-auto"></div>
+                <p className="text-gray-400 mt-2">Loading users...</p>
+              </div>
+            ) : users.length === 0 ? (
+              <p className="text-gray-400">No users found.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-700">
+                      <th className="text-left py-3 px-4 text-gray-400 font-medium">Name</th>
+                      <th className="text-left py-3 px-4 text-gray-400 font-medium">Email</th>
+                      <th className="text-left py-3 px-4 text-gray-400 font-medium">Auth</th>
+                      <th className="text-left py-3 px-4 text-gray-400 font-medium">Role</th>
+                      <th className="text-left py-3 px-4 text-gray-400 font-medium">Joined</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((u) => (
+                      <tr key={u.id} className="border-b border-gray-700/50 hover:bg-gray-700/30">
+                        <td className="py-3 px-4">
+                          <span className="font-medium">{u.name}</span>
+                          {u.id === user?.id && (
+                            <span className="ml-2 text-xs bg-green-600 px-2 py-0.5 rounded">You</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-gray-400">
+                          {u.email || <span className="text-gray-500 italic">No email</span>}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`text-xs px-2 py-1 rounded ${
+                            u.authProvider === 'GOOGLE' ? 'bg-blue-600/20 text-blue-400' :
+                            u.authProvider === 'LIGHTNING' ? 'bg-yellow-600/20 text-yellow-400' :
+                            'bg-gray-600/20 text-gray-400'
+                          }`}>
+                            {u.authProvider === 'GOOGLE' ? '🔵 Google' :
+                             u.authProvider === 'LIGHTNING' ? '⚡ Lightning' :
+                             '✉️ Email'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <select
+                            value={u.role}
+                            onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                            disabled={u.id === user?.id}
+                            className={`bg-gray-700 border border-gray-600 rounded px-3 py-1 text-sm ${
+                              u.id === user?.id ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                            } ${
+                              u.role === 'ADMIN' ? 'text-purple-400' :
+                              u.role === 'VENUE_MANAGER' ? 'text-blue-400' :
+                              u.role === 'TOURNAMENT_DIRECTOR' ? 'text-orange-400' :
+                              'text-gray-300'
+                            }`}
+                          >
+                            <option value="PLAYER">Player</option>
+                            <option value="TOURNAMENT_DIRECTOR">Tournament Director</option>
+                            <option value="VENUE_MANAGER">Venue Manager</option>
+                            <option value="ADMIN">Admin</option>
+                          </select>
+                        </td>
+                        <td className="py-3 px-4 text-gray-400 text-sm">
+                          {new Date(u.createdAt).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            
+            <div className="mt-4 text-gray-400 text-sm">
+              <p>💡 <strong>Roles:</strong></p>
+              <ul className="mt-2 space-y-1 ml-4">
+                <li><span className="text-purple-400">Admin</span> - Full access to all features</li>
+                <li><span className="text-blue-400">Venue Manager</span> - Can manage assigned venues and their events</li>
+                <li><span className="text-orange-400">Tournament Director</span> - Can manage events and enter results</li>
+                <li><span className="text-gray-300">Player</span> - Can register for events and view standings</li>
+              </ul>
             </div>
           </div>
         )}

@@ -215,7 +215,7 @@ export const adminAPI = {
   getUsers: () => fetchAPI<any[]>('/admin/users'),
   
   promoteToAdmin: (secretKey: string) =>
-    fetchAPI<{ message: string; user: any }>('/admin/promote', {
+    fetchAPI<{ message: string; user: any; token?: string }>('/admin/promote', {
       method: 'POST',
       body: JSON.stringify({ secretKey }),
     }),
