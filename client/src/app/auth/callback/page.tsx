@@ -1,10 +1,11 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 
-export default function AuthCallbackPage() {
+function AuthCallbackContent() {
   const [error, setError] = useState<string | null>(null);
   const { loginWithToken } = useAuth();
   const router = useRouter();
@@ -76,5 +77,26 @@ export default function AuthCallbackPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-green-800 to-black">
+      <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md mx-4">
+        <div className="text-center">
+          <div className="animate-spin w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <h1 className="text-xl font-bold text-gray-900">Loading...</h1>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <AuthCallbackContent />
+    </Suspense>
   );
 }

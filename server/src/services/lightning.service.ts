@@ -185,10 +185,14 @@ async function verifySignature(
     compactSig.set(r, 0);
     compactSig.set(s, 32);
     
-    // Hash the message (k1) with SHA-256 for verification
+    // Hash the message (k1) with SHA-256 for verification  
     const msgHash = sha256(message);
     
-    return secp256k1.verify(compactSig, msgHash, publicKey);
+    // secp256k1 v1.7.x verify(signature, msgHash, publicKey)
+    // signature should be 64-byte compact format
+    const result = secp256k1.verify(compactSig, msgHash, publicKey);
+    console.log('Signature verification result:', result);
+    return result;
   } catch (error) {
     console.error('Signature verification error:', error);
     return false;
