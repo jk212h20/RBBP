@@ -32,6 +32,11 @@ export default function ProfilePage() {
     topThrees: 0,
   });
 
+  // Check if name has been set (locked)
+  const nameIsLocked = user?.nameSetAt != null;
+  // Check if user needs to set their real name (Lightning users with auto-generated names)
+  const needsRealName = user?.authProvider === 'LIGHTNING' && !nameIsLocked && user?.name?.startsWith('Lightning_');
+
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       router.push('/login');
@@ -43,6 +48,15 @@ export default function ProfilePage() {
       loadMyEvents();
     }
   }, [isAuthenticated]);
+
+  // Auto-open edit mode for users who need to set their name
+  useEffect(() => {
+    if (user && needsRealName && !isEditing) {
+      setIsEditing(true);
+      setEditName('');
+      setEditEmail(user.email || '');
+    }
+  }, [user, needsRealName]);
 
   const loadMyEvents = async () => {
     setLoadingEvents(true);
@@ -106,6 +120,11 @@ export default function ProfilePage() {
   };
 
   const cancelEditing = () => {
+    // Don't allow cancel if user needs to set their name
+    if (needsRealName) {
+      setSaveMessage({ type: 'error', text: 'Please set your real name before continuing' });
+      return;
+    }
     setIsEditing(false);
     setSaveMessage(null);
   };
@@ -116,11 +135,16 @@ export default function ProfilePage() {
       return;
     }
 
+    if (editName.trim().length < 2) {
+      setSaveMessage({ type: 'error', text: 'Name must be at least 2 characters' });
+      return;
+    }
+
     setSaving(true);
     setSaveMessage(null);
     try {
       const updateData: { name?: string; email?: string } = {};
-      if (editName !== user?.name) updateData.name = editName;
+      if (editName !== user?.name) updateData.name = editName.trim();
       if (editEmail !== user?.email) updateData.email = editEmail || undefined;
 
       if (Object.keys(updateData).length === 0) {
@@ -160,50 +184,66 @@ export default function ProfilePage() {
       {/* Header */}
       <header className="bg-black/30 backdrop-blur-sm border-b border-green-700/50">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/" className="text-2xl font-bold text-white">
+          <Link href="/" className="text-xl md:text-2xl font-bold text-white">
             🃏 Roatan Poker
           </Link>
-          <nav className="flex items-center gap-4">
-            <Link href="/events" className="text-white/80 hover:text-white">Events</Link>
-            <Link href="/leaderboard" className="text-white/80 hover:text-white">Leaderboard</Link>
-            <Link href="/dashboard" className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+          <nav className="flex items-center gap-2 md:gap-4">
+            <Link href="/events" className="text-white/80 hover:text-white text-sm md:text-base">Events</Link>
+            <Link href="/leaderboard" className="text-white/80 hover:text-white text-sm md:text-base hidden sm:inline">Leaderboard</Link>
+            <Link href="/dashboard" className="bg-green-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg hover:bg-green-700 text-sm md:text-base">
               Dashboard
             </Link>
           </nav>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className="max-w-4xl mx-auto px-4 py-6 md:py-8">
         {/* Back Link */}
-        <Link href="/dashboard" className="text-green-400 hover:text-green-300 mb-6 inline-block">
+        <Link href="/dashboard" className="text-green-400 hover:text-green-300 mb-4 md:mb-6 inline-block text-sm md:text-base">
           ← Back to Dashboard
         </Link>
 
+        {/* Name Setup Banner for Lightning Users */}
+        {needsRealName && (
+          <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-xl p-4 mb-6">
+            <h3 className="text-yellow-400 font-bold text-lg mb-2">👋 Welcome! Please set your real name</h3>
+            <p className="text-yellow-200/80 text-sm">
+              Tournament directors need to identify players by name. Please enter your real name below - 
+              <strong> this can only be set once</strong>, so make sure it's correct!
+            </p>
+          </div>
+        )}
+
         {/* Profile Header */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 p-6 mb-6">
+        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 p-4 md:p-6 mb-6">
           {!isEditing ? (
             <>
-              <div className="flex items-center gap-6">
-                <div className="w-24 h-24 bg-green-600 rounded-full flex items-center justify-center text-white text-4xl font-bold">
+              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
+                <div className="w-20 h-20 md:w-24 md:h-24 bg-green-600 rounded-full flex items-center justify-center text-white text-3xl md:text-4xl font-bold flex-shrink-0">
                   {user.avatar ? (
                     <img src={user.avatar} alt={user.name} className="w-full h-full rounded-full" />
                   ) : (
                     user.name.charAt(0).toUpperCase()
                   )}
                 </div>
-                <div className="flex-1">
-                  <h1 className="text-3xl font-bold text-white">{user.name}</h1>
+                <div className="flex-1 text-center sm:text-left">
+                  <h1 className="text-2xl md:text-3xl font-bold text-white">{user.name}</h1>
                   <p className="text-green-200">{user.email || 'No email set'}</p>
                   <p className="text-green-300/60 text-sm mt-1">
                     Logged in with {getAuthBadge()} • {user.role}
                   </p>
+                  {nameIsLocked && (
+                    <p className="text-green-400/60 text-xs mt-1">✓ Name verified</p>
+                  )}
                 </div>
-                <button
-                  onClick={startEditing}
-                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition"
-                >
-                  ✏️ Edit Profile
-                </button>
+                {!nameIsLocked && (
+                  <button
+                    onClick={startEditing}
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition text-sm md:text-base w-full sm:w-auto"
+                  >
+                    ✏️ Edit Profile
+                  </button>
+                )}
               </div>
 
               {saveMessage && (
@@ -214,11 +254,11 @@ export default function ProfilePage() {
 
               {/* Admin badge if already admin */}
               {user.role === 'ADMIN' && (
-                <div className="mt-6 pt-6 border-t border-green-600/30">
-                  <span className="inline-flex items-center gap-2 bg-purple-600/20 text-purple-300 px-4 py-2 rounded-lg">
+                <div className="mt-6 pt-6 border-t border-green-600/30 flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
+                  <span className="inline-flex items-center gap-2 bg-purple-600/20 text-purple-300 px-4 py-2 rounded-lg text-sm">
                     👑 You are an Admin
                   </span>
-                  <Link href="/admin" className="ml-4 text-purple-400 hover:text-purple-300 underline">
+                  <Link href="/admin" className="text-purple-400 hover:text-purple-300 underline text-sm">
                     Go to Admin Panel →
                   </Link>
                 </div>
@@ -226,18 +266,33 @@ export default function ProfilePage() {
             </>
           ) : (
             <div>
-              <h2 className="text-xl font-bold text-white mb-4">✏️ Edit Profile</h2>
+              <h2 className="text-xl font-bold text-white mb-4">
+                {needsRealName ? '👤 Set Your Real Name' : '✏️ Edit Profile'}
+              </h2>
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-green-200 text-sm mb-1">Display Name *</label>
+                  <label className="block text-green-200 text-sm mb-1">
+                    {needsRealName ? 'Your Real Name *' : 'Display Name *'}
+                  </label>
                   <input
                     type="text"
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
                     className="w-full p-3 bg-white/10 border border-green-600/50 rounded-lg text-white placeholder-green-300/50 focus:outline-none focus:border-green-500"
-                    placeholder="Your display name"
+                    placeholder={needsRealName ? "Enter your real name (e.g., John Smith)" : "Your display name"}
+                    autoFocus={needsRealName}
                   />
+                  {needsRealName && (
+                    <p className="text-yellow-400/80 text-sm mt-1">
+                      ⚠️ This can only be set once! Use your real name so tournament directors can identify you.
+                    </p>
+                  )}
+                  {nameIsLocked && (
+                    <p className="text-green-400/60 text-sm mt-1">
+                      ✓ Your name has been set and cannot be changed.
+                    </p>
+                  )}
                 </div>
                 
                 <div>
@@ -264,21 +319,23 @@ export default function ProfilePage() {
                   </div>
                 )}
 
-                <div className="flex gap-3 pt-2">
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
                   <button
                     onClick={handleSaveProfile}
                     disabled={saving}
-                    className="bg-green-600 hover:bg-green-700 disabled:bg-green-800 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-medium transition"
+                    className="bg-green-600 hover:bg-green-700 disabled:bg-green-800 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-medium transition w-full sm:w-auto"
                   >
-                    {saving ? 'Saving...' : 'Save Changes'}
+                    {saving ? 'Saving...' : needsRealName ? 'Set My Name' : 'Save Changes'}
                   </button>
-                  <button
-                    onClick={cancelEditing}
-                    disabled={saving}
-                    className="bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-lg font-medium transition"
-                  >
-                    Cancel
-                  </button>
+                  {!needsRealName && (
+                    <button
+                      onClick={cancelEditing}
+                      disabled={saving}
+                      className="bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-lg font-medium transition w-full sm:w-auto"
+                    >
+                      Cancel
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -286,28 +343,28 @@ export default function ProfilePage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 p-4 text-center">
-            <p className="text-3xl font-bold text-green-400">{stats.totalPoints}</p>
-            <p className="text-green-200 text-sm">Total Points</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 p-3 md:p-4 text-center">
+            <p className="text-2xl md:text-3xl font-bold text-green-400">{stats.totalPoints}</p>
+            <p className="text-green-200 text-xs md:text-sm">Total Points</p>
           </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 p-4 text-center">
-            <p className="text-3xl font-bold text-white">{stats.eventsPlayed}</p>
-            <p className="text-green-200 text-sm">Events Played</p>
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 p-3 md:p-4 text-center">
+            <p className="text-2xl md:text-3xl font-bold text-white">{stats.eventsPlayed}</p>
+            <p className="text-green-200 text-xs md:text-sm">Events Played</p>
           </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 p-4 text-center">
-            <p className="text-3xl font-bold text-yellow-400">{stats.wins}</p>
-            <p className="text-green-200 text-sm">Wins</p>
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 p-3 md:p-4 text-center">
+            <p className="text-2xl md:text-3xl font-bold text-yellow-400">{stats.wins}</p>
+            <p className="text-green-200 text-xs md:text-sm">Wins</p>
           </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 p-4 text-center">
-            <p className="text-3xl font-bold text-orange-400">{stats.topThrees}</p>
-            <p className="text-green-200 text-sm">Top 3 Finishes</p>
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 p-3 md:p-4 text-center">
+            <p className="text-2xl md:text-3xl font-bold text-orange-400">{stats.topThrees}</p>
+            <p className="text-green-200 text-xs md:text-sm">Top 3 Finishes</p>
           </div>
         </div>
 
         {/* Event History */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 p-6">
-          <h2 className="text-xl font-bold text-white mb-4">📅 Event History</h2>
+        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 p-4 md:p-6">
+          <h2 className="text-lg md:text-xl font-bold text-white mb-4">📅 Event History</h2>
           
           {loadingEvents ? (
             <div className="text-center py-8">
@@ -326,30 +383,30 @@ export default function ProfilePage() {
                 <Link
                   key={event.id}
                   href={`/events/${event.id}`}
-                  className="block p-4 bg-white/5 rounded-lg hover:bg-white/10 transition"
+                  className="block p-3 md:p-4 bg-white/5 rounded-lg hover:bg-white/10 transition"
                 >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-white font-medium">{event.name}</h3>
-                      <p className="text-green-300/60 text-sm">
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-white font-medium text-sm md:text-base truncate">{event.name}</h3>
+                      <p className="text-green-300/60 text-xs md:text-sm truncate">
                         {event.venue.name} • {formatDate(event.dateTime)}
                       </p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right flex-shrink-0">
                       {event.results && event.results.length > 0 ? (
                         <>
-                          <p className="text-white font-bold">
+                          <p className="text-white font-bold text-sm md:text-base">
                             {event.results[0].position === 1 ? '🥇' : 
                              event.results[0].position === 2 ? '🥈' : 
                              event.results[0].position === 3 ? '🥉' : 
                              `#${event.results[0].position}`}
                           </p>
-                          <p className="text-green-400 text-sm">{event.results[0].pointsEarned} pts</p>
+                          <p className="text-green-400 text-xs md:text-sm">{event.results[0].pointsEarned} pts</p>
                         </>
                       ) : event.signups && event.signups.length > 0 ? (
-                        <span className="text-blue-400 text-sm">Registered</span>
+                        <span className="text-blue-400 text-xs md:text-sm">Registered</span>
                       ) : (
-                        <span className="text-gray-400 text-sm">-</span>
+                        <span className="text-gray-400 text-xs md:text-sm">-</span>
                       )}
                     </div>
                   </div>

@@ -1,6 +1,6 @@
 # 🃏 Roatan Poker League
 
-A full-featured pub poker league management website with multi-provider authentication.
+A full-featured pub poker league management website for tracking tournaments, leaderboards, and player standings.
 
 ## Features
 

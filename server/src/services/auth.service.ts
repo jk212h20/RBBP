@@ -247,6 +247,11 @@ export async function updateProfile(userId: string, input: UpdateProfileInput) {
     throw new Error('User not found');
   }
 
+  // Check if name change is allowed (only once)
+  if (input.name && input.name !== user.name && user.nameSetAt) {
+    throw new Error('Name can only be set once. Please contact support if you need to change it.');
+  }
+
   // If email is being set, check it's not already taken
   if (input.email && input.email !== user.email) {
     const existingUser = await prisma.user.findUnique({
@@ -257,12 +262,23 @@ export async function updateProfile(userId: string, input: UpdateProfileInput) {
     }
   }
 
+  // Prepare update data
+  const updateData: any = {};
+  
+  // Only update name if it's changing and allowed
+  if (input.name && input.name !== user.name) {
+    updateData.name = input.name;
+    updateData.nameSetAt = new Date(); // Lock the name
+  }
+  
+  // Email can always be updated
+  if (input.email) {
+    updateData.email = input.email;
+  }
+
   const updatedUser = await prisma.user.update({
     where: { id: userId },
-    data: {
-      ...(input.name && { name: input.name }),
-      ...(input.email && { email: input.email }),
-    },
+    data: updateData,
     include: { profile: true },
   });
 

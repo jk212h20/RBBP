@@ -288,18 +288,18 @@ export default function EventDetailPage() {
       {/* Header */}
       <header className="bg-black/30 backdrop-blur-sm border-b border-green-700/50">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/" className="text-2xl font-bold text-white">
+          <Link href="/" className="text-xl md:text-2xl font-bold text-white">
             🃏 Roatan Poker
           </Link>
-          <nav className="flex items-center gap-4">
-            <Link href="/events" className="text-white/80 hover:text-white">Events</Link>
-            <Link href="/leaderboard" className="text-white/80 hover:text-white">Leaderboard</Link>
+          <nav className="flex items-center gap-2 md:gap-4">
+            <Link href="/events" className="text-white/80 hover:text-white text-sm md:text-base">Events</Link>
+            <Link href="/leaderboard" className="text-white/80 hover:text-white text-sm md:text-base hidden sm:inline">Leaderboard</Link>
             {isAuthenticated ? (
-              <Link href="/dashboard" className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+              <Link href="/dashboard" className="bg-green-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg hover:bg-green-700 text-sm md:text-base">
                 Dashboard
               </Link>
             ) : (
-              <Link href="/login" className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+              <Link href="/login" className="bg-green-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg hover:bg-green-700 text-sm md:text-base">
                 Sign In
               </Link>
             )}
@@ -307,9 +307,9 @@ export default function EventDetailPage() {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className="max-w-4xl mx-auto px-4 py-6 md:py-8">
         {/* Back Link */}
-        <Link href="/events" className="text-green-400 hover:text-green-300 mb-6 inline-block">
+        <Link href="/events" className="text-green-400 hover:text-green-300 mb-4 md:mb-6 inline-block text-sm md:text-base">
           ← Back to Events
         </Link>
 
@@ -445,8 +445,8 @@ export default function EventDetailPage() {
                     <p className="text-orange-200/60">No registered players yet</p>
                   ) : (
                     <div className="space-y-2">
-                      {/* Header */}
-                      <div className="grid grid-cols-12 gap-2 text-orange-200/70 text-sm font-medium px-3 py-2">
+                      {/* Header - Desktop */}
+                      <div className="hidden md:grid grid-cols-12 gap-2 text-orange-200/70 text-sm font-medium px-3 py-2">
                         <div className="col-span-1">Came</div>
                         <div className="col-span-5">Player</div>
                         <div className="col-span-3">Position</div>
@@ -456,58 +456,112 @@ export default function EventDetailPage() {
                       {playerResults.map((player) => (
                         <div 
                           key={player.userId}
-                          className={`grid grid-cols-12 gap-2 items-center p-3 rounded-lg ${
+                          className={`p-3 rounded-lg ${
                             player.attended ? 'bg-green-500/20' : 'bg-white/5'
                           }`}
                         >
-                          <div className="col-span-1">
-                            <input
-                              type="checkbox"
-                              checked={player.attended}
-                              onChange={() => toggleAttendance(player.userId)}
-                              className="w-5 h-5 rounded border-green-600 bg-white/10 text-green-600 focus:ring-green-500"
-                            />
-                          </div>
-                          <div className="col-span-5">
-                            <span className={`font-medium ${player.attended ? 'text-white' : 'text-gray-400'}`}>
-                              {player.name}
-                            </span>
-                          </div>
-                          <div className="col-span-3">
-                            {player.attended ? (
-                              <input
-                                type="number"
-                                min="1"
-                                max={playerResults.filter(p => p.attended).length}
-                                value={player.position || ''}
-                                onChange={(e) => updatePosition(player.userId, e.target.value ? parseInt(e.target.value) : null)}
-                                placeholder="#"
-                                className="w-full p-2 bg-white/10 border border-green-600/50 rounded text-white text-center"
-                              />
-                            ) : (
-                              <span className="text-gray-500">-</span>
-                            )}
-                          </div>
-                          <div className="col-span-3">
-                            {player.attended ? (
-                              <div className="flex items-center gap-1">
-                                <button
-                                  onClick={() => updateKnockouts(player.userId, player.knockouts - 1)}
-                                  className="w-8 h-8 bg-white/10 rounded text-white hover:bg-white/20"
-                                >
-                                  -
-                                </button>
-                                <span className="w-8 text-center text-white">{player.knockouts}</span>
-                                <button
-                                  onClick={() => updateKnockouts(player.userId, player.knockouts + 1)}
-                                  className="w-8 h-8 bg-white/10 rounded text-white hover:bg-white/20"
-                                >
-                                  +
-                                </button>
+                          {/* Mobile Layout */}
+                          <div className="md:hidden space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <input
+                                  type="checkbox"
+                                  checked={player.attended}
+                                  onChange={() => toggleAttendance(player.userId)}
+                                  className="w-5 h-5 rounded border-green-600 bg-white/10 text-green-600 focus:ring-green-500"
+                                />
+                                <span className={`font-medium ${player.attended ? 'text-white' : 'text-gray-400'}`}>
+                                  {player.name}
+                                </span>
                               </div>
-                            ) : (
-                              <span className="text-gray-500">-</span>
+                            </div>
+                            {player.attended && (
+                              <div className="flex items-center gap-4 pl-8">
+                                <div className="flex-1">
+                                  <label className="text-orange-200/70 text-xs block mb-1">Position</label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    max={playerResults.filter(p => p.attended).length}
+                                    value={player.position || ''}
+                                    onChange={(e) => updatePosition(player.userId, e.target.value ? parseInt(e.target.value) : null)}
+                                    placeholder="#"
+                                    className="w-full p-2 bg-white/10 border border-green-600/50 rounded text-white text-center"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-orange-200/70 text-xs block mb-1">KOs</label>
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      onClick={() => updateKnockouts(player.userId, player.knockouts - 1)}
+                                      className="w-8 h-8 bg-white/10 rounded text-white hover:bg-white/20"
+                                    >
+                                      -
+                                    </button>
+                                    <span className="w-8 text-center text-white">{player.knockouts}</span>
+                                    <button
+                                      onClick={() => updateKnockouts(player.userId, player.knockouts + 1)}
+                                      className="w-8 h-8 bg-white/10 rounded text-white hover:bg-white/20"
+                                    >
+                                      +
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
                             )}
+                          </div>
+
+                          {/* Desktop Layout */}
+                          <div className="hidden md:grid grid-cols-12 gap-2 items-center">
+                            <div className="col-span-1">
+                              <input
+                                type="checkbox"
+                                checked={player.attended}
+                                onChange={() => toggleAttendance(player.userId)}
+                                className="w-5 h-5 rounded border-green-600 bg-white/10 text-green-600 focus:ring-green-500"
+                              />
+                            </div>
+                            <div className="col-span-5">
+                              <span className={`font-medium ${player.attended ? 'text-white' : 'text-gray-400'}`}>
+                                {player.name}
+                              </span>
+                            </div>
+                            <div className="col-span-3">
+                              {player.attended ? (
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max={playerResults.filter(p => p.attended).length}
+                                  value={player.position || ''}
+                                  onChange={(e) => updatePosition(player.userId, e.target.value ? parseInt(e.target.value) : null)}
+                                  placeholder="#"
+                                  className="w-full p-2 bg-white/10 border border-green-600/50 rounded text-white text-center"
+                                />
+                              ) : (
+                                <span className="text-gray-500">-</span>
+                              )}
+                            </div>
+                            <div className="col-span-3">
+                              {player.attended ? (
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => updateKnockouts(player.userId, player.knockouts - 1)}
+                                    className="w-8 h-8 bg-white/10 rounded text-white hover:bg-white/20"
+                                  >
+                                    -
+                                  </button>
+                                  <span className="w-8 text-center text-white">{player.knockouts}</span>
+                                  <button
+                                    onClick={() => updateKnockouts(player.userId, player.knockouts + 1)}
+                                    className="w-8 h-8 bg-white/10 rounded text-white hover:bg-white/20"
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-gray-500">-</span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))}

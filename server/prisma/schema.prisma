@@ -32,6 +32,7 @@ model User {
   email         String?      @unique
   password      String?      // Null for OAuth/Lightning users
   name          String
+  nameSetAt     DateTime?    // When name was set (null = can still change, set = locked)
   role          UserRole     @default(PLAYER)
   avatar        String?
   isActive      Boolean      @default(true)

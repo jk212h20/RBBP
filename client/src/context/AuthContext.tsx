@@ -7,6 +7,7 @@ interface User {
   id: string;
   email: string | null;
   name: string;
+  nameSetAt: string | null;
   role: string;
   avatar: string | null;
   authProvider: string;
