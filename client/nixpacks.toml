@@ -1,5 +1,8 @@
-# Let Railway auto-detect Node.js version from package.json
-# Using simpler config for better compatibility
+# Nixpacks configuration for Next.js
+# Railway will auto-detect Node.js from package.json
+
+[phases.setup]
+nixPkgs = ["nodejs_20"]
 
 [phases.install]
 cmds = ["npm ci"]
