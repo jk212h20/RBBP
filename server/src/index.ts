@@ -6,6 +6,9 @@ import session from 'express-session';
 import dotenv from 'dotenv';
 import passport, { initializePassport } from './config/passport';
 import authRoutes from './routes/auth.routes';
+import venueRoutes from './routes/venue.routes';
+import seasonRoutes from './routes/season.routes';
+import eventRoutes from './routes/event.routes';
 
 // Load environment variables
 dotenv.config();
@@ -132,29 +135,14 @@ app.use('/api/users', (req: Request, res: Response) => {
   });
 });
 
-// Events routes placeholder
-app.use('/api/events', (req: Request, res: Response) => {
-  res.status(501).json({ 
-    message: 'Events routes coming soon',
-    availableEndpoints: ['GET /', 'GET /:id', 'POST /', 'PUT /:id', 'DELETE /:id', 'POST /:id/signup']
-  });
-});
+// Events routes
+app.use('/api/events', eventRoutes);
 
-// Venues routes placeholder
-app.use('/api/venues', (req: Request, res: Response) => {
-  res.status(501).json({ 
-    message: 'Venues routes coming soon',
-    availableEndpoints: ['GET /', 'GET /:id', 'POST /', 'PUT /:id', 'DELETE /:id']
-  });
-});
+// Venues routes
+app.use('/api/venues', venueRoutes);
 
-// Seasons routes placeholder
-app.use('/api/seasons', (req: Request, res: Response) => {
-  res.status(501).json({ 
-    message: 'Seasons routes coming soon',
-    availableEndpoints: ['GET /', 'GET /:id', 'POST /', 'PUT /:id', 'GET /:id/standings']
-  });
-});
+// Seasons routes
+app.use('/api/seasons', seasonRoutes);
 
 // Standings routes placeholder
 app.use('/api/standings', (req: Request, res: Response) => {

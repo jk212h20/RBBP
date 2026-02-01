@@ -1,0 +1,279 @@
+import { Router, Request, Response } from 'express';
+import { eventService } from '../services/event.service';
+import { createEventSchema, updateEventSchema, bulkResultsSchema } from '../validators/event.validator';
+import { authenticate, requireAdmin, requireTournamentDirector } from '../middleware/auth.middleware';
+import { EventStatus } from '@prisma/client';
+
+const router = Router();
+
+/**
+ * GET /api/events/upcoming
+ * Get upcoming events (public)
+ * NOTE: Must be before /:id
+ */
+router.get('/upcoming', async (req: Request, res: Response) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 10;
+    const events = await eventService.getUpcomingEvents(limit);
+    res.json(events);
+  } catch (error) {
+    console.error('Error fetching upcoming events:', error);
+    res.status(500).json({ error: 'Failed to fetch upcoming events' });
+  }
+});
+
+/**
+ * GET /api/events/my
+ * Get events for current user
+ * NOTE: Must be before /:id
+ */
+router.get('/my', authenticate, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    const events = await eventService.getUserEvents(req.user.userId);
+    res.json(events);
+  } catch (error) {
+    console.error('Error fetching user events:', error);
+    res.status(500).json({ error: 'Failed to fetch your events' });
+  }
+});
+
+/**
+ * GET /api/events
+ * Get all events with optional filters (public)
+ */
+router.get('/', async (req: Request, res: Response) => {
+  try {
+    const filters = {
+      seasonId: req.query.seasonId as string | undefined,
+      venueId: req.query.venueId as string | undefined,
+      status: req.query.status as EventStatus | undefined,
+      upcoming: req.query.upcoming === 'true',
+    };
+    
+    const events = await eventService.getAllEvents(filters);
+    res.json(events);
+  } catch (error) {
+    console.error('Error fetching events:', error);
+    res.status(500).json({ error: 'Failed to fetch events' });
+  }
+});
+
+/**
+ * GET /api/events/:id
+ * Get event by ID with full details (public)
+ */
+router.get('/:id', async (req: Request, res: Response) => {
+  try {
+    const event = await eventService.getEventById(req.params.id);
+    
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    
+    res.json(event);
+  } catch (error) {
+    console.error('Error fetching event:', error);
+    res.status(500).json({ error: 'Failed to fetch event' });
+  }
+});
+
+/**
+ * POST /api/events
+ * Create a new event (Admin/Tournament Director)
+ */
+router.post('/', authenticate, requireTournamentDirector, async (req: Request, res: Response) => {
+  try {
+    const validation = createEventSchema.safeParse(req.body);
+    
+    if (!validation.success) {
+      return res.status(400).json({ 
+        error: 'Validation failed', 
+        details: validation.error.errors 
+      });
+    }
+    
+    const event = await eventService.createEvent(validation.data);
+    res.status(201).json(event);
+  } catch (error) {
+    console.error('Error creating event:', error);
+    res.status(500).json({ error: 'Failed to create event' });
+  }
+});
+
+/**
+ * PUT /api/events/:id
+ * Update an event (Admin/Tournament Director)
+ */
+router.put('/:id', authenticate, requireTournamentDirector, async (req: Request, res: Response) => {
+  try {
+    const eventId = req.params.id;
+    
+    const existingEvent = await eventService.getEventById(eventId);
+    if (!existingEvent) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    
+    const validation = updateEventSchema.safeParse(req.body);
+    
+    if (!validation.success) {
+      return res.status(400).json({ 
+        error: 'Validation failed', 
+        details: validation.error.errors 
+      });
+    }
+    
+    const event = await eventService.updateEvent(eventId, validation.data);
+    res.json(event);
+  } catch (error) {
+    console.error('Error updating event:', error);
+    res.status(500).json({ error: 'Failed to update event' });
+  }
+});
+
+/**
+ * PUT /api/events/:id/status
+ * Update event status (Admin/Tournament Director)
+ */
+router.put('/:id/status', authenticate, requireTournamentDirector, async (req: Request, res: Response) => {
+  try {
+    const { status } = req.body;
+    
+    if (!Object.values(EventStatus).includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+    
+    const event = await eventService.updateEventStatus(req.params.id, status);
+    res.json(event);
+  } catch (error) {
+    console.error('Error updating event status:', error);
+    res.status(500).json({ error: 'Failed to update event status' });
+  }
+});
+
+/**
+ * DELETE /api/events/:id
+ * Delete an event (Admin only)
+ */
+router.delete('/:id', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    await eventService.deleteEvent(req.params.id);
+    res.json({ message: 'Event deleted' });
+  } catch (error) {
+    console.error('Error deleting event:', error);
+    res.status(500).json({ error: 'Failed to delete event' });
+  }
+});
+
+// ============================================
+// SIGNUP ENDPOINTS
+// ============================================
+
+/**
+ * POST /api/events/:id/signup
+ * Sign up for an event (authenticated users)
+ */
+router.post('/:id/signup', authenticate, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    
+    const signup = await eventService.signupForEvent(req.params.id, req.user.userId);
+    res.status(201).json(signup);
+  } catch (error: any) {
+    console.error('Error signing up for event:', error);
+    res.status(400).json({ error: error.message || 'Failed to sign up for event' });
+  }
+});
+
+/**
+ * DELETE /api/events/:id/signup
+ * Cancel signup for an event (authenticated users)
+ */
+router.delete('/:id/signup', authenticate, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    
+    await eventService.cancelSignup(req.params.id, req.user.userId);
+    res.json({ message: 'Signup cancelled' });
+  } catch (error: any) {
+    console.error('Error cancelling signup:', error);
+    res.status(400).json({ error: error.message || 'Failed to cancel signup' });
+  }
+});
+
+/**
+ * GET /api/events/:id/signups
+ * Get signups for an event (public)
+ */
+router.get('/:id/signups', async (req: Request, res: Response) => {
+  try {
+    const signups = await eventService.getEventSignups(req.params.id);
+    res.json(signups);
+  } catch (error) {
+    console.error('Error fetching signups:', error);
+    res.status(500).json({ error: 'Failed to fetch signups' });
+  }
+});
+
+/**
+ * PUT /api/events/:id/checkin/:userId
+ * Check in a player (Admin/Tournament Director)
+ */
+router.put('/:id/checkin/:userId', authenticate, requireTournamentDirector, async (req: Request, res: Response) => {
+  try {
+    const signup = await eventService.checkInPlayer(req.params.id, req.params.userId);
+    res.json(signup);
+  } catch (error) {
+    console.error('Error checking in player:', error);
+    res.status(500).json({ error: 'Failed to check in player' });
+  }
+});
+
+// ============================================
+// RESULTS ENDPOINTS
+// ============================================
+
+/**
+ * POST /api/events/:id/results
+ * Enter results for an event (Admin/Tournament Director)
+ */
+router.post('/:id/results', authenticate, requireTournamentDirector, async (req: Request, res: Response) => {
+  try {
+    const validation = bulkResultsSchema.safeParse(req.body);
+    
+    if (!validation.success) {
+      return res.status(400).json({ 
+        error: 'Validation failed', 
+        details: validation.error.errors 
+      });
+    }
+    
+    const results = await eventService.enterResults(req.params.id, validation.data.results);
+    res.json(results);
+  } catch (error: any) {
+    console.error('Error entering results:', error);
+    res.status(400).json({ error: error.message || 'Failed to enter results' });
+  }
+});
+
+/**
+ * GET /api/events/:id/results
+ * Get results for an event (public)
+ */
+router.get('/:id/results', async (req: Request, res: Response) => {
+  try {
+    const results = await eventService.getEventResults(req.params.id);
+    res.json(results);
+  } catch (error) {
+    console.error('Error fetching results:', error);
+    res.status(500).json({ error: 'Failed to fetch results' });
+  }
+});
+
+export default router;

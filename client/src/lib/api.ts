@@ -72,3 +72,136 @@ export const authAPI = {
 
 // Google OAuth URL
 export const getGoogleAuthUrl = () => `${API_URL}/auth/google`;
+
+// ============================================
+// VENUES API
+// ============================================
+export const venuesAPI = {
+  getAll: () => fetchAPI<any[]>('/venues'),
+  
+  getById: (id: string) => fetchAPI<any>(`/venues/${id}`),
+  
+  create: (data: { name: string; address: string; description?: string; phone?: string; email?: string }) =>
+    fetchAPI<any>('/venues', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  
+  update: (id: string, data: Partial<{ name: string; address: string; description?: string; phone?: string; email?: string }>) =>
+    fetchAPI<any>(`/venues/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  
+  delete: (id: string) =>
+    fetchAPI<{ message: string }>(`/venues/${id}`, { method: 'DELETE' }),
+};
+
+// ============================================
+// SEASONS API
+// ============================================
+export const seasonsAPI = {
+  getAll: () => fetchAPI<any[]>('/seasons'),
+  
+  getById: (id: string) => fetchAPI<any>(`/seasons/${id}`),
+  
+  getCurrent: () => fetchAPI<any>('/seasons/current'),
+  
+  getStandings: (id: string, limit = 50) => 
+    fetchAPI<any[]>(`/seasons/${id}/standings?limit=${limit}`),
+  
+  create: (data: { name: string; startDate: string; endDate: string; isActive?: boolean; pointsStructure?: Record<string, number> }) =>
+    fetchAPI<any>('/seasons', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  
+  update: (id: string, data: Partial<{ name: string; startDate: string; endDate: string; isActive?: boolean }>) =>
+    fetchAPI<any>(`/seasons/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  
+  activate: (id: string) =>
+    fetchAPI<any>(`/seasons/${id}/activate`, { method: 'PUT' }),
+  
+  delete: (id: string) =>
+    fetchAPI<{ message: string }>(`/seasons/${id}`, { method: 'DELETE' }),
+};
+
+// ============================================
+// EVENTS API
+// ============================================
+export const eventsAPI = {
+  getAll: (filters?: { seasonId?: string; venueId?: string; upcoming?: boolean }) => {
+    const params = new URLSearchParams();
+    if (filters?.seasonId) params.append('seasonId', filters.seasonId);
+    if (filters?.venueId) params.append('venueId', filters.venueId);
+    if (filters?.upcoming) params.append('upcoming', 'true');
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return fetchAPI<any[]>(`/events${query}`);
+  },
+  
+  getUpcoming: (limit = 10) => fetchAPI<any[]>(`/events/upcoming?limit=${limit}`),
+  
+  getById: (id: string) => fetchAPI<any>(`/events/${id}`),
+  
+  getMy: () => fetchAPI<any[]>('/events/my'),
+  
+  create: (data: { 
+    name: string; 
+    dateTime: string; 
+    venueId: string; 
+    seasonId: string; 
+    description?: string;
+    maxPlayers?: number;
+    buyIn?: number;
+  }) =>
+    fetchAPI<any>('/events', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  
+  update: (id: string, data: Partial<{ 
+    name: string; 
+    dateTime: string; 
+    description?: string;
+    maxPlayers?: number;
+    buyIn?: number;
+    status?: string;
+  }>) =>
+    fetchAPI<any>(`/events/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  
+  updateStatus: (id: string, status: string) =>
+    fetchAPI<any>(`/events/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    }),
+  
+  delete: (id: string) =>
+    fetchAPI<{ message: string }>(`/events/${id}`, { method: 'DELETE' }),
+  
+  // Signups
+  signup: (eventId: string) =>
+    fetchAPI<any>(`/events/${eventId}/signup`, { method: 'POST' }),
+  
+  cancelSignup: (eventId: string) =>
+    fetchAPI<{ message: string }>(`/events/${eventId}/signup`, { method: 'DELETE' }),
+  
+  getSignups: (eventId: string) => fetchAPI<any[]>(`/events/${eventId}/signups`),
+  
+  checkIn: (eventId: string, userId: string) =>
+    fetchAPI<any>(`/events/${eventId}/checkin/${userId}`, { method: 'PUT' }),
+  
+  // Results
+  enterResults: (eventId: string, results: { userId: string; position: number; knockouts?: number }[]) =>
+    fetchAPI<any[]>(`/events/${eventId}/results`, {
+      method: 'POST',
+      body: JSON.stringify({ results }),
+    }),
+  
+  getResults: (eventId: string) => fetchAPI<any[]>(`/events/${eventId}/results`),
+};

@@ -11,7 +11,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [authMethod, setAuthMethod] = useState<'email' | 'lightning'>('email');
   const [lightningData, setLightningData] = useState<{
     k1: string;
     qrCode: string;
@@ -21,6 +20,23 @@ export default function LoginPage() {
 
   const { login, loginWithToken, isAuthenticated } = useAuth();
   const router = useRouter();
+
+  // Auto-load Lightning QR code on mount
+  useEffect(() => {
+    const loadLightningQR = async () => {
+      try {
+        const challenge = await authAPI.lightningChallenge();
+        setLightningData(challenge);
+        setPollingLightning(true);
+      } catch (err) {
+        console.error('Failed to load Lightning QR:', err);
+      }
+    };
+    
+    if (!isAuthenticated) {
+      loadLightningQR();
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -70,56 +86,71 @@ export default function LoginPage() {
     }
   };
 
-  const handleLightningLogin = async () => {
+  const handleRefreshLightning = async () => {
     setError('');
-    setLoading(true);
-
     try {
       const challenge = await authAPI.lightningChallenge();
       setLightningData(challenge);
       setPollingLightning(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start Lightning login');
-    } finally {
-      setLoading(false);
+      setError(err instanceof Error ? err.message : 'Failed to refresh Lightning QR');
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-green-800 to-black">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-green-800 to-black py-8">
       <div className="max-w-md w-full mx-4">
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           {/* Header */}
-          <div className="text-center mb-8">
+          <div className="text-center mb-6">
             <h1 className="text-3xl font-bold text-gray-900">🃏 Roatan Poker</h1>
             <p className="text-gray-600 mt-2">Sign in to your account</p>
           </div>
 
-          {/* Auth Method Tabs */}
-          <div className="flex mb-6 bg-gray-100 rounded-lg p-1">
-            <button
-              onClick={() => setAuthMethod('email')}
-              className={`flex-1 py-2 text-sm font-medium rounded-md transition ${
-                authMethod === 'email'
-                  ? 'bg-white shadow text-green-700'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              ✉️ Email
-            </button>
-            <button
-              onClick={() => {
-                setAuthMethod('lightning');
-                if (!lightningData) handleLightningLogin();
-              }}
-              className={`flex-1 py-2 text-sm font-medium rounded-md transition ${
-                authMethod === 'lightning'
-                  ? 'bg-white shadow text-yellow-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              ⚡ Lightning
-            </button>
+          {/* Lightning QR - Always visible when loaded */}
+          {lightningData && (
+            <div className="mb-6 p-4 bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl border-2 border-yellow-300">
+              <div className="text-center">
+                <p className="text-sm font-medium text-gray-700 mb-3">
+                  ⚡ Scan with Lightning Wallet for instant login
+                </p>
+                <div className="flex justify-center mb-3">
+                  <img
+                    src={lightningData.qrCode}
+                    alt="Lightning Auth QR Code"
+                    className="w-40 h-40 rounded-lg border-2 border-yellow-400 shadow-md"
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mb-1">
+                  Phoenix • Wallet of Satoshi • Zeus • Blue Wallet
+                </p>
+                {pollingLightning && (
+                  <p className="text-sm text-yellow-600 animate-pulse font-medium">
+                    ⚡ Waiting for wallet...
+                  </p>
+                )}
+                <button
+                  onClick={handleRefreshLightning}
+                  className="mt-2 text-xs text-gray-400 hover:text-gray-600"
+                >
+                  Refresh QR
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Loading state for Lightning */}
+          {!lightningData && (
+            <div className="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200 text-center">
+              <p className="text-sm text-gray-500 animate-pulse">⚡ Loading Lightning QR...</p>
+            </div>
+          )}
+
+          {/* Divider */}
+          <div className="mb-6 flex items-center">
+            <div className="flex-1 border-t border-gray-300"></div>
+            <span className="px-4 text-sm text-gray-500">or use email</span>
+            <div className="flex-1 border-t border-gray-300"></div>
           </div>
 
           {error && (
@@ -129,94 +160,50 @@ export default function LoginPage() {
           )}
 
           {/* Email Login Form */}
-          {authMethod === 'email' && (
-            <form onSubmit={handleEmailLogin} className="space-y-4">
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900"
-                  placeholder="you@example.com"
-                  required
-                />
-              </div>
-
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  id="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900"
-                  placeholder="••••••••"
-                  required
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition disabled:opacity-50"
-              >
-                {loading ? 'Signing in...' : 'Sign In'}
-              </button>
-            </form>
-          )}
-
-          {/* Lightning Login */}
-          {authMethod === 'lightning' && (
-            <div className="text-center">
-              {lightningData ? (
-                <>
-                  <p className="text-gray-600 mb-4">
-                    Scan with your Lightning wallet
-                  </p>
-                  <div className="flex justify-center mb-4">
-                    <img
-                      src={lightningData.qrCode}
-                      alt="Lightning Auth QR Code"
-                      className="w-56 h-56 rounded-lg border-4 border-yellow-400"
-                    />
-                  </div>
-                  <p className="text-xs text-gray-500 mb-2">
-                    Works with: Phoenix, Wallet of Satoshi, Zeus, Blue Wallet
-                  </p>
-                  {pollingLightning && (
-                    <p className="text-sm text-yellow-600 animate-pulse">
-                      ⚡ Waiting for wallet confirmation...
-                    </p>
-                  )}
-                  <button
-                    onClick={handleLightningLogin}
-                    className="mt-4 text-sm text-gray-500 hover:text-gray-700"
-                  >
-                    Generate new QR code
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={handleLightningLogin}
-                  disabled={loading}
-                  className="w-full bg-yellow-500 text-black py-3 rounded-lg font-semibold hover:bg-yellow-400 transition disabled:opacity-50"
-                >
-                  {loading ? 'Generating...' : '⚡ Generate Lightning QR'}
-                </button>
-              )}
+          <form onSubmit={handleEmailLogin} className="space-y-4">
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                Email
+              </label>
+              <input
+                type="email"
+                id="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900"
+                placeholder="you@example.com"
+                required
+              />
             </div>
-          )}
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                Password
+              </label>
+              <input
+                type="password"
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900"
+                placeholder="••••••••"
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition disabled:opacity-50"
+            >
+              {loading ? 'Signing in...' : 'Sign In'}
+            </button>
+          </form>
 
           {/* Divider */}
           <div className="my-6 flex items-center">
             <div className="flex-1 border-t border-gray-300"></div>
-            <span className="px-4 text-sm text-gray-500">or continue with</span>
+            <span className="px-4 text-sm text-gray-500">or</span>
             <div className="flex-1 border-t border-gray-300"></div>
           </div>
 
