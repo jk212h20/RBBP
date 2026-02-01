@@ -205,3 +205,46 @@ export const eventsAPI = {
   
   getResults: (eventId: string) => fetchAPI<any[]>(`/events/${eventId}/results`),
 };
+
+// ============================================
+// ADMIN API
+// ============================================
+export const adminAPI = {
+  getStats: () => fetchAPI<{ users: number; venues: number; events: number; seasons: number }>('/admin/stats'),
+  
+  getUsers: () => fetchAPI<any[]>('/admin/users'),
+  
+  promoteToAdmin: (secretKey: string) =>
+    fetchAPI<{ message: string; user: any }>('/admin/promote', {
+      method: 'POST',
+      body: JSON.stringify({ secretKey }),
+    }),
+  
+  updateUserRole: (userId: string, role: string) =>
+    fetchAPI<any>(`/admin/users/${userId}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ role }),
+    }),
+};
+
+// ============================================
+// STANDINGS API
+// ============================================
+export const standingsAPI = {
+  getCurrent: () => fetchAPI<{ season: any; standings: any[] }>('/standings'),
+  
+  getBySeason: (seasonId: string) => 
+    fetchAPI<{ season: any; standings: any[] }>(`/standings/season/${seasonId}`),
+  
+  getByPlayer: (playerId: string) => fetchAPI<any>(`/standings/player/${playerId}`),
+};
+
+// Default export for simple usage
+const api = {
+  get: <T>(endpoint: string) => fetchAPI<T>(endpoint),
+  post: <T>(endpoint: string, data?: any) => fetchAPI<T>(endpoint, { method: 'POST', body: data ? JSON.stringify(data) : undefined }),
+  put: <T>(endpoint: string, data?: any) => fetchAPI<T>(endpoint, { method: 'PUT', body: data ? JSON.stringify(data) : undefined }),
+  delete: <T>(endpoint: string) => fetchAPI<T>(endpoint, { method: 'DELETE' }),
+};
+
+export default api;

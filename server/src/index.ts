@@ -9,6 +9,8 @@ import authRoutes from './routes/auth.routes';
 import venueRoutes from './routes/venue.routes';
 import seasonRoutes from './routes/season.routes';
 import eventRoutes from './routes/event.routes';
+import standingsRoutes from './routes/standings.routes';
+import adminRoutes from './routes/admin.routes';
 
 // Load environment variables
 dotenv.config();
@@ -144,13 +146,11 @@ app.use('/api/venues', venueRoutes);
 // Seasons routes
 app.use('/api/seasons', seasonRoutes);
 
-// Standings routes placeholder
-app.use('/api/standings', (req: Request, res: Response) => {
-  res.status(501).json({ 
-    message: 'Standings routes coming soon',
-    availableEndpoints: ['GET /current', 'GET /season/:seasonId', 'GET /player/:playerId']
-  });
-});
+// Standings routes
+app.use('/api/standings', standingsRoutes);
+
+// Admin routes
+app.use('/api/admin', adminRoutes);
 
 // ============================================
 // ERROR HANDLING
