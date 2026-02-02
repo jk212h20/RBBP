@@ -252,10 +252,14 @@ export const adminAPI = {
 export const standingsAPI = {
   getCurrent: () => fetchAPI<{ season: any; standings: any[] }>('/standings'),
   
+  getMy: () => fetchAPI<{ season: any; standing: any }>('/standings/my'),
+  
   getBySeason: (seasonId: string) => 
     fetchAPI<{ season: any; standings: any[] }>(`/standings/season/${seasonId}`),
   
   getByPlayer: (playerId: string) => fetchAPI<any>(`/standings/player/${playerId}`),
+  
+  getUserHistory: (userId: string) => fetchAPI<any[]>(`/standings/user/${userId}/history`),
 };
 
 // Default export for simple usage

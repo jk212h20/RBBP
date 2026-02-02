@@ -573,22 +573,172 @@ export default function AdminPage() {
                 </button>
               </div>
             ) : stats ? (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="bg-gray-800 rounded-lg p-6">
-                  <h3 className="text-gray-400 text-sm">Total Users</h3>
-                  <p className="text-3xl font-bold text-green-400">{stats.users}</p>
+              <div className="space-y-6">
+                {/* Clickable Stat Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <button
+                    onClick={() => { setActiveTab('users'); if (users.length === 0) fetchUsers(); }}
+                    className="bg-gray-800 rounded-lg p-6 text-left hover:bg-gray-700 transition group border border-transparent hover:border-green-500/50"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-gray-400 text-sm group-hover:text-green-400 transition">Total Users</h3>
+                        <p className="text-3xl font-bold text-green-400">{stats.users}</p>
+                      </div>
+                      <span className="text-3xl opacity-50 group-hover:opacity-100 transition">👥</span>
+                    </div>
+                    <p className="text-gray-500 text-xs mt-2 group-hover:text-gray-400">Click to manage →</p>
+                  </button>
+                  
+                  <button
+                    onClick={() => setActiveTab('venues')}
+                    className="bg-gray-800 rounded-lg p-6 text-left hover:bg-gray-700 transition group border border-transparent hover:border-blue-500/50"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-gray-400 text-sm group-hover:text-blue-400 transition">Venues</h3>
+                        <p className="text-3xl font-bold text-blue-400">{stats.venues}</p>
+                      </div>
+                      <span className="text-3xl opacity-50 group-hover:opacity-100 transition">📍</span>
+                    </div>
+                    <p className="text-gray-500 text-xs mt-2 group-hover:text-gray-400">Click to manage →</p>
+                  </button>
+                  
+                  <button
+                    onClick={() => setActiveTab('seasons')}
+                    className="bg-gray-800 rounded-lg p-6 text-left hover:bg-gray-700 transition group border border-transparent hover:border-purple-500/50"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-gray-400 text-sm group-hover:text-purple-400 transition">Seasons</h3>
+                        <p className="text-3xl font-bold text-purple-400">{stats.seasons}</p>
+                      </div>
+                      <span className="text-3xl opacity-50 group-hover:opacity-100 transition">🏆</span>
+                    </div>
+                    <p className="text-gray-500 text-xs mt-2 group-hover:text-gray-400">Click to manage →</p>
+                  </button>
+                  
+                  <button
+                    onClick={() => { setActiveTab('events'); if (events.length === 0) fetchEvents(); }}
+                    className="bg-gray-800 rounded-lg p-6 text-left hover:bg-gray-700 transition group border border-transparent hover:border-yellow-500/50"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-gray-400 text-sm group-hover:text-yellow-400 transition">Events</h3>
+                        <p className="text-3xl font-bold text-yellow-400">{stats.events}</p>
+                      </div>
+                      <span className="text-3xl opacity-50 group-hover:opacity-100 transition">📅</span>
+                    </div>
+                    <p className="text-gray-500 text-xs mt-2 group-hover:text-gray-400">Click to manage →</p>
+                  </button>
                 </div>
-                <div className="bg-gray-800 rounded-lg p-6">
-                  <h3 className="text-gray-400 text-sm">Venues</h3>
-                  <p className="text-3xl font-bold text-blue-400">{stats.venues}</p>
+
+                {/* Active Season Info */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="bg-gradient-to-r from-purple-900/30 to-purple-800/20 rounded-lg p-6 border border-purple-500/30">
+                    <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+                      🏆 Active Season
+                    </h3>
+                    {seasons.find((s: Season) => s.isActive) ? (
+                      <div>
+                        <p className="text-2xl font-bold text-purple-400">
+                          {seasons.find((s: Season) => s.isActive)?.name}
+                        </p>
+                        <p className="text-gray-400 text-sm mt-1">
+                          {new Date(seasons.find((s: Season) => s.isActive)?.startDate).toLocaleDateString()} - {new Date(seasons.find((s: Season) => s.isActive)?.endDate).toLocaleDateString()}
+                        </p>
+                        <p className="text-gray-500 text-xs mt-2">
+                          {seasons.find((s: Season) => s.isActive)?._count?.events || 0} events • {seasons.find((s: Season) => s.isActive)?._count?.standings || 0} players ranked
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="text-yellow-400">
+                        <p>⚠️ No active season</p>
+                        <button
+                          onClick={() => setActiveTab('seasons')}
+                          className="text-sm text-purple-400 hover:text-purple-300 mt-2"
+                        >
+                          Create or activate a season →
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Quick Stats */}
+                  <div className="bg-gray-800 rounded-lg p-6">
+                    <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+                      📊 Quick Stats
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-gray-700/50 rounded p-3">
+                        <p className="text-gray-400 text-xs">Active Venues</p>
+                        <p className="text-xl font-bold text-blue-400">{venues.filter((v: Venue) => v.isActive !== false).length}</p>
+                      </div>
+                      <div className="bg-gray-700/50 rounded p-3">
+                        <p className="text-gray-400 text-xs">Total Seasons</p>
+                        <p className="text-xl font-bold text-purple-400">{seasons.length}</p>
+                      </div>
+                      <div className="bg-gray-700/50 rounded p-3">
+                        <p className="text-gray-400 text-xs">Upcoming Events</p>
+                        <p className="text-xl font-bold text-yellow-400">
+                          {events.filter((e: Event) => new Date(e.dateTime) > new Date() && e.status !== 'CANCELLED').length}
+                        </p>
+                      </div>
+                      <div className="bg-gray-700/50 rounded p-3">
+                        <p className="text-gray-400 text-xs">Completed Events</p>
+                        <p className="text-xl font-bold text-green-400">
+                          {events.filter((e: Event) => e.status === 'COMPLETED').length}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Recent Activity / Upcoming Events */}
                 <div className="bg-gray-800 rounded-lg p-6">
-                  <h3 className="text-gray-400 text-sm">Seasons</h3>
-                  <p className="text-3xl font-bold text-purple-400">{stats.seasons}</p>
-                </div>
-                <div className="bg-gray-800 rounded-lg p-6">
-                  <h3 className="text-gray-400 text-sm">Events</h3>
-                  <p className="text-3xl font-bold text-yellow-400">{stats.events}</p>
+                  <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+                    📅 Upcoming Events
+                  </h3>
+                  {events.filter((e: Event) => new Date(e.dateTime) > new Date() && e.status !== 'CANCELLED').length === 0 ? (
+                    <div className="text-center py-4">
+                      <p className="text-gray-400">No upcoming events</p>
+                      <button
+                        onClick={() => { setActiveTab('events'); if (events.length === 0) fetchEvents(); }}
+                        className="text-green-400 hover:text-green-300 text-sm mt-2"
+                      >
+                        Create an event →
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {events
+                        .filter((e: Event) => new Date(e.dateTime) > new Date() && e.status !== 'CANCELLED')
+                        .sort((a: Event, b: Event) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime())
+                        .slice(0, 5)
+                        .map((event: Event) => (
+                          <div key={event.id} className="flex justify-between items-center bg-gray-700/50 p-3 rounded">
+                            <div>
+                              <p className="font-medium">{event.name}</p>
+                              <p className="text-gray-400 text-sm">
+                                📍 {event.venue.name} • 📆 {new Date(event.dateTime).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <span className={`text-xs px-2 py-1 rounded ${
+                                event.status === 'REGISTRATION_OPEN' ? 'bg-blue-600/30 text-blue-400' :
+                                event.status === 'IN_PROGRESS' ? 'bg-yellow-600/30 text-yellow-400' :
+                                'bg-gray-600/30 text-gray-400'
+                              }`}>
+                                {event.status === 'REGISTRATION_OPEN' ? '📝 Open' :
+                                 event.status === 'IN_PROGRESS' ? '🎮 Live' :
+                                 '📋 Scheduled'}
+                              </span>
+                              <p className="text-gray-500 text-xs mt-1">{event._count.signups} signups</p>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (

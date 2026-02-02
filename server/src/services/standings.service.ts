@@ -100,6 +100,87 @@ export const standingsService = {
     };
   },
 
+  // Get user's standing for the current active season
+  async getUserCurrentSeasonStanding(userId: string) {
+    // Find the active season
+    const activeSeason = await prisma.season.findFirst({
+      where: { isActive: true }
+    });
+
+    if (!activeSeason) {
+      return { season: null, standing: null };
+    }
+
+    // Get user's standing for this season
+    const standing = await prisma.standing.findUnique({
+      where: {
+        seasonId_userId: {
+          seasonId: activeSeason.id,
+          userId
+        }
+      }
+    });
+
+    return {
+      season: {
+        id: activeSeason.id,
+        name: activeSeason.name,
+        startDate: activeSeason.startDate,
+        endDate: activeSeason.endDate
+      },
+      standing: standing ? {
+        totalPoints: standing.totalPoints,
+        eventsPlayed: standing.eventsPlayed,
+        wins: standing.wins,
+        topThrees: standing.topThrees,
+        knockouts: standing.knockouts,
+        rank: standing.rank
+      } : {
+        totalPoints: 0,
+        eventsPlayed: 0,
+        wins: 0,
+        topThrees: 0,
+        knockouts: 0,
+        rank: null
+      }
+    };
+  },
+
+  // Get user's standings across all seasons (for admin/history view)
+  async getUserAllSeasonsStandings(userId: string) {
+    const standings = await prisma.standing.findMany({
+      where: { userId },
+      include: {
+        season: {
+          select: {
+            id: true,
+            name: true,
+            startDate: true,
+            endDate: true,
+            isActive: true
+          }
+        }
+      },
+      orderBy: {
+        season: { startDate: 'desc' }
+      }
+    });
+
+    return standings.map(s => ({
+      seasonId: s.seasonId,
+      seasonName: s.season.name,
+      seasonStartDate: s.season.startDate,
+      seasonEndDate: s.season.endDate,
+      isActiveSeason: s.season.isActive,
+      totalPoints: s.totalPoints,
+      eventsPlayed: s.eventsPlayed,
+      wins: s.wins,
+      topThrees: s.topThrees,
+      knockouts: s.knockouts,
+      rank: s.rank
+    }));
+  },
+
   // Recalculate standings for a season (called after event results are entered)
   async recalculateSeasonStandings(seasonId: string) {
     // Get all results for events in this season

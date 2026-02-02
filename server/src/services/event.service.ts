@@ -3,6 +3,12 @@ import { CreateEventInput, UpdateEventInput, ResultEntry } from '../validators/e
 import { EventStatus, SignupStatus } from '@prisma/client';
 import { seasonService } from './season.service';
 
+// Points for registration/unregistration
+const REGISTRATION_POINTS = 1;
+const UNREGISTER_EARLY_PENALTY = -1;  // 24+ hours before event
+const UNREGISTER_LATE_PENALTY = -2;   // Less than 24 hours before event
+const NO_SHOW_PENALTY = -3;           // Registered but didn't show up
+
 export class EventService {
   /**
    * Get all events with optional filters
@@ -256,6 +262,7 @@ export class EventService {
 
   /**
    * Sign up for an event
+   * Awards +1 registration point for the season
    */
   async signupForEvent(eventId: string, userId: string) {
     // Check if event exists and is open for registration
@@ -264,6 +271,12 @@ export class EventService {
       include: {
         _count: {
           select: { signups: true },
+        },
+        season: {
+          select: {
+            id: true,
+            isActive: true,
+          },
         },
       },
     });
@@ -294,7 +307,8 @@ export class EventService {
       throw new Error('Already signed up for this event');
     }
 
-    return prisma.eventSignup.create({
+    // Create signup
+    const signup = await prisma.eventSignup.create({
       data: {
         eventId,
         userId,
@@ -309,10 +323,18 @@ export class EventService {
         },
       },
     });
+
+    // Award registration point for the season
+    await this.adjustUserSeasonPoints(userId, event.seasonId, REGISTRATION_POINTS);
+
+    return signup;
   }
 
   /**
    * Cancel signup for an event
+   * Applies point penalties based on timing:
+   * - 24+ hours before: -1 point (removes registration bonus)
+   * - Less than 24 hours: -2 points (penalty for late cancellation)
    */
   async cancelSignup(eventId: string, userId: string) {
     const signup = await prisma.eventSignup.findUnique({
@@ -328,7 +350,27 @@ export class EventService {
       throw new Error('Not signed up for this event');
     }
 
-    return prisma.eventSignup.delete({
+    // Get event to check timing and season
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      select: {
+        dateTime: true,
+        seasonId: true,
+        status: true,
+      },
+    });
+
+    if (!event) {
+      throw new Error('Event not found');
+    }
+
+    // Calculate hours until event
+    const now = new Date();
+    const eventTime = new Date(event.dateTime);
+    const hoursUntilEvent = (eventTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+    // Delete the signup
+    await prisma.eventSignup.delete({
       where: {
         eventId_userId: {
           eventId,
@@ -336,6 +378,20 @@ export class EventService {
         },
       },
     });
+
+    // Apply point penalty based on timing
+    // If event hasn't started yet, apply cancellation penalty
+    if (event.status !== EventStatus.IN_PROGRESS && event.status !== EventStatus.COMPLETED) {
+      if (hoursUntilEvent >= 24) {
+        // Early cancellation: just remove the registration point
+        await this.adjustUserSeasonPoints(userId, event.seasonId, UNREGISTER_EARLY_PENALTY);
+      } else {
+        // Late cancellation: additional penalty
+        await this.adjustUserSeasonPoints(userId, event.seasonId, UNREGISTER_LATE_PENALTY);
+      }
+    }
+
+    return { message: 'Signup cancelled' };
   }
 
   /**
@@ -552,6 +608,96 @@ export class EventService {
         dateTime: 'desc',
       },
     });
+  }
+
+  // ============================================
+  // POINTS MANAGEMENT
+  // ============================================
+
+  /**
+   * Adjust a user's season points (for registration bonuses/penalties)
+   * This updates the Standing record for the user in the given season
+   */
+  async adjustUserSeasonPoints(userId: string, seasonId: string, pointsChange: number) {
+    // Upsert the standing record
+    const existing = await prisma.standing.findUnique({
+      where: {
+        seasonId_userId: {
+          seasonId,
+          userId,
+        },
+      },
+    });
+
+    if (existing) {
+      // Update existing standing
+      await prisma.standing.update({
+        where: {
+          seasonId_userId: {
+            seasonId,
+            userId,
+          },
+        },
+        data: {
+          totalPoints: Math.max(0, existing.totalPoints + pointsChange), // Don't go below 0
+        },
+      });
+    } else {
+      // Create new standing with the points (only if positive)
+      if (pointsChange > 0) {
+        await prisma.standing.create({
+          data: {
+            seasonId,
+            userId,
+            totalPoints: pointsChange,
+            eventsPlayed: 0,
+            wins: 0,
+            topThrees: 0,
+            knockouts: 0,
+          },
+        });
+      }
+    }
+  }
+
+  /**
+   * Mark no-shows for an event and apply penalties
+   * Called when event is completed - anyone registered but not checked in is a no-show
+   */
+  async processNoShows(eventId: string) {
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      include: {
+        signups: {
+          where: {
+            status: {
+              in: [SignupStatus.REGISTERED, SignupStatus.CONFIRMED],
+            },
+          },
+        },
+      },
+    });
+
+    if (!event) {
+      throw new Error('Event not found');
+    }
+
+    // Get all signups that weren't checked in
+    const noShows = event.signups;
+
+    // Apply no-show penalty to each
+    for (const signup of noShows) {
+      // Update signup status to NO_SHOW
+      await prisma.eventSignup.update({
+        where: { id: signup.id },
+        data: { status: SignupStatus.NO_SHOW },
+      });
+
+      // Apply no-show penalty (removes registration point + additional penalty)
+      await this.adjustUserSeasonPoints(signup.userId, event.seasonId, NO_SHOW_PENALTY);
+    }
+
+    return { noShowCount: noShows.length };
   }
 }
 

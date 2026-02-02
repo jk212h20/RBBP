@@ -1,19 +1,56 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { standingsAPI } from '@/lib/api';
+
+interface SeasonStanding {
+  season: {
+    id: string;
+    name: string;
+    startDate: string;
+    endDate: string;
+  } | null;
+  standing: {
+    totalPoints: number;
+    eventsPlayed: number;
+    wins: number;
+    topThrees: number;
+    knockouts: number;
+    rank: number | null;
+  } | null;
+}
 
 export default function DashboardPage() {
   const { user, logout, isAuthenticated, loading } = useAuth();
   const router = useRouter();
+  const [seasonStanding, setSeasonStanding] = useState<SeasonStanding | null>(null);
+  const [loadingStanding, setLoadingStanding] = useState(true);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       router.push('/login');
     }
   }, [loading, isAuthenticated, router]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadSeasonStanding();
+    }
+  }, [isAuthenticated]);
+
+  const loadSeasonStanding = async () => {
+    try {
+      const data = await standingsAPI.getMy();
+      setSeasonStanding(data);
+    } catch (err) {
+      console.error('Failed to load season standing:', err);
+    } finally {
+      setLoadingStanding(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -104,6 +141,68 @@ export default function DashboardPage() {
               <p className="text-sm font-mono text-gray-600">{user.id.slice(0, 12)}...</p>
             </div>
           </div>
+        </div>
+
+        {/* Season Points Card */}
+        <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 backdrop-blur rounded-2xl border border-yellow-500/30 p-6 mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                🏆 Season Points
+              </h2>
+              {seasonStanding?.season && (
+                <p className="text-yellow-200/70 text-sm">{seasonStanding.season.name}</p>
+              )}
+            </div>
+            <Link href="/leaderboard" className="text-yellow-400 hover:text-yellow-300 text-sm">
+              View Leaderboard →
+            </Link>
+          </div>
+          
+          {loadingStanding ? (
+            <div className="flex items-center justify-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-400"></div>
+            </div>
+          ) : !seasonStanding?.season ? (
+            <p className="text-yellow-200/60 text-center py-4">No active season</p>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="bg-black/20 rounded-lg p-4 text-center">
+                <p className="text-3xl font-bold text-yellow-400">
+                  {seasonStanding.standing?.totalPoints || 0}
+                </p>
+                <p className="text-yellow-200/70 text-sm">Points</p>
+              </div>
+              <div className="bg-black/20 rounded-lg p-4 text-center">
+                <p className="text-3xl font-bold text-white">
+                  {seasonStanding.standing?.rank ? `#${seasonStanding.standing.rank}` : '-'}
+                </p>
+                <p className="text-yellow-200/70 text-sm">Rank</p>
+              </div>
+              <div className="bg-black/20 rounded-lg p-4 text-center">
+                <p className="text-3xl font-bold text-white">
+                  {seasonStanding.standing?.eventsPlayed || 0}
+                </p>
+                <p className="text-yellow-200/70 text-sm">Events</p>
+              </div>
+              <div className="bg-black/20 rounded-lg p-4 text-center">
+                <p className="text-3xl font-bold text-green-400">
+                  {seasonStanding.standing?.wins || 0}
+                </p>
+                <p className="text-yellow-200/70 text-sm">Wins</p>
+              </div>
+              <div className="bg-black/20 rounded-lg p-4 text-center">
+                <p className="text-3xl font-bold text-orange-400">
+                  {seasonStanding.standing?.knockouts || 0}
+                </p>
+                <p className="text-yellow-200/70 text-sm">Knockouts</p>
+              </div>
+            </div>
+          )}
+          
+          <p className="text-yellow-200/50 text-xs mt-4 text-center">
+            💡 Earn +1 point for registering to events. Late cancellations and no-shows result in point penalties.
+          </p>
         </div>
 
         {/* Quick Actions */}

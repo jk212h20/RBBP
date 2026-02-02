@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { standingsService } from '../services/standings.service';
+import { authenticate, requireAdmin } from '../middleware/auth.middleware';
 
 const router = Router();
 
@@ -25,6 +26,20 @@ router.get('/current', async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/standings/my - Get current user's standing for active season
+router.get('/my', authenticate, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    const result = await standingsService.getUserCurrentSeasonStanding(req.user.userId);
+    res.json(result);
+  } catch (error) {
+    console.error('Error fetching user standing:', error);
+    res.status(500).json({ error: 'Failed to fetch your standing' });
+  }
+});
+
 // GET /api/standings/season/:seasonId - Get standings for specific season
 router.get('/season/:seasonId', async (req: Request, res: Response) => {
   try {
@@ -46,6 +61,18 @@ router.get('/player/:playerId', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error fetching player standings:', error);
     res.status(500).json({ error: 'Failed to fetch player standings' });
+  }
+});
+
+// GET /api/standings/user/:userId/history - Get user's standings across all seasons (admin only)
+router.get('/user/:userId/history', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const result = await standingsService.getUserAllSeasonsStandings(userId);
+    res.json(result);
+  } catch (error) {
+    console.error('Error fetching user standings history:', error);
+    res.status(500).json({ error: 'Failed to fetch user standings history' });
   }
 });
 
