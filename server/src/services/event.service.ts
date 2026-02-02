@@ -1,5 +1,5 @@
 import prisma from '../lib/prisma';
-import { CreateEventInput, UpdateEventInput, ResultEntry } from '../validators/event.validator';
+import { CreateEventInput, UpdateEventInput, ResultEntry, BulkCreateEventsInput } from '../validators/event.validator';
 import { EventStatus, SignupStatus } from '@prisma/client';
 import { seasonService } from './season.service';
 
@@ -740,6 +740,74 @@ export class EventService {
     }
 
     return { noShowCount: noShows.length };
+  }
+
+  // ============================================
+  // BULK EVENT CREATION
+  // ============================================
+
+  /**
+   * Create multiple recurring events at once
+   * Creates events on a specific day of the week for a number of weeks
+   * Names events with # suffix (e.g., "Friday Night Poker #1", "Friday Night Poker #2")
+   */
+  async createBulkEvents(data: BulkCreateEventsInput) {
+    const events = [];
+    const startDate = new Date(data.startDate);
+    const [hours, minutes] = data.time.split(':').map(Number);
+    
+    // Find the first occurrence of the target day of week
+    let currentDate = new Date(startDate);
+    const targetDayOfWeek = data.dayOfWeek;
+    
+    // Adjust to the first occurrence of the target day
+    while (currentDate.getDay() !== targetDayOfWeek) {
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    // Create events for each week
+    for (let i = 0; i < data.numberOfWeeks; i++) {
+      const eventDate = new Date(currentDate);
+      eventDate.setHours(hours, minutes, 0, 0);
+      
+      const eventNumber = (data.startingNumber || 1) + i;
+      const eventName = `${data.baseName} #${eventNumber}`;
+      
+      const event = await prisma.event.create({
+        data: {
+          name: eventName,
+          description: data.description || null,
+          dateTime: eventDate,
+          maxPlayers: data.maxPlayers || 50,
+          buyIn: data.buyIn || null,
+          venueId: data.venueId,
+          seasonId: data.seasonId,
+          directorId: data.directorId || null,
+          status: data.status || EventStatus.SCHEDULED,
+        },
+        include: {
+          venue: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          season: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      });
+      
+      events.push(event);
+      
+      // Move to next week
+      currentDate.setDate(currentDate.getDate() + 7);
+    }
+    
+    return events;
   }
 }
 

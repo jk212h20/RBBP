@@ -217,6 +217,25 @@ export const eventsAPI = {
     }),
   
   getResults: (eventId: string) => fetchAPI<any[]>(`/events/${eventId}/results`),
+  
+  // Bulk event creation
+  createBulk: (data: {
+    baseName: string;
+    startDate: string;
+    time: string;
+    dayOfWeek: number;
+    numberOfWeeks: number;
+    venueId: string;
+    seasonId: string;
+    description?: string;
+    maxPlayers?: number;
+    buyIn?: number;
+    startingNumber?: number;
+  }) =>
+    fetchAPI<{ message: string; events: any[] }>('/events/bulk', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };
 
 // ============================================

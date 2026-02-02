@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { eventService } from '../services/event.service';
-import { createEventSchema, updateEventSchema, bulkResultsSchema } from '../validators/event.validator';
+import { createEventSchema, updateEventSchema, bulkResultsSchema, bulkCreateEventsSchema } from '../validators/event.validator';
 import { authenticate, requireAdmin, requireTournamentDirector } from '../middleware/auth.middleware';
 import { EventStatus } from '@prisma/client';
 
@@ -37,6 +37,38 @@ router.get('/my', authenticate, async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error fetching user events:', error);
     res.status(500).json({ error: 'Failed to fetch your events' });
+  }
+});
+
+// ============================================
+// BULK EVENT CREATION
+// ============================================
+
+/**
+ * POST /api/events/bulk
+ * Create multiple recurring events at once (Admin only)
+ * Creates events on a specific day of week for multiple weeks
+ * Names events with # suffix (e.g., "Friday Night Poker #1", "Friday Night Poker #2")
+ */
+router.post('/bulk', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const validation = bulkCreateEventsSchema.safeParse(req.body);
+    
+    if (!validation.success) {
+      return res.status(400).json({ 
+        error: 'Validation failed', 
+        details: validation.error.errors 
+      });
+    }
+    
+    const events = await eventService.createBulkEvents(validation.data);
+    res.status(201).json({ 
+      message: `Successfully created ${events.length} events`,
+      events 
+    });
+  } catch (error) {
+    console.error('Error creating bulk events:', error);
+    res.status(500).json({ error: 'Failed to create bulk events' });
   }
 });
 

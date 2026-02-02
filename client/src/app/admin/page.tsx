@@ -59,6 +59,20 @@ interface EventForm {
   buyIn: number;
 }
 
+interface BulkEventForm {
+  baseName: string;
+  description: string;
+  startDate: string;
+  time: string;
+  dayOfWeek: number;
+  numberOfWeeks: number;
+  venueId: string;
+  seasonId: string;
+  maxPlayers: number;
+  buyIn: number;
+  startingNumber: number;
+}
+
 interface Event {
   id: string;
   name: string;
@@ -129,6 +143,36 @@ export default function AdminPage() {
     seasonId: '', 
     maxPlayers: 50, 
     buyIn: 0 
+  });
+  // Recurring event options (integrated into single form)
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringCount, setRecurringCount] = useState(12);
+  const [recurringFrequency, setRecurringFrequency] = useState<'weekly' | 'biweekly'>('weekly');
+  const [startingNumber, setStartingNumber] = useState(1);
+  const [bulkCreating, setBulkCreating] = useState(false);
+  const [showBulkForm, setShowBulkForm] = useState(false);
+  const [bulkEventForm, setBulkEventForm] = useState<BulkEventForm>({
+    baseName: '',
+    description: '',
+    startDate: '',
+    time: '19:00',
+    dayOfWeek: 5, // Friday
+    numberOfWeeks: 12,
+    venueId: '',
+    seasonId: '',
+    maxPlayers: 50,
+    buyIn: 0,
+    startingNumber: 1
+  });
+  
+  // Bulk edit state
+  const [selectedEvents, setSelectedEvents] = useState<Set<string>>(new Set());
+  const [bulkEditMode, setBulkEditMode] = useState(false);
+  const [bulkEditForm, setBulkEditForm] = useState({
+    status: '',
+    venueId: '',
+    maxPlayers: '',
+    buyIn: ''
   });
   const [setupKey, setSetupKey] = useState('');
   
@@ -1169,9 +1213,201 @@ export default function AdminPage() {
               )}
             </div>
 
-            {/* Create Event Form */}
+            {/* Bulk Create Events Form */}
             <div className="bg-gray-800 rounded-lg p-6">
-              <h2 className="text-xl font-bold mb-4">➕ Create New Event</h2>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold">📅 Bulk Create Recurring Events</h2>
+                <button
+                  onClick={() => setShowBulkForm(!showBulkForm)}
+                  className={`px-4 py-2 rounded text-sm font-semibold ${showBulkForm ? 'bg-gray-600' : 'bg-purple-600 hover:bg-purple-700'}`}
+                >
+                  {showBulkForm ? '✕ Close' : '🔄 Create Multiple Events'}
+                </button>
+              </div>
+              
+              {showBulkForm && (venues.length === 0 || seasons.length === 0) && (
+                <div className="text-yellow-400 bg-yellow-400/10 p-4 rounded">
+                  ⚠️ You need to create at least one venue and one season before creating events.
+                </div>
+              )}
+              
+              {showBulkForm && venues.length > 0 && seasons.length > 0 && (
+                <div className="space-y-4">
+                  <p className="text-gray-400 text-sm">
+                    Create multiple events at once for a recurring schedule (e.g., every Friday for 12 weeks).
+                    Events will be named with # suffix like "Friday Night Poker #1", "Friday Night Poker #2", etc.
+                  </p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-gray-400 mb-1">Base Event Name *</label>
+                      <input
+                        type="text"
+                        value={bulkEventForm.baseName}
+                        onChange={(e) => setBulkEventForm({ ...bulkEventForm, baseName: e.target.value })}
+                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
+                        placeholder="e.g., Friday Night Poker"
+                      />
+                      <p className="text-gray-500 text-xs mt-1">Events will be named: "{bulkEventForm.baseName || 'Event'} #1", "{bulkEventForm.baseName || 'Event'} #2", etc.</p>
+                    </div>
+                    <div>
+                      <label className="block text-gray-400 mb-1">Day of Week *</label>
+                      <select
+                        value={bulkEventForm.dayOfWeek}
+                        onChange={(e) => setBulkEventForm({ ...bulkEventForm, dayOfWeek: parseInt(e.target.value) })}
+                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
+                      >
+                        <option value={0}>Sunday</option>
+                        <option value={1}>Monday</option>
+                        <option value={2}>Tuesday</option>
+                        <option value={3}>Wednesday</option>
+                        <option value={4}>Thursday</option>
+                        <option value={5}>Friday</option>
+                        <option value={6}>Saturday</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-gray-400 mb-1">Start Date *</label>
+                      <input
+                        type="date"
+                        value={bulkEventForm.startDate}
+                        onChange={(e) => setBulkEventForm({ ...bulkEventForm, startDate: e.target.value })}
+                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
+                      />
+                      <p className="text-gray-500 text-xs mt-1">First event will be on or after this date</p>
+                    </div>
+                    <div>
+                      <label className="block text-gray-400 mb-1">Time *</label>
+                      <input
+                        type="time"
+                        value={bulkEventForm.time}
+                        onChange={(e) => setBulkEventForm({ ...bulkEventForm, time: e.target.value })}
+                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-400 mb-1">Number of Weeks *</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="52"
+                        value={bulkEventForm.numberOfWeeks}
+                        onChange={(e) => setBulkEventForm({ ...bulkEventForm, numberOfWeeks: parseInt(e.target.value) || 1 })}
+                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
+                      />
+                      <p className="text-gray-500 text-xs mt-1">Will create {bulkEventForm.numberOfWeeks} events</p>
+                    </div>
+                    <div>
+                      <label className="block text-gray-400 mb-1">Starting # Number</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={bulkEventForm.startingNumber}
+                        onChange={(e) => setBulkEventForm({ ...bulkEventForm, startingNumber: parseInt(e.target.value) || 1 })}
+                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
+                      />
+                      <p className="text-gray-500 text-xs mt-1">First event will be #{bulkEventForm.startingNumber}</p>
+                    </div>
+                    <div>
+                      <label className="block text-gray-400 mb-1">Venue *</label>
+                      <select
+                        value={bulkEventForm.venueId}
+                        onChange={(e) => setBulkEventForm({ ...bulkEventForm, venueId: e.target.value })}
+                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
+                      >
+                        <option value="">Select a venue</option>
+                        {venues.map((venue) => (
+                          <option key={venue.id} value={venue.id}>{venue.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-gray-400 mb-1">Season *</label>
+                      <select
+                        value={bulkEventForm.seasonId}
+                        onChange={(e) => setBulkEventForm({ ...bulkEventForm, seasonId: e.target.value })}
+                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
+                      >
+                        <option value="">Select a season</option>
+                        {seasons.map((season) => (
+                          <option key={season.id} value={season.id}>{season.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-gray-400 mb-1">Max Players</label>
+                      <input
+                        type="number"
+                        value={bulkEventForm.maxPlayers}
+                        onChange={(e) => setBulkEventForm({ ...bulkEventForm, maxPlayers: parseInt(e.target.value) })}
+                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-400 mb-1">Buy-in ($)</label>
+                      <input
+                        type="number"
+                        value={bulkEventForm.buyIn}
+                        onChange={(e) => setBulkEventForm({ ...bulkEventForm, buyIn: parseFloat(e.target.value) })}
+                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-gray-400 mb-1">Description (optional)</label>
+                      <textarea
+                        value={bulkEventForm.description}
+                        onChange={(e) => setBulkEventForm({ ...bulkEventForm, description: e.target.value })}
+                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
+                        rows={2}
+                        placeholder="Description for all events..."
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <button
+                        type="button"
+                        disabled={bulkCreating || !bulkEventForm.baseName || !bulkEventForm.startDate || !bulkEventForm.venueId || !bulkEventForm.seasonId}
+                        onClick={async () => {
+                          try {
+                            setBulkCreating(true);
+                            setError('');
+                            setMessage('');
+                            const result = await eventsAPI.createBulk(bulkEventForm);
+                            setMessage(result.message);
+                            setBulkEventForm({
+                              baseName: '',
+                              description: '',
+                              startDate: '',
+                              time: '19:00',
+                              dayOfWeek: 5,
+                              numberOfWeeks: 12,
+                              venueId: '',
+                              seasonId: '',
+                              maxPlayers: 50,
+                              buyIn: 0,
+                              startingNumber: 1
+                            });
+                            setShowBulkForm(false);
+                            fetchEvents();
+                            fetchStats();
+                          } catch (err: any) {
+                            setError(err.message || 'Failed to create bulk events');
+                          } finally {
+                            setBulkCreating(false);
+                          }
+                        }}
+                        className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-3 rounded font-semibold"
+                      >
+                        {bulkCreating ? '⏳ Creating Events...' : `🔄 Create ${bulkEventForm.numberOfWeeks} Events`}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Create Single Event Form */}
+            <div className="bg-gray-800 rounded-lg p-6">
+              <h2 className="text-xl font-bold mb-4">➕ Create Single Event</h2>
             {venues.length === 0 || seasons.length === 0 ? (
               <div className="text-yellow-400 bg-yellow-400/10 p-4 rounded">
                 ⚠️ You need to create at least one venue and one season before creating events.

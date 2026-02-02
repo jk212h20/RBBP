@@ -39,7 +39,27 @@ export const bulkResultsSchema = z.object({
   results: z.array(resultEntrySchema).min(1, 'At least one result is required'),
 });
 
+// Bulk event creation schema for recurring events
+export const bulkCreateEventsSchema = z.object({
+  baseName: z.string().min(3, 'Event name must be at least 3 characters'),
+  description: z.string().optional(),
+  startDate: z.string().refine((date) => !isNaN(Date.parse(date)), {
+    message: 'Invalid start date',
+  }),
+  time: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format (HH:MM)'),
+  dayOfWeek: z.number().int().min(0).max(6), // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  numberOfWeeks: z.number().int().min(1).max(52, 'Maximum 52 weeks'),
+  maxPlayers: z.number().int().min(2).max(200).optional().default(50),
+  buyIn: z.number().min(0).optional(),
+  venueId: z.string().min(1, 'Venue is required'),
+  seasonId: z.string().min(1, 'Season is required'),
+  directorId: z.string().optional(),
+  status: z.nativeEnum(EventStatus).optional().default(EventStatus.SCHEDULED),
+  startingNumber: z.number().int().min(1).optional().default(1), // Starting # for naming
+});
+
 export type CreateEventInput = z.infer<typeof createEventSchema>;
 export type UpdateEventInput = z.infer<typeof updateEventSchema>;
 export type ResultEntry = z.infer<typeof resultEntrySchema>;
 export type BulkResults = z.infer<typeof bulkResultsSchema>;
+export type BulkCreateEventsInput = z.infer<typeof bulkCreateEventsSchema>;
