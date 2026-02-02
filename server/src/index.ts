@@ -13,6 +13,7 @@ import standingsRoutes from './routes/standings.routes';
 import adminRoutes from './routes/admin.routes';
 import withdrawalRoutes from './routes/withdrawal.routes';
 import lnurlRoutes from './routes/lnurl.routes';
+import balanceRoutes from './routes/balance.routes';
 
 // Load environment variables
 dotenv.config();
@@ -167,6 +168,9 @@ app.use('/api/withdrawals', withdrawalRoutes);
 
 // LNURL routes (wallet callbacks for LNURL-withdraw protocol)
 app.use('/api/lnurl', lnurlRoutes);
+
+// Balance routes (user Lightning balance management)
+app.use('/api/balance', balanceRoutes);
 
 // ============================================
 // ERROR HANDLING

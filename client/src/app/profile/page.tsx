@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { eventsAPI, authAPI, standingsAPI } from '@/lib/api';
+import { eventsAPI, authAPI, standingsAPI, balanceAPI } from '@/lib/api';
 
 interface UserEvent {
   id: string;
@@ -50,6 +50,17 @@ export default function ProfilePage() {
     wins: 0,
     topThrees: 0,
   });
+  
+  // Lightning balance state
+  const [lightningBalance, setLightningBalance] = useState<number>(0);
+  const [loadingBalance, setLoadingBalance] = useState(true);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [withdrawalData, setWithdrawalData] = useState<{
+    lnurl: string;
+    qrData: string;
+    lightningUri: string;
+    amountSats: number;
+  } | null>(null);
 
   // Check if name has been set (locked)
   const nameIsLocked = user?.nameSetAt != null;
@@ -66,6 +77,7 @@ export default function ProfilePage() {
     if (isAuthenticated) {
       loadMyEvents();
       loadSeasonStanding();
+      loadBalance();
     }
   }, [isAuthenticated]);
 
@@ -77,6 +89,43 @@ export default function ProfilePage() {
       setEditEmail(user.email || '');
     }
   }, [user, needsRealName]);
+
+  const loadBalance = async () => {
+    setLoadingBalance(true);
+    try {
+      const data = await balanceAPI.get();
+      setLightningBalance(data.balanceSats);
+    } catch (err) {
+      console.error('Failed to load balance:', err);
+    } finally {
+      setLoadingBalance(false);
+    }
+  };
+
+  const handleWithdraw = async () => {
+    if (lightningBalance < 100) {
+      setSaveMessage({ type: 'error', text: 'Minimum withdrawal is 100 sats' });
+      return;
+    }
+    
+    setWithdrawing(true);
+    setSaveMessage(null);
+    try {
+      const result = await balanceAPI.withdraw();
+      setWithdrawalData({
+        lnurl: result.lnurl,
+        qrData: result.qrData,
+        lightningUri: result.lightningUri,
+        amountSats: result.withdrawal.amountSats,
+      });
+      // Refresh balance after withdrawal initiated
+      loadBalance();
+    } catch (err: any) {
+      setSaveMessage({ type: 'error', text: err.message || 'Failed to initiate withdrawal' });
+    } finally {
+      setWithdrawing(false);
+    }
+  };
 
   const loadSeasonStanding = async () => {
     try {
@@ -371,6 +420,94 @@ export default function ProfilePage() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Lightning Balance Card */}
+        <div className="bg-gradient-to-r from-yellow-600/20 to-orange-600/20 backdrop-blur rounded-xl border border-yellow-500/30 p-4 md:p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg md:text-xl font-bold text-white flex items-center gap-2">
+              ⚡ Lightning Balance
+            </h2>
+            <button
+              onClick={loadBalance}
+              className="text-yellow-400 hover:text-yellow-300 text-sm"
+            >
+              🔄 Refresh
+            </button>
+          </div>
+          
+          {loadingBalance ? (
+            <div className="flex items-center justify-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-400"></div>
+            </div>
+          ) : (
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="text-center md:text-left">
+                <p className="text-3xl md:text-4xl font-bold text-yellow-400">
+                  {lightningBalance.toLocaleString()} sats
+                </p>
+                <p className="text-yellow-200/60 text-sm">
+                  ≈ ${((lightningBalance / 100000000) * 100000).toFixed(2)} USD
+                </p>
+              </div>
+              
+              {lightningBalance > 0 && !withdrawalData && (
+                <button
+                  onClick={handleWithdraw}
+                  disabled={withdrawing || lightningBalance < 100}
+                  className="bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-black font-bold px-6 py-3 rounded-lg transition w-full md:w-auto"
+                >
+                  {withdrawing ? '⏳ Processing...' : '⚡ Withdraw All'}
+                </button>
+              )}
+              
+              {lightningBalance === 0 && (
+                <p className="text-yellow-200/60 text-sm">No balance to withdraw</p>
+              )}
+            </div>
+          )}
+          
+          {/* Withdrawal QR Code Modal */}
+          {withdrawalData && (
+            <div className="mt-4 p-4 bg-black/30 rounded-lg">
+              <h3 className="text-white font-bold mb-2 text-center">
+                Scan to Withdraw {withdrawalData.amountSats.toLocaleString()} sats
+              </h3>
+              <div className="flex flex-col items-center gap-4">
+                <div className="bg-white p-4 rounded-lg">
+                  <img 
+                    src={withdrawalData.qrData} 
+                    alt="Withdrawal QR Code" 
+                    className="w-48 h-48"
+                  />
+                </div>
+                <div className="text-center">
+                  <p className="text-yellow-200/80 text-sm mb-2">
+                    Scan with your Lightning wallet or click below:
+                  </p>
+                  <a
+                    href={withdrawalData.lightningUri}
+                    className="text-yellow-400 hover:text-yellow-300 underline text-sm break-all"
+                  >
+                    Open in Wallet
+                  </a>
+                </div>
+                <button
+                  onClick={() => {
+                    setWithdrawalData(null);
+                    loadBalance();
+                  }}
+                  className="text-gray-400 hover:text-white text-sm"
+                >
+                  ✕ Close
+                </button>
+              </div>
+            </div>
+          )}
+          
+          <p className="text-yellow-200/50 text-xs mt-4 text-center">
+            💡 Winnings are credited to your balance. Withdraw anytime to your Lightning wallet!
+          </p>
         </div>
 
         {/* Season Points Card */}

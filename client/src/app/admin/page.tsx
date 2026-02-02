@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { adminAPI, venuesAPI, seasonsAPI, eventsAPI, withdrawalsAPI } from '@/lib/api';
 import ImageUpload from '@/components/ImageUpload';
 import WithdrawalsTab from '@/components/WithdrawalsTab';
+import BalanceTab from '@/components/BalanceTab';
 
 interface Stats {
   users: number;
@@ -116,7 +117,7 @@ interface User {
 export default function AdminPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'overview' | 'venues' | 'seasons' | 'events' | 'users' | 'withdrawals' | 'setup'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'venues' | 'seasons' | 'events' | 'users' | 'balances' | 'withdrawals' | 'setup'>('overview');
   const [stats, setStats] = useState<Stats | null>(null);
   const [venues, setVenues] = useState<any[]>([]);
   const [seasons, setSeasons] = useState<any[]>([]);
@@ -568,7 +569,7 @@ export default function AdminPage() {
         {/* Tabs - Scrollable on mobile */}
         <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
           <div className="flex gap-2 mb-6 border-b border-gray-700 pb-4 min-w-max">
-            {['overview', 'users', 'venues', 'seasons', 'events', 'withdrawals'].map((tab) => (
+            {['overview', 'users', 'venues', 'seasons', 'events', 'balances', 'withdrawals'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => {
@@ -1132,6 +1133,11 @@ export default function AdminPage() {
               </ul>
             </div>
           </div>
+        )}
+
+        {/* Balances Tab */}
+        {activeTab === 'balances' && (
+          <BalanceTab users={users} fetchUsers={fetchUsers} setMessage={setMessage} setError={setError} />
         )}
 
         {/* Withdrawals Tab */}

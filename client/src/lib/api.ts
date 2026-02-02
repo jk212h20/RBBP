@@ -329,6 +329,57 @@ export const withdrawalsAPI = {
   getMyById: (id: string) => fetchAPI<any>(`/withdrawals/my/${id}`),
 };
 
+// ============================================
+// BALANCE API (Lightning Balance)
+// ============================================
+export const balanceAPI = {
+  // User endpoints
+  get: () => fetchAPI<{ balanceSats: number }>('/balance'),
+  
+  withdraw: (amountSats?: number) =>
+    fetchAPI<{
+      withdrawal: { id: string; k1: string; amountSats: number; status: string; expiresAt: string };
+      lnurl: string;
+      qrData: string;
+      lightningUri: string;
+    }>('/balance/withdraw', {
+      method: 'POST',
+      body: JSON.stringify({ amountSats }),
+    }),
+  
+  // Admin endpoints
+  getAllUsers: () => fetchAPI<{
+    id: string;
+    name: string;
+    email: string | null;
+    lightningBalanceSats: number;
+    role: string;
+  }[]>('/balance/admin/all'),
+  
+  getUsersWithBalance: () => fetchAPI<{
+    id: string;
+    name: string;
+    email: string | null;
+    lightningBalanceSats: number;
+  }[]>('/balance/admin/with-balance'),
+  
+  getStats: () => fetchAPI<{
+    totalOutstanding: number;
+    usersWithBalance: number;
+    averageBalance: number;
+    maxBalance: number;
+  }>('/balance/admin/stats'),
+  
+  credit: (data: { userId: string; amountSats: number; reason?: string }) =>
+    fetchAPI<{ userId: string; newBalance: number; credited: number }>('/balance/admin/credit', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  
+  getUserBalance: (userId: string) =>
+    fetchAPI<{ userId: string; balanceSats: number }>(`/balance/admin/user/${userId}`),
+};
+
 // Default export for simple usage
 const api = {
   get: <T>(endpoint: string) => fetchAPI<T>(endpoint),
