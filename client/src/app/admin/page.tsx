@@ -57,6 +57,8 @@ export default function AdminPage() {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState('');
 
   // Forms
   const [venueForm, setVenueForm] = useState<VenueForm>({ name: '', address: '', description: '' });
@@ -92,11 +94,16 @@ export default function AdminPage() {
   }, [user]);
 
   const fetchStats = async () => {
+    setStatsLoading(true);
+    setStatsError('');
     try {
       const data = await adminAPI.getStats();
       setStats(data);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch stats:', err);
+      setStatsError(err.message || 'Failed to load stats');
+    } finally {
+      setStatsLoading(false);
     }
   };
 
@@ -293,25 +300,47 @@ export default function AdminPage() {
         )}
 
         {/* Overview Tab */}
-        {activeTab === 'overview' && stats && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="bg-gray-800 rounded-lg p-6">
-              <h3 className="text-gray-400 text-sm">Total Users</h3>
-              <p className="text-3xl font-bold text-green-400">{stats.users}</p>
-            </div>
-            <div className="bg-gray-800 rounded-lg p-6">
-              <h3 className="text-gray-400 text-sm">Venues</h3>
-              <p className="text-3xl font-bold text-blue-400">{stats.venues}</p>
-            </div>
-            <div className="bg-gray-800 rounded-lg p-6">
-              <h3 className="text-gray-400 text-sm">Seasons</h3>
-              <p className="text-3xl font-bold text-purple-400">{stats.seasons}</p>
-            </div>
-            <div className="bg-gray-800 rounded-lg p-6">
-              <h3 className="text-gray-400 text-sm">Events</h3>
-              <p className="text-3xl font-bold text-yellow-400">{stats.events}</p>
-            </div>
-          </div>
+        {activeTab === 'overview' && (
+          <>
+            {statsLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-400 mx-auto"></div>
+                <p className="text-gray-400 mt-2">Loading stats...</p>
+              </div>
+            ) : statsError ? (
+              <div className="bg-red-500/20 border border-red-500 text-red-400 p-4 rounded">
+                <p className="font-bold">Error loading stats:</p>
+                <p>{statsError}</p>
+                <button 
+                  onClick={fetchStats}
+                  className="mt-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : stats ? (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="bg-gray-800 rounded-lg p-6">
+                  <h3 className="text-gray-400 text-sm">Total Users</h3>
+                  <p className="text-3xl font-bold text-green-400">{stats.users}</p>
+                </div>
+                <div className="bg-gray-800 rounded-lg p-6">
+                  <h3 className="text-gray-400 text-sm">Venues</h3>
+                  <p className="text-3xl font-bold text-blue-400">{stats.venues}</p>
+                </div>
+                <div className="bg-gray-800 rounded-lg p-6">
+                  <h3 className="text-gray-400 text-sm">Seasons</h3>
+                  <p className="text-3xl font-bold text-purple-400">{stats.seasons}</p>
+                </div>
+                <div className="bg-gray-800 rounded-lg p-6">
+                  <h3 className="text-gray-400 text-sm">Events</h3>
+                  <p className="text-3xl font-bold text-yellow-400">{stats.events}</p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-gray-400">No stats available</p>
+            )}
+          </>
         )}
 
         {/* Venues Tab */}
@@ -472,7 +501,15 @@ export default function AdminPage() {
                 <p className="text-gray-400 mt-2">Loading users...</p>
               </div>
             ) : users.length === 0 ? (
-              <p className="text-gray-400">No users found.</p>
+              <div className="text-center py-8">
+                <p className="text-gray-400 mb-4">No users found.</p>
+                <button 
+                  onClick={fetchUsers}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
+                >
+                  Reload Users
+                </button>
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
