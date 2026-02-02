@@ -106,56 +106,61 @@ export default function VenueDetailPage() {
       </header>
 
       <main className="max-w-4xl mx-auto p-4 md:p-8">
-        {/* Venue Header */}
+        {/* Venue Header - Side by side layout */}
         <div className="bg-white/10 backdrop-blur rounded-2xl overflow-hidden mb-8">
-          {venue.imageUrl && (
-            <div className="h-64 bg-gray-800">
-              <img 
-                src={venue.imageUrl} 
-                alt={venue.name}
-                className="w-full h-full object-cover"
-              />
-            </div>
-          )}
-          <div className="p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <h1 className="text-3xl font-bold mb-2">{venue.name}</h1>
-                <p className="text-green-400 flex items-center gap-2">
-                  📍 {venue.address}
-                </p>
+          <div className={`flex flex-col ${venue.imageUrl ? 'md:flex-row' : ''}`}>
+            {/* Image - Full display, not cropped */}
+            {venue.imageUrl && (
+              <div className="md:w-1/2 bg-gray-800 flex items-center justify-center p-4">
+                <img 
+                  src={venue.imageUrl} 
+                  alt={venue.name}
+                  className="max-w-full max-h-80 object-contain rounded-lg"
+                />
               </div>
-              {venue.isActive ? (
-                <span className="bg-green-600/30 text-green-400 px-3 py-1 rounded-full text-sm">
-                  Active
-                </span>
-              ) : (
-                <span className="bg-red-600/30 text-red-400 px-3 py-1 rounded-full text-sm">
-                  Inactive
-                </span>
-              )}
-            </div>
-            
-            {venue.description && (
-              <p className="text-gray-300 mt-4">{venue.description}</p>
             )}
+            
+            {/* Details */}
+            <div className={`p-6 ${venue.imageUrl ? 'md:w-1/2' : 'w-full'}`}>
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h1 className="text-3xl font-bold mb-2">{venue.name}</h1>
+                  <p className="text-green-400 flex items-center gap-2">
+                    📍 {venue.address}
+                  </p>
+                </div>
+                {venue.isActive ? (
+                  <span className="bg-green-600/30 text-green-400 px-3 py-1 rounded-full text-sm">
+                    Active
+                  </span>
+                ) : (
+                  <span className="bg-red-600/30 text-red-400 px-3 py-1 rounded-full text-sm">
+                    Inactive
+                  </span>
+                )}
+              </div>
+              
+              {venue.description && (
+                <p className="text-gray-300 mb-4">{venue.description}</p>
+              )}
 
-            <div className="flex flex-wrap gap-4 mt-6">
-              {venue.phone && (
-                <a href={`tel:${venue.phone}`} className="flex items-center gap-2 text-blue-400 hover:text-blue-300">
-                  📞 {venue.phone}
-                </a>
-              )}
-              {venue.email && (
-                <a href={`mailto:${venue.email}`} className="flex items-center gap-2 text-blue-400 hover:text-blue-300">
-                  ✉️ {venue.email}
-                </a>
-              )}
-              {venue.manager && (
-                <span className="flex items-center gap-2 text-gray-400">
-                  👤 Manager: {venue.manager.name}
-                </span>
-              )}
+              <div className="flex flex-wrap gap-4">
+                {venue.phone && (
+                  <a href={`tel:${venue.phone}`} className="flex items-center gap-2 text-blue-400 hover:text-blue-300">
+                    📞 {venue.phone}
+                  </a>
+                )}
+                {venue.email && (
+                  <a href={`mailto:${venue.email}`} className="flex items-center gap-2 text-blue-400 hover:text-blue-300">
+                    ✉️ {venue.email}
+                  </a>
+                )}
+                {venue.manager && (
+                  <span className="flex items-center gap-2 text-gray-400">
+                    👤 Manager: {venue.manager.name}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
