@@ -342,8 +342,8 @@ export class EventService {
   /**
    * Cancel signup for an event
    * Applies point penalties based on timing:
-   * - Early bird (first 5): -2 points for early cancel, -4 for late cancel
-   * - Regular: -1 point for early cancel, -2 for late cancel
+   * - Early cancel (24+ hrs): Remove points earned (early bird: -2, regular: -1) → net 0
+   * - Late cancel (<24 hrs): Remove points + 1 penalty (early bird: -3, regular: -2) → net -1
    */
   async cancelSignup(eventId: string, userId: string) {
     const signup = await prisma.eventSignup.findUnique({
@@ -400,15 +400,15 @@ export class EventService {
     // Apply point penalty based on timing
     // If event hasn't started yet, apply cancellation penalty
     if (event.status !== EventStatus.IN_PROGRESS && event.status !== EventStatus.COMPLETED) {
-      // Penalty is proportional to points earned
-      const basePoints = wasEarlyBird ? EARLY_BIRD_REGISTRATION_POINTS : REGISTRATION_POINTS;
+      // Points earned at registration
+      const pointsEarned = wasEarlyBird ? EARLY_BIRD_REGISTRATION_POINTS : REGISTRATION_POINTS;
       
       if (hoursUntilEvent >= 24) {
-        // Early cancellation: just remove the registration points
-        await this.adjustUserSeasonPoints(userId, event.seasonId, -basePoints);
+        // Early cancellation: just remove the registration points (net 0)
+        await this.adjustUserSeasonPoints(userId, event.seasonId, -pointsEarned);
       } else {
-        // Late cancellation: double penalty
-        await this.adjustUserSeasonPoints(userId, event.seasonId, -basePoints * 2);
+        // Late cancellation: remove points + 1 penalty (net -1)
+        await this.adjustUserSeasonPoints(userId, event.seasonId, -(pointsEarned + 1));
       }
     }
 
@@ -684,7 +684,7 @@ export class EventService {
   /**
    * Mark no-shows for an event and apply penalties
    * Called when event is completed - anyone registered but not checked in is a no-show
-   * Penalty is 3x the points they earned (early bird: -6, regular: -3)
+   * No-show penalty: Remove points earned + 2 penalty (early bird: -4, regular: -3) → net -2
    */
   async processNoShows(eventId: string) {
     const event = await prisma.event.findUnique({
@@ -729,9 +729,9 @@ export class EventService {
         data: { status: SignupStatus.NO_SHOW },
       });
 
-      // Apply no-show penalty (3x the points they earned)
-      const basePoints = wasEarlyBird ? EARLY_BIRD_REGISTRATION_POINTS : REGISTRATION_POINTS;
-      await this.adjustUserSeasonPoints(signup.userId, event.seasonId, -basePoints * 3);
+      // Apply no-show penalty: remove points earned + 2 penalty (net -2)
+      const pointsEarned = wasEarlyBird ? EARLY_BIRD_REGISTRATION_POINTS : REGISTRATION_POINTS;
+      await this.adjustUserSeasonPoints(signup.userId, event.seasonId, -(pointsEarned + 2));
     }
 
     return { noShowCount: noShows.length };
