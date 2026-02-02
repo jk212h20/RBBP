@@ -21,15 +21,21 @@ export default function LoginPage() {
   const { login, loginWithToken, isAuthenticated } = useAuth();
   const router = useRouter();
 
+  const [lightningError, setLightningError] = useState('');
+
   // Auto-load Lightning QR code on mount
   useEffect(() => {
     const loadLightningQR = async () => {
       try {
+        setLightningError('');
+        console.log('Requesting Lightning challenge...');
         const challenge = await authAPI.lightningChallenge();
+        console.log('Lightning challenge received:', challenge);
         setLightningData(challenge);
         setPollingLightning(true);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to load Lightning QR:', err);
+        setLightningError(err.message || 'Failed to load Lightning QR');
       }
     };
     
@@ -88,12 +94,16 @@ export default function LoginPage() {
 
   const handleRefreshLightning = async () => {
     setError('');
+    setLightningError('');
     try {
+      console.log('Refreshing Lightning challenge...');
       const challenge = await authAPI.lightningChallenge();
+      console.log('Lightning challenge refreshed:', challenge);
       setLightningData(challenge);
       setPollingLightning(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to refresh Lightning QR');
+    } catch (err: any) {
+      console.error('Failed to refresh Lightning QR:', err);
+      setLightningError(err.message || 'Failed to refresh Lightning QR');
     }
   };
 
@@ -146,9 +156,22 @@ export default function LoginPage() {
           )}
 
           {/* Loading state for Lightning */}
-          {!lightningData && (
+          {!lightningData && !lightningError && (
             <div className="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200 text-center">
               <p className="text-sm text-gray-500 animate-pulse">⚡ Loading Lightning QR...</p>
+            </div>
+          )}
+
+          {/* Lightning Error */}
+          {lightningError && (
+            <div className="mb-6 p-4 bg-red-50 rounded-xl border border-red-200 text-center">
+              <p className="text-sm text-red-600 mb-2">⚡ Lightning Error: {lightningError}</p>
+              <button
+                onClick={handleRefreshLightning}
+                className="text-sm text-red-500 hover:text-red-700 underline"
+              >
+                Try Again
+              </button>
             </div>
           )}
 
