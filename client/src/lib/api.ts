@@ -262,6 +262,54 @@ export const standingsAPI = {
   getUserHistory: (userId: string) => fetchAPI<any[]>(`/standings/user/${userId}/history`),
 };
 
+// ============================================
+// WITHDRAWALS API (Lightning Payouts)
+// ============================================
+export const withdrawalsAPI = {
+  // Admin endpoints
+  create: (data: { userId: string; amountSats: number; description?: string; expiresInHours?: number }) =>
+    fetchAPI<{ 
+      withdrawal: { id: string; k1: string; amountSats: number; status: string; expiresAt: string };
+      lnurl: string;
+      qrData: string;
+      lightningUri: string;
+    }>('/withdrawals', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  
+  getAll: (filters?: { status?: string; userId?: string; limit?: number }) => {
+    const params = new URLSearchParams();
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.userId) params.append('userId', filters.userId);
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return fetchAPI<any[]>(`/withdrawals${query}`);
+  },
+  
+  getById: (id: string) => fetchAPI<any>(`/withdrawals/${id}`),
+  
+  cancel: (id: string) => fetchAPI<{ message: string }>(`/withdrawals/${id}`, { method: 'DELETE' }),
+  
+  getStats: () => fetchAPI<{ pending: number; paid: number; failed: number; totalPaidSats: number }>('/withdrawals/stats'),
+  
+  getNodeStatus: () => fetchAPI<{ 
+    configured: boolean; 
+    connected: boolean; 
+    nodeAlias?: string; 
+    balanceSats?: number;
+    pendingSats?: number;
+    error?: string;
+  }>('/withdrawals/node-status'),
+  
+  cleanup: () => fetchAPI<{ message: string }>('/withdrawals/cleanup', { method: 'POST' }),
+  
+  // User endpoints
+  getMy: () => fetchAPI<any[]>('/withdrawals/my'),
+  
+  getMyById: (id: string) => fetchAPI<any>(`/withdrawals/my/${id}`),
+};
+
 // Default export for simple usage
 const api = {
   get: <T>(endpoint: string) => fetchAPI<T>(endpoint),

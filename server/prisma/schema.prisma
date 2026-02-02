@@ -54,6 +54,7 @@ model User {
   standings         Standing[]
   earnedAchievements UserAchievement[]
   comments          Comment[]
+  withdrawals       Withdrawal[]
 
   @@map("users")
 }
@@ -316,4 +317,36 @@ model Comment {
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@map("comments")
+}
+
+// ============================================
+// LIGHTNING WITHDRAWALS
+// ============================================
+
+enum WithdrawalStatus {
+  PENDING    // Created, waiting for user to claim
+  CLAIMED    // User submitted invoice, payment in progress
+  PAID       // Successfully paid
+  EXPIRED    // Timed out
+  FAILED     // Payment failed
+}
+
+model Withdrawal {
+  id          String           @id @default(cuid())
+  k1          String           @unique  // LNURL secret identifier
+  userId      String                    // Who this withdrawal is for
+  amountSats  Int                       // Amount in satoshis
+  description String?                   // e.g., "1st Place - Tuesday Poker"
+  status      WithdrawalStatus @default(PENDING)
+  invoice     String?                   // BOLT11 invoice when claimed
+  paymentHash String?                   // Payment hash after successful payment
+  paidAt      DateTime?
+  expiresAt   DateTime
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("withdrawals")
 }

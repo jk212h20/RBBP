@@ -91,8 +91,11 @@ export default function EventDetailPage() {
 
   useEffect(() => {
     if (event && user) {
+      // Check if user is in the signups list (regardless of status)
       const userSignup = event.signups.find(s => s.user.id === user.id);
       setIsSignedUp(!!userSignup);
+    } else if (!user) {
+      setIsSignedUp(false);
     }
   }, [event, user]);
 

@@ -25,6 +25,9 @@ interface Event {
   _count: {
     signups: number;
   };
+  signups?: {
+    userId: string;
+  }[];
 }
 
 interface Season {
@@ -89,6 +92,20 @@ export default function EventsPage() {
     } catch (err: any) {
       alert(err.message || 'Failed to sign up');
     }
+  };
+
+  const handleCancelSignup = async (eventId: string) => {
+    try {
+      await eventsAPI.cancelSignup(eventId);
+      loadEvents(); // Refresh
+    } catch (err: any) {
+      alert(err.message || 'Failed to cancel signup');
+    }
+  };
+
+  const isUserSignedUp = (event: Event): boolean => {
+    if (!user || !event.signups) return false;
+    return event.signups.some(signup => signup.userId === user.id);
   };
 
   const formatDate = (dateString: string) => {
@@ -200,12 +217,21 @@ export default function EventsPage() {
                       View Details
                     </Link>
                     {(event.status === 'SCHEDULED' || event.status === 'REGISTRATION_OPEN') && (
-                      <button
-                        onClick={() => handleSignup(event.id)}
-                        className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition"
-                      >
-                        Sign Up
-                      </button>
+                      isUserSignedUp(event) ? (
+                        <button
+                          onClick={() => handleCancelSignup(event.id)}
+                          className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition"
+                        >
+                          Unregister
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleSignup(event.id)}
+                          className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition"
+                        >
+                          Sign Up
+                        </button>
+                      )
                     )}
                   </div>
                 </div>

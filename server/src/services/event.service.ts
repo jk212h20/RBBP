@@ -58,6 +58,11 @@ export class EventService {
             name: true,
           },
         },
+        signups: {
+          select: {
+            userId: true,
+          },
+        },
         _count: {
           select: {
             signups: true,

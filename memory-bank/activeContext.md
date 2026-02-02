@@ -2,21 +2,22 @@
 
 ## Current State (Updated: Feb 2, 2026)
 
-The Roatan Poker League application is **LIVE and DEPLOYED** on Railway with **Phase 2 features + Season Points System complete**!
+The Roatan Poker League application is **LIVE and DEPLOYED** on Railway with **Lightning Withdrawals (LNURL-withdraw) now implemented**!
 
 ### What's Working ✅
 1. **Email/Password Authentication** - Users can register and login with email/password
 2. **Lightning Login (LNURL-auth)** - Bitcoin Lightning wallet authentication (QR auto-shows on login)
-3. **Profile Editing** - Users can update their name and email (especially useful for Lightning users)
-4. **Full Frontend** - Next.js 16 app with poker-themed UI
-5. **Full Backend** - Express.js API with PostgreSQL database
-6. **Venues Management** - Full CRUD for poker venues
-7. **Seasons Management** - Create/manage seasons with points structure
-8. **Events Management** - Create events, signups, check-ins, results
-9. **Leaderboards** - Real-time standings with automatic calculation
-10. **Tournament Director Panel** - Full results entry UI for TDs/Admins
-11. **Season-Based Points System** - Points per season with registration bonuses/penalties
-12. **Improved Admin Dashboard** - Clickable stat panels with rich overview
+3. **Lightning Withdrawals (LNURL-withdraw)** - Admin can send sats to players via QR code
+4. **Profile Editing** - Users can update their name and email
+5. **Full Frontend** - Next.js 16 app with poker-themed UI
+6. **Full Backend** - Express.js API with PostgreSQL database
+7. **Venues Management** - Full CRUD for poker venues
+8. **Seasons Management** - Create/manage seasons with points structure
+9. **Events Management** - Create events, signups, check-ins, results
+10. **Leaderboards** - Real-time standings with automatic calculation
+11. **Tournament Director Panel** - Full results entry UI for TDs/Admins
+12. **Season-Based Points System** - Points per season with registration bonuses/penalties
+13. **Admin Withdrawals Tab** - Create and manage Lightning payouts
 
 ### Live URLs
 - **Frontend**: https://client-production-41b3.up.railway.app
@@ -27,64 +28,93 @@ The Roatan Poker League application is **LIVE and DEPLOYED** on Railway with **P
 
 ## Latest Changes (Feb 2, 2026)
 
-### Season-Based Points System
-- **Points are now per-season** - When a new season starts, users start fresh with 0 points
-- **Registration Points**: +1 point for registering to an event
-- **Cancellation Penalties**:
-  - Early cancellation (24+ hours before): -1 point (removes registration bonus)
-  - Late cancellation (less than 24 hours): -2 points (penalty)
-  - No-show: -3 points (registered but didn't attend)
-- **User Dashboard**: Shows current season points prominently
-- **Profile Page**: Shows season points card with rank, events, wins, knockouts
-- **API Endpoints**:
-  - `GET /api/standings/my` - Get current user's standing for active season
-  - `GET /api/standings/user/:userId/history` - Admin endpoint for all seasons history
+### Lightning Withdrawals (LNURL-withdraw) - NEW!
+Players can now receive sats from the site using the LNURL-withdraw protocol. This is the standard way to send Bitcoin Lightning payments - the admin creates a withdrawal, and the player scans a QR code with their wallet to receive the sats.
 
-### Admin Dashboard Improvements
-- **Clickable Stat Panels**: The 4 stat cards (Users, Venues, Seasons, Events) are now clickable buttons that navigate to their respective tabs
-- **Rich Overview**:
-  - Active Season info card showing current season name, dates, and stats
-  - Quick Stats grid showing active venues, total seasons, upcoming/completed events
-  - Upcoming Events list showing next 5 events with status and signup counts
-- **Visual Improvements**: Hover effects, icons, and "Click to manage →" hints
+**Why LNURL-withdraw instead of bolt11?**
+- **Better UX**: Player just scans a QR code - no need to generate an invoice
+- **Standard Protocol**: Works with all major Lightning wallets (Phoenix, Wallet of Satoshi, Zeus, etc.)
+- **Admin Control**: Admin creates the withdrawal, player claims it
+- **Expiration**: Withdrawals expire after 24 hours if not claimed
+
+**New Backend Components:**
+- `Withdrawal` model in Prisma schema (status: PENDING → CLAIMED → PAID)
+- `voltage.service.ts` - LND REST API integration for Voltage nodes
+- `withdrawal.service.ts` - Business logic for creating/managing withdrawals
+- `lnurl.routes.ts` - LNURL-withdraw protocol endpoints (wallet callbacks)
+- `withdrawal.routes.ts` - Admin API for managing withdrawals
+
+**New Frontend Components:**
+- `WithdrawalsTab` component in admin panel
+- Shows Lightning node status (connected/balance)
+- Create withdrawal form (select user, amount, description)
+- QR code modal for sharing with players
+- Withdrawal history with status badges
+
+**Environment Variables Required:**
+```
+VOLTAGE_REST_HOST=https://your-node.voltage.cloud:8080
+VOLTAGE_MACAROON=your-admin-macaroon-hex-encoded
+LNURL_BASE_URL=https://rbbp-production.up.railway.app/api
+```
+
+**API Endpoints:**
+- `POST /api/withdrawals` - Create withdrawal (admin)
+- `GET /api/withdrawals` - List all withdrawals (admin)
+- `GET /api/withdrawals/stats` - Get withdrawal statistics (admin)
+- `GET /api/withdrawals/node-status` - Check Lightning node connection (admin)
+- `DELETE /api/withdrawals/:id` - Cancel pending withdrawal (admin)
+- `GET /api/withdrawals/my` - Get user's withdrawals
+- `GET /api/lnurl/withdraw/:k1` - LNURL-withdraw callback (wallet)
+- `GET /api/lnurl/withdraw/:k1/callback` - Invoice submission (wallet)
 
 ---
 
-## Points System Details
+## How Lightning Withdrawals Work
 
-### How Points Work
-1. **Registration**: User registers for event → +1 point
-2. **Early Cancel**: User cancels 24+ hours before → -1 point (net 0)
-3. **Late Cancel**: User cancels <24 hours before → -2 points (net -1)
-4. **No-Show**: User registered but didn't check in → -3 points (net -2)
-5. **Event Results**: Points from finishing position + knockouts (per season config)
+### Flow:
+1. **Admin creates withdrawal** in admin panel (selects user, enters amount)
+2. **System generates LNURL** with unique k1 identifier
+3. **Admin shows QR code** to player (or sends link)
+4. **Player scans with wallet** (Phoenix, WoS, Zeus, etc.)
+5. **Wallet calls LNURL endpoint** to get withdrawal parameters
+6. **Wallet generates invoice** and submits to callback
+7. **Server pays invoice** via Voltage LND node
+8. **Withdrawal marked PAID** in database
 
-### Implementation
-- Points stored in `Standing` table (already per-season via `seasonId`)
-- `adjustUserSeasonPoints()` method in EventService handles point changes
-- `processNoShows()` method marks no-shows and applies penalties
-- Points never go below 0
+### Withdrawal Statuses:
+- `PENDING` - Created, waiting for player to claim
+- `CLAIMED` - Player's wallet has requested payment
+- `PAID` - Invoice paid successfully
+- `EXPIRED` - Not claimed within 24 hours
+- `FAILED` - Payment failed
 
 ---
 
-## Phase 2 Features Completed
+## Architecture Summary
 
-### Backend APIs
-- **Venues** (`/api/venues`) - Full CRUD
-- **Seasons** (`/api/seasons`) - Full CRUD with standings
-- **Events** (`/api/events`) - Full CRUD with signups/results + point adjustments
-- **Profile** (`/api/auth/profile`) - Update user name/email
-- **Standings** (`/api/standings`) - Current standings, user standings, history
+### Backend (server/)
+- **Framework**: Express.js with TypeScript
+- **Database**: PostgreSQL on Railway
+- **ORM**: Prisma
+- **Auth**: JWT tokens + Lightning LNURL-auth
+- **Lightning**: Voltage LND node via REST API
+- **Key Files**:
+  - `src/index.ts` - Main server entry
+  - `src/routes/` - auth, venue, season, event, standings, withdrawal, lnurl routes
+  - `src/services/` - Business logic
+  - `src/services/voltage.service.ts` - LND REST API client
+  - `src/services/withdrawal.service.ts` - Withdrawal business logic
+  - `prisma/schema.prisma` - Database schema with Withdrawal model
 
-### Frontend Pages
-- `/events` - Events list with season filtering
-- `/events/[id]` - Event detail with signup/cancel + TD Panel
-- `/leaderboard` - Season standings
-- `/profile` - User profile with season points card
-- `/dashboard` - User dashboard with season points display
-- `/admin` - Admin panel with clickable overview panels
-- Updated homepage with upcoming events & top players
-- Login page auto-shows Lightning QR (no click required)
+### Frontend (client/)
+- **Framework**: Next.js 16 with TypeScript
+- **Styling**: Tailwind CSS
+- **State**: React Context for auth
+- **Key Files**:
+  - `src/app/admin/page.tsx` - Admin with Withdrawals tab
+  - `src/components/WithdrawalsTab.tsx` - Withdrawal management UI
+  - `src/lib/api.ts` - API client with withdrawalsAPI
 
 ---
 
@@ -96,46 +126,23 @@ The Google OAuth UI is complete but needs credentials:
 - Need `GOOGLE_CLIENT_SECRET`
 - Redirect URI to configure: `https://rbbp-production.up.railway.app/api/auth/google/callback`
 
----
-
-## Architecture Summary
-
-### Backend (server/)
-- **Framework**: Express.js with TypeScript
-- **Database**: PostgreSQL on Railway
-- **ORM**: Prisma
-- **Auth**: JWT tokens + Lightning LNURL-auth
-- **Key Files**:
-  - `src/index.ts` - Main server entry
-  - `src/routes/` - auth, venue, season, event, standings routes
-  - `src/services/` - Business logic (event.service.ts has points logic)
-  - `src/validators/` - Zod schemas
-  - `prisma/schema.prisma` - Database schema
-
-### Frontend (client/)
-- **Framework**: Next.js 16 with TypeScript
-- **Styling**: Tailwind CSS
-- **State**: React Context for auth
-- **Key Files**:
-  - `src/app/page.tsx` - Homepage
-  - `src/app/events/` - Events pages
-  - `src/app/events/[id]/page.tsx` - Event detail with TD Panel
-  - `src/app/leaderboard/` - Standings
-  - `src/app/profile/page.tsx` - Profile with season points
-  - `src/app/dashboard/page.tsx` - Dashboard with season points
-  - `src/app/admin/page.tsx` - Admin with clickable overview
-  - `src/app/login/page.tsx` - Login with auto Lightning QR
-  - `src/lib/api.ts` - API client
+### Voltage Node Setup
+To enable Lightning withdrawals in production:
+1. Create a Voltage node (or use existing LND node)
+2. Get the REST API host URL
+3. Get the admin macaroon (hex encoded)
+4. Add to Railway environment variables
 
 ---
 
 ## Next Steps When Returning
 
-1. **Google OAuth** - Once credentials are provided
-2. **Achievement/Badge System** - Display earned badges on profile
-3. **Email Notifications** - For event reminders, results
-4. **Points History Page** - Admin view of user points across all seasons
-5. **Production Hardening**:
+1. **Voltage Node Setup** - Configure production Lightning node
+2. **User Withdrawal View** - Show pending withdrawals on user dashboard
+3. **Google OAuth** - Once credentials are provided
+4. **Achievement/Badge System** - Display earned badges on profile
+5. **Email Notifications** - For event reminders, results
+6. **Production Hardening**:
    - Replace MemoryStore session with Redis
    - Add rate limiting per endpoint
    - Set up proper logging

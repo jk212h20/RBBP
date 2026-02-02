@@ -11,6 +11,8 @@ import seasonRoutes from './routes/season.routes';
 import eventRoutes from './routes/event.routes';
 import standingsRoutes from './routes/standings.routes';
 import adminRoutes from './routes/admin.routes';
+import withdrawalRoutes from './routes/withdrawal.routes';
+import lnurlRoutes from './routes/lnurl.routes';
 
 // Load environment variables
 dotenv.config();
@@ -159,6 +161,12 @@ app.use('/api/standings', standingsRoutes);
 
 // Admin routes
 app.use('/api/admin', adminRoutes);
+
+// Withdrawal routes (admin API for managing withdrawals)
+app.use('/api/withdrawals', withdrawalRoutes);
+
+// LNURL routes (wallet callbacks for LNURL-withdraw protocol)
+app.use('/api/lnurl', lnurlRoutes);
 
 // ============================================
 // ERROR HANDLING
