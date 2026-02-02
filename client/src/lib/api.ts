@@ -83,24 +83,31 @@ export const getGoogleAuthUrl = () => `${API_URL}/auth/google`;
 // VENUES API
 // ============================================
 export const venuesAPI = {
-  getAll: () => fetchAPI<any[]>('/venues'),
+  getAll: (includeInactive = false) => 
+    fetchAPI<any[]>(`/venues${includeInactive ? '?includeInactive=true' : ''}`),
   
   getById: (id: string) => fetchAPI<any>(`/venues/${id}`),
   
-  create: (data: { name: string; address: string; description?: string; phone?: string; email?: string }) =>
+  create: (data: { name: string; address: string; description?: string; phone?: string; email?: string; managerId?: string }) =>
     fetchAPI<any>('/venues', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   
-  update: (id: string, data: Partial<{ name: string; address: string; description?: string; phone?: string; email?: string }>) =>
+  update: (id: string, data: Partial<{ name: string; address: string; description?: string; phone?: string; email?: string; isActive?: boolean }>) =>
     fetchAPI<any>(`/venues/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
   
-  delete: (id: string) =>
-    fetchAPI<{ message: string }>(`/venues/${id}`, { method: 'DELETE' }),
+  delete: (id: string, hard = false) =>
+    fetchAPI<{ message: string }>(`/venues/${id}${hard ? '?hard=true' : ''}`, { method: 'DELETE' }),
+  
+  assignManager: (venueId: string, managerId: string | null) =>
+    fetchAPI<any>(`/venues/${venueId}/manager`, {
+      method: 'PUT',
+      body: JSON.stringify({ managerId }),
+    }),
 };
 
 // ============================================
@@ -230,6 +237,12 @@ export const adminAPI = {
     fetchAPI<any>(`/admin/users/${userId}/role`, {
       method: 'PUT',
       body: JSON.stringify({ role }),
+    }),
+  
+  updateUserStatus: (userId: string, isActive: boolean) =>
+    fetchAPI<any>(`/admin/users/${userId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ isActive }),
     }),
 };
 

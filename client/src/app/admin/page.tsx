@@ -13,10 +13,30 @@ interface Stats {
   seasons: number;
 }
 
+interface Venue {
+  id: string;
+  name: string;
+  address: string;
+  description: string | null;
+  isActive: boolean;
+  manager?: { id: string; name: string } | null;
+  _count?: { events: number };
+}
+
 interface VenueForm {
   name: string;
   address: string;
   description: string;
+}
+
+interface Season {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+  pointsStructure: Record<string, number>;
+  _count?: { events: number; standings: number };
 }
 
 interface SeasonForm {
@@ -34,6 +54,33 @@ interface EventForm {
   seasonId: string;
   maxPlayers: number;
   buyIn: number;
+}
+
+interface Event {
+  id: string;
+  name: string;
+  description: string | null;
+  dateTime: string;
+  status: 'SCHEDULED' | 'REGISTRATION_OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  maxPlayers: number;
+  buyIn: number | null;
+  venue: { id: string; name: string };
+  season: { id: string; name: string };
+  _count: { signups: number; results: number };
+}
+
+interface Signup {
+  id: string;
+  status: string;
+  registeredAt: string;
+  checkedInAt: string | null;
+  user: { id: string; name: string; email: string | null };
+}
+
+interface ResultEntry {
+  userId: string;
+  position: number;
+  knockouts: number;
 }
 
 interface User {
@@ -78,6 +125,21 @@ export default function AdminPage() {
     buyIn: 0 
   });
   const [setupKey, setSetupKey] = useState('');
+  
+  // Edit modals
+  const [editingVenue, setEditingVenue] = useState<Venue | null>(null);
+  const [editVenueForm, setEditVenueForm] = useState<VenueForm>({ name: '', address: '', description: '' });
+  const [editingSeason, setEditingSeason] = useState<Season | null>(null);
+  const [editSeasonForm, setEditSeasonForm] = useState<SeasonForm>({ name: '', startDate: '', endDate: '', pointsStructure: '' });
+  
+  // Event management state
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [eventSignups, setEventSignups] = useState<Signup[]>([]);
+  const [loadingSignups, setLoadingSignups] = useState(false);
+  const [resultsMode, setResultsMode] = useState(false);
+  const [resultEntries, setResultEntries] = useState<ResultEntry[]>([]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -165,6 +227,14 @@ export default function AdminPage() {
 
   const handleCreateVenue = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    
+    // Validate required fields before submitting
+    if (!venueForm.name.trim() || !venueForm.address.trim()) {
+      setError('Please fill in all required fields');
+      return;
+    }
+    
     try {
       setError('');
       setMessage('');
@@ -213,6 +283,187 @@ export default function AdminPage() {
       fetchStats();
     } catch (err: any) {
       setError(err.message || 'Failed to create event');
+    }
+  };
+
+  // Venue edit/delete handlers
+  const handleEditVenue = (venue: Venue) => {
+    setEditingVenue(venue);
+    setEditVenueForm({
+      name: venue.name,
+      address: venue.address,
+      description: venue.description || ''
+    });
+  };
+
+  const handleUpdateVenue = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingVenue) return;
+    try {
+      setError('');
+      setMessage('');
+      await venuesAPI.update(editingVenue.id, editVenueForm);
+      setMessage('Venue updated successfully!');
+      setEditingVenue(null);
+      fetchVenues();
+    } catch (err: any) {
+      setError(err.message || 'Failed to update venue');
+    }
+  };
+
+  const handleDeleteVenue = async (venueId: string) => {
+    if (!confirm('Are you sure you want to delete this venue?')) return;
+    try {
+      setError('');
+      setMessage('');
+      await venuesAPI.delete(venueId);
+      setMessage('Venue deleted successfully!');
+      fetchVenues();
+      fetchStats();
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete venue');
+    }
+  };
+
+  // Season edit/delete handlers
+  const handleEditSeason = (season: Season) => {
+    setEditingSeason(season);
+    setEditSeasonForm({
+      name: season.name,
+      startDate: season.startDate.split('T')[0],
+      endDate: season.endDate.split('T')[0],
+      pointsStructure: JSON.stringify(season.pointsStructure, null, 2)
+    });
+  };
+
+  const handleUpdateSeason = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSeason) return;
+    try {
+      setError('');
+      setMessage('');
+      await seasonsAPI.update(editingSeason.id, {
+        name: editSeasonForm.name,
+        startDate: editSeasonForm.startDate,
+        endDate: editSeasonForm.endDate
+      });
+      setMessage('Season updated successfully!');
+      setEditingSeason(null);
+      fetchSeasons();
+    } catch (err: any) {
+      setError(err.message || 'Failed to update season');
+    }
+  };
+
+  const handleActivateSeason = async (seasonId: string) => {
+    try {
+      setError('');
+      setMessage('');
+      await seasonsAPI.activate(seasonId);
+      setMessage('Season activated successfully!');
+      fetchSeasons();
+    } catch (err: any) {
+      setError(err.message || 'Failed to activate season');
+    }
+  };
+
+  const handleDeleteSeason = async (seasonId: string) => {
+    if (!confirm('Are you sure you want to delete this season? This cannot be undone.')) return;
+    try {
+      setError('');
+      setMessage('');
+      await seasonsAPI.delete(seasonId);
+      setMessage('Season deleted successfully!');
+      fetchSeasons();
+      fetchStats();
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete season');
+    }
+  };
+
+  // Event management functions
+  const fetchEvents = async () => {
+    setLoadingEvents(true);
+    try {
+      const data = await eventsAPI.getAll();
+      setEvents(data);
+    } catch (err) {
+      console.error('Failed to fetch events:', err);
+    } finally {
+      setLoadingEvents(false);
+    }
+  };
+
+  const handleStatusChange = async (eventId: string, newStatus: string) => {
+    try {
+      setError('');
+      setMessage('');
+      await eventsAPI.updateStatus(eventId, newStatus);
+      setMessage('Event status updated!');
+      fetchEvents();
+    } catch (err: any) {
+      setError(err.message || 'Failed to update status');
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!confirm('Delete this event? This will remove all signups and results.')) return;
+    try {
+      setError('');
+      setMessage('');
+      await eventsAPI.delete(eventId);
+      setMessage('Event deleted!');
+      fetchEvents();
+      fetchStats();
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete event');
+    }
+  };
+
+  const openEventDetails = async (event: Event) => {
+    setSelectedEvent(event);
+    setResultsMode(false);
+    setLoadingSignups(true);
+    try {
+      const signups = await eventsAPI.getSignups(event.id);
+      setEventSignups(signups);
+      // Initialize result entries from signups
+      setResultEntries(signups.map((s: Signup, i: number) => ({
+        userId: s.user.id,
+        position: i + 1,
+        knockouts: 0
+      })));
+    } catch (err) {
+      console.error('Failed to fetch signups:', err);
+    } finally {
+      setLoadingSignups(false);
+    }
+  };
+
+  const handleCheckIn = async (userId: string) => {
+    if (!selectedEvent) return;
+    try {
+      setError('');
+      await eventsAPI.checkIn(selectedEvent.id, userId);
+      setMessage('Player checked in!');
+      const signups = await eventsAPI.getSignups(selectedEvent.id);
+      setEventSignups(signups);
+    } catch (err: any) {
+      setError(err.message || 'Failed to check in player');
+    }
+  };
+
+  const handleSubmitResults = async () => {
+    if (!selectedEvent) return;
+    try {
+      setError('');
+      setMessage('');
+      await eventsAPI.enterResults(selectedEvent.id, resultEntries);
+      setMessage('Results saved! Standings updated.');
+      setSelectedEvent(null);
+      fetchEvents();
+    } catch (err: any) {
+      setError(err.message || 'Failed to save results');
     }
   };
 
@@ -273,6 +524,9 @@ export default function AdminPage() {
                   setActiveTab(tab as any);
                   if (tab === 'users' && users.length === 0) {
                     fetchUsers();
+                  }
+                  if (tab === 'events' && events.length === 0) {
+                    fetchEvents();
                   }
                 }}
                 className={`px-4 py-2 rounded-t font-semibold capitalize whitespace-nowrap ${
@@ -349,7 +603,7 @@ export default function AdminPage() {
             {/* Create Venue Form */}
             <div className="bg-gray-800 rounded-lg p-6">
               <h2 className="text-xl font-bold mb-4">Create New Venue</h2>
-              <form onSubmit={handleCreateVenue} className="space-y-4">
+              <form onSubmit={handleCreateVenue} className="space-y-4" autoComplete="off">
                 <div>
                   <label className="block text-gray-400 mb-1">Name *</label>
                   <input
@@ -384,7 +638,8 @@ export default function AdminPage() {
                 </div>
                 <button
                   type="submit"
-                  className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded font-semibold"
+                  disabled={!venueForm.name.trim() || !venueForm.address.trim()}
+                  className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-3 rounded font-semibold"
                 >
                   Create Venue
                 </button>
@@ -398,10 +653,31 @@ export default function AdminPage() {
                 {venues.length === 0 ? (
                   <p className="text-gray-400">No venues yet. Create one!</p>
                 ) : (
-                  venues.map((venue) => (
+                  venues.map((venue: Venue) => (
                     <div key={venue.id} className="bg-gray-700 p-3 rounded">
-                      <h3 className="font-semibold">{venue.name}</h3>
-                      <p className="text-gray-400 text-sm">{venue.address}</p>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-semibold">{venue.name}</h3>
+                          <p className="text-gray-400 text-sm">{venue.address}</p>
+                          {venue._count?.events !== undefined && (
+                            <p className="text-gray-500 text-xs mt-1">{venue._count.events} events</p>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleEditVenue(venue)}
+                            className="text-blue-400 hover:text-blue-300 text-sm"
+                          >
+                            ✏️ Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteVenue(venue.id)}
+                            className="text-red-400 hover:text-red-300 text-sm"
+                          >
+                            🗑️ Delete
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   ))
                 )}
@@ -473,15 +749,44 @@ export default function AdminPage() {
                 {seasons.length === 0 ? (
                   <p className="text-gray-400">No seasons yet. Create one!</p>
                 ) : (
-                  seasons.map((season) => (
+                  seasons.map((season: Season) => (
                     <div key={season.id} className="bg-gray-700 p-3 rounded">
-                      <h3 className="font-semibold">{season.name}</h3>
-                      <p className="text-gray-400 text-sm">
-                        {new Date(season.startDate).toLocaleDateString()} - {new Date(season.endDate).toLocaleDateString()}
-                      </p>
-                      {season.isActive && (
-                        <span className="inline-block bg-green-600 text-xs px-2 py-1 rounded mt-1">Active</span>
-                      )}
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-semibold">{season.name}</h3>
+                          <p className="text-gray-400 text-sm">
+                            {new Date(season.startDate).toLocaleDateString()} - {new Date(season.endDate).toLocaleDateString()}
+                          </p>
+                          {season._count?.events !== undefined && (
+                            <p className="text-gray-500 text-xs mt-1">{season._count.events} events</p>
+                          )}
+                          {season.isActive && (
+                            <span className="inline-block bg-green-600 text-xs px-2 py-1 rounded mt-1">Active</span>
+                          )}
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          {!season.isActive && (
+                            <button
+                              onClick={() => handleActivateSeason(season.id)}
+                              className="text-green-400 hover:text-green-300 text-sm"
+                            >
+                              ✅ Activate
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleEditSeason(season)}
+                            className="text-blue-400 hover:text-blue-300 text-sm"
+                          >
+                            ✏️ Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteSeason(season.id)}
+                            className="text-red-400 hover:text-red-300 text-sm"
+                          >
+                            🗑️ Delete
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   ))
                 )}
@@ -520,6 +825,7 @@ export default function AdminPage() {
                       <th className="text-left py-3 px-4 text-gray-400 font-medium">Auth</th>
                       <th className="text-left py-3 px-4 text-gray-400 font-medium">Role</th>
                       <th className="text-left py-3 px-4 text-gray-400 font-medium">Joined</th>
+                      <th className="text-left py-3 px-4 text-gray-400 font-medium">Status</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -568,6 +874,28 @@ export default function AdminPage() {
                         <td className="py-3 px-4 text-gray-400 text-sm">
                           {new Date(u.createdAt).toLocaleDateString()}
                         </td>
+                        <td className="py-3 px-4">
+                          {u.id !== user?.id && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await adminAPI.updateUserStatus(u.id, !u.isActive);
+                                  setMessage(`User ${u.isActive ? 'deactivated' : 'activated'} successfully!`);
+                                  fetchUsers();
+                                } catch (err: any) {
+                                  setError(err.message || 'Failed to update user status');
+                                }
+                              }}
+                              className={`text-xs px-2 py-1 rounded ${
+                                u.isActive 
+                                  ? 'bg-red-600/20 text-red-400 hover:bg-red-600/30' 
+                                  : 'bg-green-600/20 text-green-400 hover:bg-green-600/30'
+                              }`}
+                            >
+                              {u.isActive ? '🚫 Deactivate' : '✅ Activate'}
+                            </button>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -589,8 +917,79 @@ export default function AdminPage() {
 
         {/* Events Tab */}
         {activeTab === 'events' && (
-          <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-bold mb-4">Create New Event</h2>
+          <div className="space-y-6">
+            {/* Event List */}
+            <div className="bg-gray-800 rounded-lg p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold">📅 All Events ({events.length})</h2>
+                <button onClick={fetchEvents} className="text-green-400 hover:text-green-300 text-sm">
+                  🔄 Refresh
+                </button>
+              </div>
+              
+              {loadingEvents ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-400 mx-auto"></div>
+                </div>
+              ) : events.length === 0 ? (
+                <p className="text-gray-400">No events yet. Create one below!</p>
+              ) : (
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {events.map((event) => (
+                    <div key={event.id} className="bg-gray-700 p-4 rounded">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <h3 className="font-semibold">{event.name}</h3>
+                          <p className="text-gray-400 text-sm">
+                            📍 {event.venue.name} • 📆 {new Date(event.dateTime).toLocaleString()}
+                          </p>
+                          <p className="text-gray-500 text-xs mt-1">
+                            👥 {event._count.signups} signups • 🏆 {event._count.results} results
+                          </p>
+                        </div>
+                        <div className="flex flex-col gap-2 items-end">
+                          <select
+                            value={event.status}
+                            onChange={(e) => handleStatusChange(event.id, e.target.value)}
+                            className={`text-xs px-2 py-1 rounded border-0 ${
+                              event.status === 'COMPLETED' ? 'bg-green-600/30 text-green-400' :
+                              event.status === 'IN_PROGRESS' ? 'bg-yellow-600/30 text-yellow-400' :
+                              event.status === 'REGISTRATION_OPEN' ? 'bg-blue-600/30 text-blue-400' :
+                              event.status === 'CANCELLED' ? 'bg-red-600/30 text-red-400' :
+                              'bg-gray-600/30 text-gray-400'
+                            }`}
+                          >
+                            <option value="SCHEDULED">📋 Scheduled</option>
+                            <option value="REGISTRATION_OPEN">📝 Registration Open</option>
+                            <option value="IN_PROGRESS">🎮 In Progress</option>
+                            <option value="COMPLETED">✅ Completed</option>
+                            <option value="CANCELLED">❌ Cancelled</option>
+                          </select>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => openEventDetails(event)}
+                              className="text-blue-400 hover:text-blue-300 text-xs"
+                            >
+                              👥 Manage
+                            </button>
+                            <button
+                              onClick={() => handleDeleteEvent(event.id)}
+                              className="text-red-400 hover:text-red-300 text-xs"
+                            >
+                              🗑️ Delete
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Create Event Form */}
+            <div className="bg-gray-800 rounded-lg p-6">
+              <h2 className="text-xl font-bold mb-4">➕ Create New Event</h2>
             {venues.length === 0 || seasons.length === 0 ? (
               <div className="text-yellow-400 bg-yellow-400/10 p-4 rounded">
                 ⚠️ You need to create at least one venue and one season before creating events.
@@ -684,9 +1083,247 @@ export default function AdminPage() {
                 </div>
               </form>
             )}
+            </div>
           </div>
         )}
       </div>
+
+      {/* Event Management Modal */}
+      {selectedEvent && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h2 className="text-xl font-bold">{selectedEvent.name}</h2>
+                <p className="text-gray-400 text-sm">
+                  📍 {selectedEvent.venue.name} • 📆 {new Date(selectedEvent.dateTime).toLocaleString()}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedEvent(null)}
+                className="text-gray-400 hover:text-white text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Toggle between Check-in and Results */}
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => setResultsMode(false)}
+                className={`px-4 py-2 rounded ${!resultsMode ? 'bg-green-600' : 'bg-gray-700'}`}
+              >
+                👥 Check-in ({eventSignups.length})
+              </button>
+              <button
+                onClick={() => setResultsMode(true)}
+                className={`px-4 py-2 rounded ${resultsMode ? 'bg-green-600' : 'bg-gray-700'}`}
+              >
+                🏆 Enter Results
+              </button>
+            </div>
+
+            {loadingSignups ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-400 mx-auto"></div>
+              </div>
+            ) : !resultsMode ? (
+              /* Check-in Mode */
+              <div className="space-y-2">
+                {eventSignups.length === 0 ? (
+                  <p className="text-gray-400 text-center py-4">No signups yet</p>
+                ) : (
+                  eventSignups.map((signup) => (
+                    <div key={signup.id} className="flex justify-between items-center bg-gray-700 p-3 rounded">
+                      <div>
+                        <span className="font-medium">{signup.user.name}</span>
+                        {signup.user.email && (
+                          <span className="text-gray-400 text-sm ml-2">{signup.user.email}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {signup.status === 'CHECKED_IN' ? (
+                          <span className="text-green-400 text-sm">✅ Checked In</span>
+                        ) : (
+                          <button
+                            onClick={() => handleCheckIn(signup.user.id)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
+                          >
+                            Check In
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            ) : (
+              /* Results Entry Mode */
+              <div className="space-y-4">
+                <p className="text-gray-400 text-sm">Enter finishing positions and knockouts for each player:</p>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {resultEntries.map((entry, idx) => {
+                    const signup = eventSignups.find(s => s.user.id === entry.userId);
+                    return (
+                      <div key={entry.userId} className="flex items-center gap-3 bg-gray-700 p-3 rounded">
+                        <div className="flex-1">
+                          <span className="font-medium">{signup?.user.name || 'Unknown'}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <label className="text-gray-400 text-sm">Pos:</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={entry.position}
+                            onChange={(e) => {
+                              const newEntries = [...resultEntries];
+                              newEntries[idx].position = parseInt(e.target.value) || 1;
+                              setResultEntries(newEntries);
+                            }}
+                            className="w-16 p-2 bg-gray-600 border border-gray-500 rounded text-white text-center"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <label className="text-gray-400 text-sm">KOs:</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={entry.knockouts}
+                            onChange={(e) => {
+                              const newEntries = [...resultEntries];
+                              newEntries[idx].knockouts = parseInt(e.target.value) || 0;
+                              setResultEntries(newEntries);
+                            }}
+                            className="w-16 p-2 bg-gray-600 border border-gray-500 rounded text-white text-center"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <button
+                  onClick={handleSubmitResults}
+                  disabled={resultEntries.length === 0}
+                  className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white py-3 rounded font-semibold"
+                >
+                  💾 Save Results & Update Standings
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Edit Season Modal */}
+      {editingSeason && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Edit Season</h2>
+            <form onSubmit={handleUpdateSeason} className="space-y-4">
+              <div>
+                <label className="block text-gray-400 mb-1">Name *</label>
+                <input
+                  type="text"
+                  value={editSeasonForm.name}
+                  onChange={(e) => setEditSeasonForm({ ...editSeasonForm, name: e.target.value })}
+                  required
+                  className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-400 mb-1">Start Date *</label>
+                <input
+                  type="date"
+                  value={editSeasonForm.startDate}
+                  onChange={(e) => setEditSeasonForm({ ...editSeasonForm, startDate: e.target.value })}
+                  required
+                  className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-400 mb-1">End Date *</label>
+                <input
+                  type="date"
+                  value={editSeasonForm.endDate}
+                  onChange={(e) => setEditSeasonForm({ ...editSeasonForm, endDate: e.target.value })}
+                  required
+                  className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingSeason(null)}
+                  className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Venue Modal */}
+      {editingVenue && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Edit Venue</h2>
+            <form onSubmit={handleUpdateVenue} className="space-y-4">
+              <div>
+                <label className="block text-gray-400 mb-1">Name *</label>
+                <input
+                  type="text"
+                  value={editVenueForm.name}
+                  onChange={(e) => setEditVenueForm({ ...editVenueForm, name: e.target.value })}
+                  required
+                  className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-400 mb-1">Address *</label>
+                <input
+                  type="text"
+                  value={editVenueForm.address}
+                  onChange={(e) => setEditVenueForm({ ...editVenueForm, address: e.target.value })}
+                  required
+                  className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-400 mb-1">Description</label>
+                <textarea
+                  value={editVenueForm.description}
+                  onChange={(e) => setEditVenueForm({ ...editVenueForm, description: e.target.value })}
+                  className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
+                  rows={3}
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingVenue(null)}
+                  className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -120,6 +120,35 @@ router.put('/users/:id/role', authenticate, requireAdmin, async (req: Request, r
   }
 });
 
+// PUT /api/admin/users/:id/status - Update user active status (admin only)
+router.put('/users/:id/status', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { isActive } = req.body;
+
+    if (typeof isActive !== 'boolean') {
+      return res.status(400).json({ error: 'isActive must be a boolean' });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: { isActive },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        isActive: true
+      }
+    });
+
+    res.json(updatedUser);
+  } catch (error) {
+    console.error('Error updating user status:', error);
+    res.status(500).json({ error: 'Failed to update user status' });
+  }
+});
+
 // GET /api/admin/stats - Get admin dashboard stats
 router.get('/stats', authenticate, requireAdmin, async (req: Request, res: Response) => {
   try {
