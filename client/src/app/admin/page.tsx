@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { adminAPI, venuesAPI, seasonsAPI, eventsAPI } from '@/lib/api';
+import ImageUpload from '@/components/ImageUpload';
 
 interface Stats {
   users: number;

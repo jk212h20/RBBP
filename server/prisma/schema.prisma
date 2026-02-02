@@ -149,6 +149,7 @@ model Event {
   id          String      @id @default(cuid())
   name        String      // e.g., "Tuesday Night Poker @ Blue Marlin"
   description String?
+  imageUrl    String?     // Base64 encoded image or URL
   dateTime    DateTime
   maxPlayers  Int         @default(50)
   buyIn       Float?      // Optional buy-in amount
