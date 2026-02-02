@@ -28,6 +28,7 @@ interface VenueForm {
   name: string;
   address: string;
   description: string;
+  imageUrl: string | null;
 }
 
 interface Season {
@@ -112,7 +113,7 @@ export default function AdminPage() {
   const [statsError, setStatsError] = useState('');
 
   // Forms
-  const [venueForm, setVenueForm] = useState<VenueForm>({ name: '', address: '', description: '' });
+  const [venueForm, setVenueForm] = useState<VenueForm>({ name: '', address: '', description: '', imageUrl: null });
   const [seasonForm, setSeasonForm] = useState<SeasonForm>({ 
     name: '', 
     startDate: '', 
@@ -132,7 +133,7 @@ export default function AdminPage() {
   
   // Edit modals
   const [editingVenue, setEditingVenue] = useState<Venue | null>(null);
-  const [editVenueForm, setEditVenueForm] = useState<VenueForm>({ name: '', address: '', description: '' });
+  const [editVenueForm, setEditVenueForm] = useState<VenueForm>({ name: '', address: '', description: '', imageUrl: null });
   const [editingSeason, setEditingSeason] = useState<Season | null>(null);
   const [editSeasonForm, setEditSeasonForm] = useState<SeasonForm>({ name: '', startDate: '', endDate: '', pointsStructure: '' });
   
@@ -244,7 +245,7 @@ export default function AdminPage() {
       setMessage('');
       await venuesAPI.create(venueForm);
       setMessage('Venue created successfully!');
-      setVenueForm({ name: '', address: '', description: '' });
+      setVenueForm({ name: '', address: '', description: '', imageUrl: null });
       fetchVenues();
       fetchStats();
     } catch (err: any) {
@@ -296,7 +297,8 @@ export default function AdminPage() {
     setEditVenueForm({
       name: venue.name,
       address: venue.address,
-      description: venue.description || ''
+      description: venue.description || '',
+      imageUrl: (venue as any).imageUrl || null
     });
   };
 
