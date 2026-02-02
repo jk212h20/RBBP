@@ -5,9 +5,11 @@ import { seasonService } from './season.service';
 
 // Points for registration/unregistration
 const REGISTRATION_POINTS = 1;
-const UNREGISTER_EARLY_PENALTY = -1;  // 24+ hours before event
-const UNREGISTER_LATE_PENALTY = -2;   // Less than 24 hours before event
-const NO_SHOW_PENALTY = -3;           // Registered but didn't show up
+const EARLY_BIRD_REGISTRATION_POINTS = 2;  // First 5 signups get bonus
+const EARLY_BIRD_THRESHOLD = 5;            // Number of early bird spots
+const UNREGISTER_EARLY_PENALTY = -1;  // 24+ hours before event (per point earned)
+const UNREGISTER_LATE_PENALTY = -2;   // Less than 24 hours before event (per point earned)
+const NO_SHOW_PENALTY = -3;           // Registered but didn't show up (per point earned)
 
 export class EventService {
   /**
@@ -262,7 +264,9 @@ export class EventService {
 
   /**
    * Sign up for an event
-   * Awards +1 registration point for the season
+   * Awards registration points for the season:
+   * - First 5 signups get 2 points (early bird bonus)
+   * - Remaining signups get 1 point
    */
   async signupForEvent(eventId: string, userId: string) {
     // Check if event exists and is open for registration
@@ -307,6 +311,11 @@ export class EventService {
       throw new Error('Already signed up for this event');
     }
 
+    // Determine if this is an early bird signup (first 5 get bonus)
+    const currentSignupCount = event._count.signups;
+    const isEarlyBird = currentSignupCount < EARLY_BIRD_THRESHOLD;
+    const pointsToAward = isEarlyBird ? EARLY_BIRD_REGISTRATION_POINTS : REGISTRATION_POINTS;
+
     // Create signup
     const signup = await prisma.eventSignup.create({
       data: {
@@ -324,8 +333,8 @@ export class EventService {
       },
     });
 
-    // Award registration point for the season
-    await this.adjustUserSeasonPoints(userId, event.seasonId, REGISTRATION_POINTS);
+    // Award registration points for the season
+    await this.adjustUserSeasonPoints(userId, event.seasonId, pointsToAward);
 
     return signup;
   }
@@ -333,8 +342,8 @@ export class EventService {
   /**
    * Cancel signup for an event
    * Applies point penalties based on timing:
-   * - 24+ hours before: -1 point (removes registration bonus)
-   * - Less than 24 hours: -2 points (penalty for late cancellation)
+   * - Early bird (first 5): -2 points for early cancel, -4 for late cancel
+   * - Regular: -1 point for early cancel, -2 for late cancel
    */
   async cancelSignup(eventId: string, userId: string) {
     const signup = await prisma.eventSignup.findUnique({
@@ -350,7 +359,7 @@ export class EventService {
       throw new Error('Not signed up for this event');
     }
 
-    // Get event to check timing and season
+    // Get event to check timing and season, and count signups before this user
     const event = await prisma.event.findUnique({
       where: { id: eventId },
       select: {
@@ -363,6 +372,15 @@ export class EventService {
     if (!event) {
       throw new Error('Event not found');
     }
+
+    // Check if this user was an early bird (one of first 5 signups)
+    const signupsBeforeUser = await prisma.eventSignup.count({
+      where: {
+        eventId,
+        registeredAt: { lt: signup.registeredAt },
+      },
+    });
+    const wasEarlyBird = signupsBeforeUser < EARLY_BIRD_THRESHOLD;
 
     // Calculate hours until event
     const now = new Date();
@@ -382,12 +400,15 @@ export class EventService {
     // Apply point penalty based on timing
     // If event hasn't started yet, apply cancellation penalty
     if (event.status !== EventStatus.IN_PROGRESS && event.status !== EventStatus.COMPLETED) {
+      // Penalty is proportional to points earned
+      const basePoints = wasEarlyBird ? EARLY_BIRD_REGISTRATION_POINTS : REGISTRATION_POINTS;
+      
       if (hoursUntilEvent >= 24) {
-        // Early cancellation: just remove the registration point
-        await this.adjustUserSeasonPoints(userId, event.seasonId, UNREGISTER_EARLY_PENALTY);
+        // Early cancellation: just remove the registration points
+        await this.adjustUserSeasonPoints(userId, event.seasonId, -basePoints);
       } else {
-        // Late cancellation: additional penalty
-        await this.adjustUserSeasonPoints(userId, event.seasonId, UNREGISTER_LATE_PENALTY);
+        // Late cancellation: double penalty
+        await this.adjustUserSeasonPoints(userId, event.seasonId, -basePoints * 2);
       }
     }
 
@@ -663,6 +684,7 @@ export class EventService {
   /**
    * Mark no-shows for an event and apply penalties
    * Called when event is completed - anyone registered but not checked in is a no-show
+   * Penalty is 3x the points they earned (early bird: -6, regular: -3)
    */
   async processNoShows(eventId: string) {
     const event = await prisma.event.findUnique({
@@ -673,6 +695,9 @@ export class EventService {
             status: {
               in: [SignupStatus.REGISTERED, SignupStatus.CONFIRMED],
             },
+          },
+          orderBy: {
+            registeredAt: 'asc',
           },
         },
       },
@@ -686,15 +711,27 @@ export class EventService {
     const noShows = event.signups;
 
     // Apply no-show penalty to each
-    for (const signup of noShows) {
+    for (let i = 0; i < noShows.length; i++) {
+      const signup = noShows[i];
+      
+      // Check if this user was an early bird (one of first 5 signups)
+      const signupsBeforeUser = await prisma.eventSignup.count({
+        where: {
+          eventId,
+          registeredAt: { lt: signup.registeredAt },
+        },
+      });
+      const wasEarlyBird = signupsBeforeUser < EARLY_BIRD_THRESHOLD;
+      
       // Update signup status to NO_SHOW
       await prisma.eventSignup.update({
         where: { id: signup.id },
         data: { status: SignupStatus.NO_SHOW },
       });
 
-      // Apply no-show penalty (removes registration point + additional penalty)
-      await this.adjustUserSeasonPoints(signup.userId, event.seasonId, NO_SHOW_PENALTY);
+      // Apply no-show penalty (3x the points they earned)
+      const basePoints = wasEarlyBird ? EARLY_BIRD_REGISTRATION_POINTS : REGISTRATION_POINTS;
+      await this.adjustUserSeasonPoints(signup.userId, event.seasonId, -basePoints * 3);
     }
 
     return { noShowCount: noShows.length };
