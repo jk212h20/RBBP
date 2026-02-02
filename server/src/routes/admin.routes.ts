@@ -69,9 +69,15 @@ router.post('/promote', authenticate, async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/admin/users - Get all users (admin only)
+// GET /api/admin/users - Get all users with their current season points (admin only)
 router.get('/users', authenticate, requireAdmin, async (req: Request, res: Response) => {
   try {
+    // Get active season
+    const activeSeason = await prisma.season.findFirst({
+      where: { isActive: true },
+      select: { id: true }
+    });
+
     const users = await prisma.user.findMany({
       select: {
         id: true,
@@ -80,12 +86,29 @@ router.get('/users', authenticate, requireAdmin, async (req: Request, res: Respo
         role: true,
         isActive: true,
         createdAt: true,
-        authProvider: true
+        authProvider: true,
+        standings: activeSeason ? {
+          where: { seasonId: activeSeason.id },
+          select: {
+            totalPoints: true,
+            rank: true,
+            eventsPlayed: true
+          }
+        } : false
       },
       orderBy: { createdAt: 'desc' }
     });
 
-    res.json(users);
+    // Flatten standings data for easier frontend consumption
+    const usersWithPoints = users.map(user => ({
+      ...user,
+      seasonPoints: user.standings?.[0]?.totalPoints || 0,
+      seasonRank: user.standings?.[0]?.rank || null,
+      eventsPlayed: user.standings?.[0]?.eventsPlayed || 0,
+      standings: undefined // Remove the nested array
+    }));
+
+    res.json(usersWithPoints);
   } catch (error) {
     console.error('Error fetching users:', error);
     res.status(500).json({ error: 'Failed to fetch users' });

@@ -91,6 +91,9 @@ interface User {
   isActive: boolean;
   createdAt: string;
   authProvider: string;
+  seasonPoints?: number;
+  seasonRank?: number | null;
+  eventsPlayed?: number;
 }
 
 export default function AdminPage() {
@@ -807,7 +810,9 @@ export default function AdminPage() {
                     <div key={venue.id} className="bg-gray-700 p-3 rounded">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h3 className="font-semibold">{venue.name}</h3>
+                          <Link href={`/venues/${venue.id}`} className="font-semibold text-blue-400 hover:text-blue-300">
+                            {venue.name}
+                          </Link>
                           <p className="text-gray-400 text-sm">{venue.address}</p>
                           {venue._count?.events !== undefined && (
                             <p className="text-gray-500 text-xs mt-1">{venue._count.events} events</p>
@@ -903,7 +908,9 @@ export default function AdminPage() {
                     <div key={season.id} className="bg-gray-700 p-3 rounded">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h3 className="font-semibold">{season.name}</h3>
+                          <Link href={`/leaderboard?season=${season.id}`} className="font-semibold text-purple-400 hover:text-purple-300">
+                            {season.name}
+                          </Link>
                           <p className="text-gray-400 text-sm">
                             {new Date(season.startDate).toLocaleDateString()} - {new Date(season.endDate).toLocaleDateString()}
                           </p>
@@ -972,6 +979,7 @@ export default function AdminPage() {
                     <tr className="border-b border-gray-700">
                       <th className="text-left py-3 px-4 text-gray-400 font-medium">Name</th>
                       <th className="text-left py-3 px-4 text-gray-400 font-medium">Email</th>
+                      <th className="text-left py-3 px-4 text-gray-400 font-medium">Points</th>
                       <th className="text-left py-3 px-4 text-gray-400 font-medium">Auth</th>
                       <th className="text-left py-3 px-4 text-gray-400 font-medium">Role</th>
                       <th className="text-left py-3 px-4 text-gray-400 font-medium">Joined</th>
@@ -989,6 +997,14 @@ export default function AdminPage() {
                         </td>
                         <td className="py-3 px-4 text-gray-400">
                           {u.email || <span className="text-gray-500 italic">No email</span>}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            <span className="text-yellow-400 font-bold">{u.seasonPoints || 0}</span>
+                            {u.seasonRank && (
+                              <span className="text-gray-500 text-xs">#{u.seasonRank}</span>
+                            )}
+                          </div>
                         </td>
                         <td className="py-3 px-4">
                           <span className={`text-xs px-2 py-1 rounded ${
@@ -1089,7 +1105,9 @@ export default function AdminPage() {
                     <div key={event.id} className="bg-gray-700 p-4 rounded">
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
-                          <h3 className="font-semibold">{event.name}</h3>
+                          <Link href={`/events/${event.id}`} className="font-semibold text-yellow-400 hover:text-yellow-300">
+                            {event.name}
+                          </Link>
                           <p className="text-gray-400 text-sm">
                             📍 {event.venue.name} • 📆 {new Date(event.dateTime).toLocaleString()}
                           </p>

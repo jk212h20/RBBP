@@ -201,7 +201,7 @@ export default function DashboardPage() {
           )}
           
           <p className="text-yellow-200/50 text-xs mt-4 text-center">
-            💡 First 5 signups earn +2 points, others earn +1. Late cancellations and no-shows result in point penalties.
+            💡 First 5 signups to each event earn 2 points, others earn 1. Late cancellations and no-shows result in point losses.
           </p>
         </div>
 
