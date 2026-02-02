@@ -88,13 +88,13 @@ export const venuesAPI = {
   
   getById: (id: string) => fetchAPI<any>(`/venues/${id}`),
   
-  create: (data: { name: string; address: string; description?: string; phone?: string; email?: string; managerId?: string }) =>
+  create: (data: { name: string; address: string; description?: string; phone?: string; email?: string; managerId?: string; imageUrl?: string | null }) =>
     fetchAPI<any>('/venues', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   
-  update: (id: string, data: Partial<{ name: string; address: string; description?: string; phone?: string; email?: string; isActive?: boolean }>) =>
+  update: (id: string, data: Partial<{ name: string; address: string; description?: string; phone?: string; email?: string; isActive?: boolean; imageUrl?: string | null }>) =>
     fetchAPI<any>(`/venues/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),

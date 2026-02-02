@@ -792,6 +792,11 @@ export default function AdminPage() {
                     placeholder="Describe the venue..."
                   />
                 </div>
+                <ImageUpload
+                  currentImage={venueForm.imageUrl}
+                  onImageChange={(imageData) => setVenueForm({ ...venueForm, imageUrl: imageData })}
+                  label="Venue Image"
+                />
                 <button
                   type="submit"
                   disabled={!venueForm.name.trim() || !venueForm.address.trim()}
@@ -1476,6 +1481,11 @@ export default function AdminPage() {
                   rows={3}
                 />
               </div>
+              <ImageUpload
+                currentImage={editVenueForm.imageUrl}
+                onImageChange={(imageData) => setEditVenueForm({ ...editVenueForm, imageUrl: imageData })}
+                label="Venue Image"
+              />
               <div className="flex gap-3">
                 <button
                   type="button"
