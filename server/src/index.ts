@@ -25,6 +25,8 @@ app.use(helmet());
 const allowedOrigins = [
   process.env.CLIENT_URL || 'http://localhost:3000',
   'http://localhost:3000',
+  'https://rbbp.fun',
+  'https://www.rbbp.fun',
   // Railway auto-generates URLs like: *.up.railway.app
 ];
 
@@ -38,6 +40,11 @@ app.use(cors({
       return callback(null, true);
     }
     
+    // Allow rbbp.fun domain
+    if (origin.includes('rbbp.fun')) {
+      return callback(null, true);
+    }
+    
     // Allow configured origins
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
@@ -48,6 +55,7 @@ app.use(cors({
       return callback(null, true);
     }
     
+    console.log('CORS blocked origin:', origin);
     callback(new Error('Not allowed by CORS'));
   },
   credentials: true
