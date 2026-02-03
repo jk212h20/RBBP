@@ -471,12 +471,15 @@ export default function ProfilePage() {
           {withdrawalData && (
             <div className="mt-4 p-4 bg-black/30 rounded-lg">
               <h3 className="text-white font-bold mb-2 text-center">
-                Scan to Withdraw {withdrawalData.amountSats.toLocaleString()} sats
+                ⚡ Scan to Withdraw {withdrawalData.amountSats.toLocaleString()} sats
               </h3>
+              <p className="text-yellow-400/80 text-xs text-center mb-4">
+                Your balance has been reserved. Scan the QR code to complete the withdrawal.
+              </p>
               <div className="flex flex-col items-center gap-4">
                 <div className="bg-white p-4 rounded-lg">
                   <img 
-                    src={withdrawalData.qrData} 
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(withdrawalData.qrData)}`}
                     alt="Withdrawal QR Code" 
                     className="w-48 h-48"
                   />
@@ -487,17 +490,20 @@ export default function ProfilePage() {
                   </p>
                   <a
                     href={withdrawalData.lightningUri}
-                    className="text-yellow-400 hover:text-yellow-300 underline text-sm break-all"
+                    className="inline-block bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-4 py-2 rounded-lg transition"
                   >
-                    Open in Wallet
+                    📱 Open in Wallet
                   </a>
+                </div>
+                <div className="text-center text-xs text-gray-400 mt-2">
+                  <p>If you don't complete the withdrawal, your balance will be refunded when it expires (24 hours).</p>
                 </div>
                 <button
                   onClick={() => {
                     setWithdrawalData(null);
                     loadBalance();
                   }}
-                  className="text-gray-400 hover:text-white text-sm"
+                  className="text-gray-400 hover:text-white text-sm mt-2"
                 >
                   ✕ Close
                 </button>
