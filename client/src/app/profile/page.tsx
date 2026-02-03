@@ -56,11 +56,13 @@ export default function ProfilePage() {
   const [loadingBalance, setLoadingBalance] = useState(true);
   const [withdrawing, setWithdrawing] = useState(false);
   const [withdrawalData, setWithdrawalData] = useState<{
+    id: string;
     lnurl: string;
     qrData: string;
     lightningUri: string;
     amountSats: number;
   } | null>(null);
+  const [withdrawalStatus, setWithdrawalStatus] = useState<'PENDING' | 'PAID' | 'FAILED' | 'EXPIRED'>('PENDING');
 
   // Check if name has been set (locked)
   const nameIsLocked = user?.nameSetAt != null;
@@ -90,6 +92,32 @@ export default function ProfilePage() {
     }
   }, [user, needsRealName]);
 
+  // Poll for withdrawal status when QR is shown
+  useEffect(() => {
+    if (!withdrawalData || withdrawalStatus !== 'PENDING') return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const status = await balanceAPI.getWithdrawalStatus(withdrawalData.id);
+        if (status.status === 'PAID') {
+          setWithdrawalStatus('PAID');
+          // Auto-close after showing success
+          setTimeout(() => {
+            setWithdrawalData(null);
+            setWithdrawalStatus('PENDING');
+            loadBalance();
+          }, 3000);
+        } else if (status.status === 'FAILED' || status.status === 'EXPIRED') {
+          setWithdrawalStatus(status.status as 'FAILED' | 'EXPIRED');
+        }
+      } catch (err) {
+        console.error('Failed to poll withdrawal status:', err);
+      }
+    }, 2000); // Poll every 2 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [withdrawalData, withdrawalStatus]);
+
   const loadBalance = async () => {
     setLoadingBalance(true);
     try {
@@ -113,11 +141,13 @@ export default function ProfilePage() {
     try {
       const result = await balanceAPI.withdraw();
       setWithdrawalData({
+        id: result.withdrawal.id,
         lnurl: result.lnurl,
         qrData: result.qrData,
         lightningUri: result.lightningUri,
         amountSats: result.withdrawal.amountSats,
       });
+      setWithdrawalStatus('PENDING');
       // Refresh balance after withdrawal initiated
       loadBalance();
     } catch (err: any) {
@@ -470,44 +500,82 @@ export default function ProfilePage() {
           {/* Withdrawal QR Code Modal */}
           {withdrawalData && (
             <div className="mt-4 p-4 bg-black/30 rounded-lg">
-              <h3 className="text-white font-bold mb-2 text-center">
-                ⚡ Scan to Withdraw {withdrawalData.amountSats.toLocaleString()} sats
-              </h3>
-              <p className="text-yellow-400/80 text-xs text-center mb-4">
-                Your balance has been reserved. Scan the QR code to complete the withdrawal.
-              </p>
-              <div className="flex flex-col items-center gap-4">
-                <div className="bg-white p-4 rounded-lg">
-                  <img 
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(withdrawalData.qrData)}`}
-                    alt="Withdrawal QR Code" 
-                    className="w-48 h-48"
-                  />
-                </div>
-                <div className="text-center">
-                  <p className="text-yellow-200/80 text-sm mb-2">
-                    Scan with your Lightning wallet or click below:
+              {withdrawalStatus === 'PAID' ? (
+                // Success state
+                <div className="flex flex-col items-center gap-4 py-8">
+                  <div className="text-6xl">✅</div>
+                  <h3 className="text-green-400 font-bold text-xl text-center">
+                    Withdrawal Complete!
+                  </h3>
+                  <p className="text-green-200/80 text-center">
+                    {withdrawalData.amountSats.toLocaleString()} sats sent to your wallet
                   </p>
-                  <a
-                    href={withdrawalData.lightningUri}
-                    className="inline-block bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-4 py-2 rounded-lg transition"
+                </div>
+              ) : withdrawalStatus === 'FAILED' || withdrawalStatus === 'EXPIRED' ? (
+                // Failed/Expired state
+                <div className="flex flex-col items-center gap-4 py-8">
+                  <div className="text-6xl">❌</div>
+                  <h3 className="text-red-400 font-bold text-xl text-center">
+                    Withdrawal {withdrawalStatus === 'EXPIRED' ? 'Expired' : 'Failed'}
+                  </h3>
+                  <p className="text-red-200/80 text-center">
+                    Your balance has been refunded.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setWithdrawalData(null);
+                      setWithdrawalStatus('PENDING');
+                      loadBalance();
+                    }}
+                    className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-4 py-2 rounded-lg transition"
                   >
-                    📱 Open in Wallet
-                  </a>
+                    Try Again
+                  </button>
                 </div>
-                <div className="text-center text-xs text-gray-400 mt-2">
-                  <p>If you don't complete the withdrawal, your balance will be refunded when it expires (24 hours).</p>
-                </div>
-                <button
-                  onClick={() => {
-                    setWithdrawalData(null);
-                    loadBalance();
-                  }}
-                  className="text-gray-400 hover:text-white text-sm mt-2"
-                >
-                  ✕ Close
-                </button>
-              </div>
+              ) : (
+                // Pending state - show QR
+                <>
+                  <h3 className="text-white font-bold mb-2 text-center">
+                    ⚡ Scan to Withdraw {withdrawalData.amountSats.toLocaleString()} sats
+                  </h3>
+                  <p className="text-yellow-400/80 text-xs text-center mb-4">
+                    Your balance has been reserved. Scan the QR code to complete the withdrawal.
+                  </p>
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="bg-white p-4 rounded-lg">
+                      <img 
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(withdrawalData.qrData)}`}
+                        alt="Withdrawal QR Code" 
+                        className="w-48 h-48"
+                      />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-yellow-200/80 text-sm mb-2">
+                        Scan with your Lightning wallet or click below:
+                      </p>
+                      <a
+                        href={withdrawalData.lightningUri}
+                        className="inline-block bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-4 py-2 rounded-lg transition"
+                      >
+                        📱 Open in Wallet
+                      </a>
+                    </div>
+                    <div className="text-center text-xs text-gray-400 mt-2">
+                      <p>If you don't complete the withdrawal, your balance will be refunded when it expires (24 hours).</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setWithdrawalData(null);
+                        setWithdrawalStatus('PENDING');
+                        loadBalance();
+                      }}
+                      className="text-gray-400 hover:text-white text-sm mt-2"
+                    >
+                      ✕ Close
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
           

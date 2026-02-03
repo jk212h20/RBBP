@@ -347,6 +347,11 @@ export const balanceAPI = {
       body: JSON.stringify({ amountSats }),
     }),
   
+  getWithdrawalStatus: (withdrawalId: string) =>
+    fetchAPI<{ id: string; status: string; amountSats: number; paidAt: string | null }>(
+      `/balance/withdrawal/${withdrawalId}/status`
+    ),
+  
   // Admin endpoints
   getAllUsers: () => fetchAPI<{
     id: string;

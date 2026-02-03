@@ -14,6 +14,7 @@ import {
   getBalanceStats,
   initiateWithdrawal,
 } from '../services/balance.service';
+import { getWithdrawalWithLnurl } from '../services/withdrawal.service';
 
 const router = Router();
 
@@ -63,6 +64,41 @@ router.post('/withdraw', authenticate, async (req: Request, res: Response) => {
     return res.status(400).json({ 
       error: error instanceof Error ? error.message : 'Failed to initiate withdrawal' 
     });
+  }
+});
+
+/**
+ * GET /api/balance/withdrawal/:id/status
+ * 
+ * Check the status of a withdrawal (for polling)
+ */
+router.get('/withdrawal/:id/status', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const withdrawal = await getWithdrawalWithLnurl(req.params.id);
+    
+    if (!withdrawal) {
+      return res.status(404).json({ error: 'Withdrawal not found' });
+    }
+
+    // Only allow users to check their own withdrawals
+    if (withdrawal.userId !== userId) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    return res.json({
+      id: withdrawal.id,
+      status: withdrawal.status,
+      amountSats: withdrawal.amountSats,
+      paidAt: withdrawal.paidAt,
+    });
+  } catch (error) {
+    console.error('[Balance] Get withdrawal status error:', error);
+    return res.status(500).json({ error: 'Failed to get withdrawal status' });
   }
 });
 
