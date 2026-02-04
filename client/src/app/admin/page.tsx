@@ -23,7 +23,8 @@ interface Venue {
   address: string;
   description: string | null;
   isActive: boolean;
-  manager?: { id: string; name: string } | null;
+  manager?: { id: string; name: string; role?: string } | null;
+  managerId?: string | null;
   _count?: { events: number };
 }
 
@@ -644,7 +645,7 @@ export default function AdminPage() {
                   </button>
                   
                   <button
-                    onClick={() => setActiveTab('venues')}
+                    onClick={() => { setActiveTab('venues'); if (users.length === 0) fetchUsers(); }}
                     className="bg-gray-800 rounded-lg p-6 text-left hover:bg-gray-700 transition group border border-transparent hover:border-blue-500/50"
                   >
                     <div className="flex items-center justify-between">
@@ -864,7 +865,7 @@ export default function AdminPage() {
                   venues.map((venue: Venue) => (
                     <div key={venue.id} className="bg-gray-700 p-3 rounded">
                       <div className="flex justify-between items-start">
-                        <div>
+                        <div className="flex-1">
                           <Link href={`/venues/${venue.id}`} className="font-semibold text-blue-400 hover:text-blue-300">
                             {venue.name}
                           </Link>
@@ -872,6 +873,44 @@ export default function AdminPage() {
                           {venue._count?.events !== undefined && (
                             <p className="text-gray-500 text-xs mt-1">{venue._count.events} events</p>
                           )}
+                          {/* Manager Assignment */}
+                          <div className="mt-2 flex items-center gap-2">
+                            <span className="text-gray-500 text-xs">Manager:</span>
+                            <select
+                              value={venue.manager?.id || ''}
+                              onChange={async (e) => {
+                                try {
+                                  setError('');
+                                  setMessage('');
+                                  await venuesAPI.assignManager(venue.id, e.target.value || null);
+                                  const newManagerName = e.target.value 
+                                    ? users.find(u => u.id === e.target.value)?.name || 'User'
+                                    : null;
+                                  setMessage(newManagerName 
+                                    ? `${newManagerName} assigned to ${venue.name} and upgraded to Venue Manager!`
+                                    : `Manager removed from ${venue.name}`
+                                  );
+                                  fetchVenues();
+                                  fetchUsers();
+                                } catch (err: any) {
+                                  setError(err.message || 'Failed to assign manager');
+                                }
+                              }}
+                              className="bg-gray-600 border border-gray-500 rounded px-2 py-1 text-xs text-white"
+                            >
+                              <option value="">No manager</option>
+                              {users.map((u) => (
+                                <option key={u.id} value={u.id}>
+                                  {u.name} {u.role === 'VENUE_MANAGER' ? '(VM)' : u.role === 'ADMIN' ? '(Admin)' : ''}
+                                </option>
+                              ))}
+                            </select>
+                            {venue.manager && (
+                              <span className="text-green-400 text-xs">
+                                ✓ {venue.manager.name}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <div className="flex gap-2">
                           <button

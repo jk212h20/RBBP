@@ -153,8 +153,24 @@ export class VenueService {
 
   /**
    * Assign a manager to a venue
+   * Also upgrades the user to VENUE_MANAGER role if they aren't already a VENUE_MANAGER or ADMIN
    */
   async assignManager(venueId: string, managerId: string | null) {
+    // If assigning a manager (not removing), upgrade their role if needed
+    if (managerId) {
+      const user = await prisma.user.findUnique({
+        where: { id: managerId },
+        select: { id: true, role: true }
+      });
+      
+      if (user && user.role !== 'ADMIN' && user.role !== 'VENUE_MANAGER') {
+        await prisma.user.update({
+          where: { id: managerId },
+          data: { role: 'VENUE_MANAGER' }
+        });
+      }
+    }
+    
     return prisma.venue.update({
       where: { id: venueId },
       data: { managerId },
@@ -164,6 +180,7 @@ export class VenueService {
             id: true,
             name: true,
             email: true,
+            role: true,
           },
         },
       },
