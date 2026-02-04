@@ -595,6 +595,7 @@ export class EventService {
    * Enter results for an event using dynamic points calculation
    * - Points based on checked-in player count
    * - Only top 3 get points (60% / 30% / 10% rounded up)
+   * - Uses diff-based point adjustment to preserve registration points
    */
   async enterResults(eventId: string, results: ResultEntry[]) {
     const event = await prisma.event.findUnique({
@@ -611,11 +612,18 @@ export class EventService {
             status: SignupStatus.CHECKED_IN,
           },
         },
+        results: true, // Get existing results to calculate diff
       },
     });
 
     if (!event) {
       throw new Error('Event not found');
+    }
+
+    // Get OLD points earned by each user from existing results (before we delete them)
+    const oldPointsByUser: Record<string, number> = {};
+    for (const result of event.results) {
+      oldPointsByUser[result.userId] = result.pointsEarned;
     }
 
     // Count checked-in players for dynamic points calculation
@@ -652,13 +660,36 @@ export class EventService {
       data: resultsWithPoints,
     });
 
+    // Apply point diffs to standings
+    // For each user in the new results, calculate: newPoints - oldPoints
+    // and adjust their standing accordingly
+    for (const result of resultsWithPoints) {
+      const oldPoints = oldPointsByUser[result.userId] || 0;
+      const newPoints = result.pointsEarned;
+      const diff = newPoints - oldPoints;
+      
+      if (diff !== 0) {
+        await this.adjustUserSeasonPoints(result.userId, event.seasonId, diff);
+      }
+    }
+
+    // Also handle users who were in old results but not in new results
+    // (their points should be removed)
+    const newUserIds = new Set(resultsWithPoints.map(r => r.userId));
+    for (const [userId, oldPoints] of Object.entries(oldPointsByUser)) {
+      if (!newUserIds.has(userId) && oldPoints > 0) {
+        // User was removed from results, subtract their old points
+        await this.adjustUserSeasonPoints(userId, event.seasonId, -oldPoints);
+      }
+    }
+
     // Update event status
     await prisma.event.update({
       where: { id: eventId },
       data: { status: EventStatus.COMPLETED },
     });
 
-    // Recalculate season standings
+    // Recalculate season standings (for stats like eventsPlayed, wins, etc.)
     await seasonService.recalculateStandings(event.seasonId);
 
     return prisma.result.findMany({
