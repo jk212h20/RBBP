@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { adminAPI, seasonsAPI } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
 
 interface PointsUser {
   id: string;
@@ -32,6 +33,7 @@ interface Props {
 }
 
 export default function PointsTab({ setMessage, setError }: Props) {
+  const { user: adminUser } = useAuth();
   const [migrationStatus, setMigrationStatus] = useState<{ pointsHistoryEnabled: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
   const [runningMigration, setRunningMigration] = useState(false);
@@ -42,10 +44,13 @@ export default function PointsTab({ setMessage, setError }: Props) {
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   
+  // Default reason with admin name
+  const defaultReason = `Manual by ${adminUser?.name || 'Admin'}`;
+  
   // Award points form
   const [selectedUser, setSelectedUser] = useState<PointsUser | null>(null);
   const [pointsAmount, setPointsAmount] = useState<number>(0);
-  const [pointsReason, setPointsReason] = useState('');
+  const [pointsReason, setPointsReason] = useState(defaultReason);
   const [awarding, setAwarding] = useState(false);
   
   // User history modal
@@ -145,7 +150,7 @@ export default function PointsTab({ setMessage, setError }: Props) {
       setMessage(`${result.message} to ${selectedUser.name}`);
       setSelectedUser(null);
       setPointsAmount(0);
-      setPointsReason('');
+      setPointsReason(defaultReason);
       fetchPointsUsers();
     } catch (err: any) {
       setError(err.message || 'Failed to award points');
