@@ -83,15 +83,17 @@ function DashboardContent() {
     router.push('/login');
   };
 
-  const getAuthBadge = () => {
-    switch (user.authProvider) {
-      case 'GOOGLE':
-        return '🔵 Google';
-      case 'LIGHTNING':
-        return '⚡ Lightning';
-      default:
-        return '✉️ Email';
-    }
+  // Check if user needs to complete their profile
+  const isLightningWithoutName = user.authProvider === 'LIGHTNING' && 
+    (user.name.startsWith('Lightning User') || user.name.startsWith('Player'));
+  const isEmailOnlyAccount = user.authProvider === 'EMAIL' && !user.lightningPubkey;
+  const isGoogleOnlyAccount = user.authProvider === 'GOOGLE' && !user.lightningPubkey;
+  const needsLightning = isEmailOnlyAccount || isGoogleOnlyAccount;
+
+  // Format role display - only show for non-players
+  const getRoleDisplay = () => {
+    if (user.role === 'PLAYER') return null;
+    return ` (${user.role.replace('_', ' ')})`;
   };
 
   return (
@@ -138,40 +140,32 @@ function DashboardContent() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Welcome Card */}
-        <div className="bg-white rounded-2xl shadow-2xl p-8 mb-8">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+        {/* Welcome Card - Simplified */}
+        <div className="bg-white rounded-2xl shadow-2xl p-6 mb-8">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
               {user.avatar ? (
                 <img src={user.avatar} alt={user.name} className="w-full h-full rounded-full" />
               ) : (
                 user.name.charAt(0).toUpperCase()
               )}
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Welcome back, {user.name}! 🎉
+            <div className="flex-1">
+              <h1 className="text-xl font-bold text-gray-900">
+                Welcome, {user.name}{getRoleDisplay()} 🎉
               </h1>
-              <p className="text-gray-600">
-                Logged in with {getAuthBadge()}
-              </p>
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-4">
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="text-sm text-gray-500 mb-1">Role</h3>
-              <p className="text-lg font-semibold text-gray-900">{user.role}</p>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="text-sm text-gray-500 mb-1">Email</h3>
-              <p className="text-lg font-semibold text-gray-900">
-                {user.email || 'Not set'}
-              </p>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="text-sm text-gray-500 mb-1">User ID</h3>
-              <p className="text-sm font-mono text-gray-600">{user.id.slice(0, 12)}...</p>
+              
+              {/* Profile completion prompts */}
+              {isLightningWithoutName && (
+                <Link href="/profile" className="text-orange-600 hover:text-orange-700 text-sm flex items-center gap-1 mt-1">
+                  ⚠️ Add your name and email in Profile to complete your account
+                </Link>
+              )}
+              {needsLightning && (
+                <Link href="/profile" className="text-yellow-600 hover:text-yellow-700 text-sm flex items-center gap-1 mt-1">
+                  ⚡ Link a Lightning wallet in Profile to earn 1 bonus point!
+                </Link>
+              )}
             </div>
           </div>
         </div>
