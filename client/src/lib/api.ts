@@ -236,6 +236,16 @@ export const eventsAPI = {
   
   getResults: (eventId: string) => fetchAPI<any[]>(`/events/${eventId}/results`),
   
+  // Points preview
+  getPointsPreview: (eventId: string) => 
+    fetchAPI<{ first: number; second: number; third: number; totalPool: number; playerCount: number }>(
+      `/events/${eventId}/points-preview`
+    ),
+  
+  // Waitlist
+  getWaitlistPosition: (eventId: string) => 
+    fetchAPI<{ position: number | null }>(`/events/${eventId}/waitlist-position`),
+  
   // Bulk event creation
   createBulk: (data: {
     baseName: string;

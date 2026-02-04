@@ -66,6 +66,14 @@ interface PlayerResult {
   knockouts: number;
 }
 
+interface PointsPreview {
+  first: number;
+  second: number;
+  third: number;
+  totalPool: number;
+  playerCount: number;
+}
+
 export default function EventDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -75,6 +83,8 @@ export default function EventDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isSignedUp, setIsSignedUp] = useState(false);
+  const [userSignupStatus, setUserSignupStatus] = useState<string | null>(null);
+  const [waitlistPosition, setWaitlistPosition] = useState<number | null>(null);
   const { isAuthenticated, user } = useAuth();
 
   // Tournament Director state
@@ -82,6 +92,7 @@ export default function EventDetailPage() {
   const [playerResults, setPlayerResults] = useState<PlayerResult[]>([]);
   const [savingResults, setSavingResults] = useState(false);
   const [resultMessage, setResultMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [pointsPreview, setPointsPreview] = useState<PointsPreview | null>(null);
 
   const canManageEvent = user && (user.role === 'ADMIN' || user.role === 'TOURNAMENT_DIRECTOR' || user.role === 'VENUE_MANAGER');
 
@@ -94,10 +105,31 @@ export default function EventDetailPage() {
       // Check if user is in the signups list (regardless of status)
       const userSignup = event.signups.find(s => s.user.id === user.id);
       setIsSignedUp(!!userSignup);
+      setUserSignupStatus(userSignup?.status || null);
+      
+      // If user is waitlisted, get their position
+      if (userSignup?.status === 'WAITLISTED') {
+        eventsAPI.getWaitlistPosition(eventId).then(data => {
+          setWaitlistPosition(data.position);
+        }).catch(console.error);
+      } else {
+        setWaitlistPosition(null);
+      }
     } else if (!user) {
       setIsSignedUp(false);
+      setUserSignupStatus(null);
+      setWaitlistPosition(null);
     }
-  }, [event, user]);
+  }, [event, user, eventId]);
+
+  // Load points preview when management panel is shown
+  useEffect(() => {
+    if (showManagement && canManageEvent && event) {
+      eventsAPI.getPointsPreview(eventId).then(data => {
+        setPointsPreview(data);
+      }).catch(console.error);
+    }
+  }, [showManagement, canManageEvent, event, eventId, playerResults]);
 
   useEffect(() => {
     // Initialize player results from signups when event loads
@@ -281,8 +313,11 @@ export default function EventDetailPage() {
   }
 
   const statusInfo = getStatusBadge(event.status);
-  const canSignup = (event.status === 'SCHEDULED' || event.status === 'REGISTRATION_OPEN') && 
-                    event._count.signups < event.maxPlayers;
+  // Count registered (non-waitlisted) players
+  const registeredCount = event.signups.filter(s => s.status !== 'WAITLISTED' && s.status !== 'CANCELLED').length;
+  const waitlistedCount = event.signups.filter(s => s.status === 'WAITLISTED').length;
+  const isFull = registeredCount >= event.maxPlayers;
+  const canSignup = (event.status === 'SCHEDULED' || event.status === 'REGISTRATION_OPEN');
   const canEnterResults = canManageEvent && (event.status === 'IN_PROGRESS' || event.status === 'REGISTRATION_OPEN' || event.status === 'SCHEDULED');
   const isFinalized = event.status === 'COMPLETED';
 
@@ -366,26 +401,63 @@ export default function EventDetailPage() {
                 <span className="text-2xl">👥</span>
                 <div>
                   <p className="font-medium text-white">Players</p>
-                  <p>{event._count.signups} / {event.maxPlayers} registered</p>
+                  <p>
+                    {registeredCount} / {event.maxPlayers} registered
+                    {waitlistedCount > 0 && (
+                      <span className="text-yellow-400 ml-2">({waitlistedCount} on waitlist)</span>
+                    )}
+                  </p>
+                  {isFull && <p className="text-yellow-400 text-sm">Event is full - join waitlist</p>}
                 </div>
               </div>
+              
+              {/* User's waitlist status */}
+              {userSignupStatus === 'WAITLISTED' && waitlistPosition && (
+                <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-3">
+                  <p className="text-yellow-400 font-medium">
+                    ⏳ You are #{waitlistPosition} on the waitlist
+                  </p>
+                  <p className="text-yellow-300/70 text-sm">
+                    You'll be notified if a spot opens up
+                  </p>
+                </div>
+              )}
               
               {/* Signup Button */}
               {canSignup && (
                 <div className="pt-4">
                   {isSignedUp ? (
-                    <button
-                      onClick={handleCancelSignup}
-                      className="w-full bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 transition"
-                    >
-                      Cancel Registration
-                    </button>
+                    <div className="space-y-2">
+                      {userSignupStatus === 'WAITLISTED' ? (
+                        <button
+                          onClick={handleCancelSignup}
+                          className="w-full bg-yellow-600 text-white py-3 rounded-lg font-semibold hover:bg-yellow-700 transition"
+                        >
+                          Leave Waitlist
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handleCancelSignup}
+                          className="w-full bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 transition"
+                        >
+                          Cancel Registration
+                        </button>
+                      )}
+                    </div>
                   ) : (
                     <button
                       onClick={handleSignup}
-                      className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition"
+                      className={`w-full py-3 rounded-lg font-semibold transition ${
+                        isFull 
+                          ? 'bg-yellow-600 hover:bg-yellow-700 text-white' 
+                          : 'bg-green-600 hover:bg-green-700 text-white'
+                      }`}
                     >
-                      {isAuthenticated ? 'Register for Event' : 'Sign In to Register'}
+                      {!isAuthenticated 
+                        ? 'Sign In to Register' 
+                        : isFull 
+                          ? 'Join Waitlist' 
+                          : 'Register for Event'}
                     </button>
                   )}
                 </div>
@@ -437,11 +509,38 @@ export default function EventDetailPage() {
                   </div>
                 </div>
 
+                {/* Points Preview */}
+                {pointsPreview && (
+                  <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+                    <h3 className="text-green-400 font-medium mb-2">💰 Points Pool Preview</h3>
+                    <p className="text-green-200/70 text-sm mb-3">
+                      Based on {pointsPreview.playerCount} checked-in players
+                    </p>
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                      <div>
+                        <p className="text-yellow-400 text-2xl font-bold">🥇 {pointsPreview.first}</p>
+                        <p className="text-green-200/60 text-xs">1st Place</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-300 text-2xl font-bold">🥈 {pointsPreview.second}</p>
+                        <p className="text-green-200/60 text-xs">2nd Place</p>
+                      </div>
+                      <div>
+                        <p className="text-orange-400 text-2xl font-bold">🥉 {pointsPreview.third}</p>
+                        <p className="text-green-200/60 text-xs">3rd Place</p>
+                      </div>
+                    </div>
+                    <p className="text-green-200/50 text-xs mt-3 text-center">
+                      Total Pool: {pointsPreview.totalPool} pts (60%/30%/10% split, rounded up)
+                    </p>
+                  </div>
+                )}
+
                 {/* Results Entry */}
                 <div>
                   <h3 className="text-white font-medium mb-3">📋 Attendance & Results</h3>
                   <p className="text-orange-200/70 text-sm mb-4">
-                    Mark who attended, then enter their finishing positions. You can save and edit until you click "Finalize Results".
+                    Mark who attended, then enter their finishing positions. Only top 3 get points!
                   </p>
 
                   {playerResults.length === 0 ? (
@@ -639,23 +738,58 @@ export default function EventDetailPage() {
         {/* Registered Players */}
         <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 p-6">
           <h2 className="text-xl font-bold text-white mb-4">
-            👥 Registered Players ({event._count.signups})
+            👥 Registered Players ({registeredCount})
+            {waitlistedCount > 0 && (
+              <span className="text-yellow-400 text-sm font-normal ml-2">+ {waitlistedCount} waitlisted</span>
+            )}
           </h2>
           {event.signups.length === 0 ? (
             <p className="text-green-300/60">No players registered yet</p>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {event.signups.map((signup) => (
-                <div
-                  key={signup.id}
-                  className="flex items-center gap-2 p-2 bg-white/5 rounded-lg"
-                >
-                  <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-white font-bold">
-                    {signup.user.name.charAt(0).toUpperCase()}
+            <div className="space-y-4">
+              {/* Registered players */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {event.signups
+                  .filter(s => s.status !== 'WAITLISTED' && s.status !== 'CANCELLED')
+                  .map((signup) => (
+                    <div
+                      key={signup.id}
+                      className={`flex items-center gap-2 p-2 rounded-lg ${
+                        signup.status === 'CHECKED_IN' ? 'bg-green-500/20 border border-green-500/30' : 'bg-white/5'
+                      }`}
+                    >
+                      <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-white font-bold">
+                        {signup.user.name.charAt(0).toUpperCase()}
+                      </div>
+                      <span className="text-white text-sm truncate">{signup.user.name}</span>
+                      {signup.status === 'CHECKED_IN' && (
+                        <span className="text-green-400 text-xs">✓</span>
+                      )}
+                    </div>
+                  ))}
+              </div>
+              
+              {/* Waitlisted players */}
+              {waitlistedCount > 0 && (
+                <div>
+                  <h3 className="text-yellow-400 font-medium mb-2 text-sm">⏳ Waitlist</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {event.signups
+                      .filter(s => s.status === 'WAITLISTED')
+                      .map((signup, index) => (
+                        <div
+                          key={signup.id}
+                          className="flex items-center gap-2 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg"
+                        >
+                          <div className="w-6 h-6 bg-yellow-600/50 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                            {index + 1}
+                          </div>
+                          <span className="text-yellow-200 text-sm truncate">{signup.user.name}</span>
+                        </div>
+                      ))}
                   </div>
-                  <span className="text-white text-sm truncate">{signup.user.name}</span>
                 </div>
-              ))}
+              )}
             </div>
           )}
         </div>

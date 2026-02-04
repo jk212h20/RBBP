@@ -308,4 +308,36 @@ router.get('/:id/results', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * GET /api/events/:id/points-preview
+ * Get points preview based on current checked-in count (public)
+ */
+router.get('/:id/points-preview', async (req: Request, res: Response) => {
+  try {
+    const preview = await eventService.getPointsPreview(req.params.id);
+    res.json(preview);
+  } catch (error) {
+    console.error('Error fetching points preview:', error);
+    res.status(500).json({ error: 'Failed to fetch points preview' });
+  }
+});
+
+/**
+ * GET /api/events/:id/waitlist-position
+ * Get user's waitlist position for an event (authenticated)
+ */
+router.get('/:id/waitlist-position', authenticate, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    
+    const position = await eventService.getWaitlistPosition(req.params.id, req.user.userId);
+    res.json({ position });
+  } catch (error) {
+    console.error('Error fetching waitlist position:', error);
+    res.status(500).json({ error: 'Failed to fetch waitlist position' });
+  }
+});
+
 export default router;

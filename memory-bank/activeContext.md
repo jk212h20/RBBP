@@ -146,3 +146,48 @@ To enable Lightning withdrawals in production:
    - Replace MemoryStore session with Redis
    - Add rate limiting per endpoint
    - Set up proper logging
+
+---
+
+## Latest Changes (Feb 4, 2026)
+
+### Dynamic Points System & Waitlist - NEW!
+
+Implemented a new dynamic points calculation system and waitlist functionality:
+
+**Points Calculation:**
+- Base pool: 10 points for 10 or fewer players
+- +2 points per player beyond 10 (based on checked-in count)
+- Distribution: 60% / 30% / 10% (rounded up)
+- Only top 3 places get points
+- Example: 10 players = 6/3/1 pts, 20 players = 18/9/3 pts
+
+**Waitlist System:**
+- Events now default to 20 max players (configurable)
+- When event is full, new signups go to WAITLISTED status
+- Users see their waitlist position (e.g., "#3 on waitlist")
+- When someone cancels, next waitlisted person is promoted
+- Waitlisted players don't get registration points until promoted
+
+**New Backend Components:**
+- `calculateEventPoints()` function in event.service.ts
+- `getWaitlistPosition()` method
+- `promoteFromWaitlist()` method
+- `getPointsPreview()` endpoint
+- WAITLISTED status added to SignupStatus enum
+
+**New Frontend Features:**
+- Points Pool Preview in TD panel (shows 1st/2nd/3rd points)
+- Waitlist position display for users
+- "Join Waitlist" button when event is full
+- Waitlist section in registered players list
+- Check-in status indicators
+
+**Database Migration:**
+- Added WAITLISTED to SignupStatus enum
+- Changed default maxPlayers from 50 to 20
+- Updated existing events to maxPlayers=20
+
+**API Endpoints:**
+- `GET /api/events/:id/points-preview` - Get points breakdown
+- `GET /api/events/:id/waitlist-position` - Get user's waitlist position

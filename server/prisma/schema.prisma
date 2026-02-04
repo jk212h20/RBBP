@@ -161,7 +161,7 @@ model Event {
   description String?
   imageUrl    String?     // Base64 encoded image or URL
   dateTime    DateTime
-  maxPlayers  Int         @default(50)
+  maxPlayers  Int         @default(20)
   buyIn       Float?      // Optional buy-in amount
   status      EventStatus @default(SCHEDULED)
   
@@ -193,6 +193,7 @@ enum SignupStatus {
   CHECKED_IN
   CANCELLED
   NO_SHOW
+  WAITLISTED
 }
 
 model EventSignup {

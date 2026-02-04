@@ -11,6 +11,32 @@ const UNREGISTER_EARLY_PENALTY = -1;  // 24+ hours before event (per point earne
 const UNREGISTER_LATE_PENALTY = -2;   // Less than 24 hours before event (per point earned)
 const NO_SHOW_PENALTY = -3;           // Registered but didn't show up (per point earned)
 
+// ============================================
+// DYNAMIC POINTS CALCULATION
+// ============================================
+
+/**
+ * Calculate event points based on checked-in player count
+ * - Base pool: 10 points for 10 or fewer players
+ * - +2 points per player beyond 10
+ * - Distribution: 60% / 30% / 10% (rounded up)
+ * - Only top 3 get points
+ */
+export function calculateEventPoints(checkedInCount: number) {
+  // Base: 10 points for first 10 players
+  // +2 points for each player beyond 10
+  const extraPlayers = Math.max(0, checkedInCount - 10);
+  const totalPool = 10 + (extraPlayers * 2);
+  
+  return {
+    first: Math.ceil(totalPool * 0.60),   // 60% rounded up
+    second: Math.ceil(totalPool * 0.30),  // 30% rounded up  
+    third: Math.ceil(totalPool * 0.10),   // 10% rounded up
+    totalPool,
+    playerCount: checkedInCount
+  };
+}
+
 export class EventService {
   /**
    * Get all events with optional filters
@@ -272,15 +298,13 @@ export class EventService {
    * Awards registration points for the season:
    * - First 5 signups get 2 points (early bird bonus)
    * - Remaining signups get 1 point
+   * - If event is full, user is added to waitlist (no points awarded)
    */
   async signupForEvent(eventId: string, userId: string) {
     // Check if event exists and is open for registration
     const event = await prisma.event.findUnique({
       where: { id: eventId },
       include: {
-        _count: {
-          select: { signups: true },
-        },
         season: {
           select: {
             id: true,
@@ -298,10 +322,6 @@ export class EventService {
       throw new Error('Event is not open for registration');
     }
 
-    if (event._count.signups >= event.maxPlayers) {
-      throw new Error('Event is full');
-    }
-
     // Check if user is already signed up
     const existingSignup = await prisma.eventSignup.findUnique({
       where: {
@@ -316,9 +336,45 @@ export class EventService {
       throw new Error('Already signed up for this event');
     }
 
+    // Count current registered (non-waitlisted) signups
+    const registeredCount = await prisma.eventSignup.count({
+      where: {
+        eventId,
+        status: {
+          notIn: [SignupStatus.WAITLISTED, SignupStatus.CANCELLED],
+        },
+      },
+    });
+
+    // Determine if user goes on waitlist or gets registered
+    const isWaitlisted = registeredCount >= event.maxPlayers;
+
+    if (isWaitlisted) {
+      // Add to waitlist - no points awarded
+      const signup = await prisma.eventSignup.create({
+        data: {
+          eventId,
+          userId,
+          status: SignupStatus.WAITLISTED,
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      });
+
+      // Get waitlist position
+      const waitlistPosition = await this.getWaitlistPosition(eventId, userId);
+
+      return { ...signup, waitlistPosition };
+    }
+
     // Determine if this is an early bird signup (first 5 get bonus)
-    const currentSignupCount = event._count.signups;
-    const isEarlyBird = currentSignupCount < EARLY_BIRD_THRESHOLD;
+    const isEarlyBird = registeredCount < EARLY_BIRD_THRESHOLD;
     const pointsToAward = isEarlyBird ? EARLY_BIRD_REGISTRATION_POINTS : REGISTRATION_POINTS;
 
     // Create signup
@@ -342,6 +398,77 @@ export class EventService {
     await this.adjustUserSeasonPoints(userId, event.seasonId, pointsToAward);
 
     return signup;
+  }
+
+  /**
+   * Get a user's position on the waitlist for an event
+   */
+  async getWaitlistPosition(eventId: string, userId: string): Promise<number | null> {
+    const signup = await prisma.eventSignup.findUnique({
+      where: {
+        eventId_userId: {
+          eventId,
+          userId,
+        },
+      },
+    });
+
+    if (!signup || signup.status !== SignupStatus.WAITLISTED) {
+      return null;
+    }
+
+    // Count how many waitlisted signups were registered before this one
+    const position = await prisma.eventSignup.count({
+      where: {
+        eventId,
+        status: SignupStatus.WAITLISTED,
+        registeredAt: { lt: signup.registeredAt },
+      },
+    });
+
+    return position + 1; // 1-indexed position
+  }
+
+  /**
+   * Promote the next person from waitlist when a spot opens
+   */
+  async promoteFromWaitlist(eventId: string, seasonId: string): Promise<void> {
+    // Find the oldest waitlisted signup
+    const nextInLine = await prisma.eventSignup.findFirst({
+      where: {
+        eventId,
+        status: SignupStatus.WAITLISTED,
+      },
+      orderBy: {
+        registeredAt: 'asc',
+      },
+    });
+
+    if (!nextInLine) {
+      return; // No one on waitlist
+    }
+
+    // Count current registered signups to determine early bird status
+    const registeredCount = await prisma.eventSignup.count({
+      where: {
+        eventId,
+        status: {
+          notIn: [SignupStatus.WAITLISTED, SignupStatus.CANCELLED],
+        },
+      },
+    });
+
+    const isEarlyBird = registeredCount < EARLY_BIRD_THRESHOLD;
+    const pointsToAward = isEarlyBird ? EARLY_BIRD_REGISTRATION_POINTS : REGISTRATION_POINTS;
+
+    // Promote to registered
+    await prisma.eventSignup.update({
+      where: { id: nextInLine.id },
+      data: { status: SignupStatus.REGISTERED },
+    });
+
+    // Award registration points
+    await this.adjustUserSeasonPoints(nextInLine.userId, seasonId, pointsToAward);
   }
 
   /**
@@ -465,7 +592,9 @@ export class EventService {
   // ============================================
 
   /**
-   * Enter results for an event
+   * Enter results for an event using dynamic points calculation
+   * - Points based on checked-in player count
+   * - Only top 3 get points (60% / 30% / 10% rounded up)
    */
   async enterResults(eventId: string, results: ResultEntry[]) {
     const event = await prisma.event.findUnique({
@@ -477,6 +606,11 @@ export class EventService {
             pointsStructure: true,
           },
         },
+        signups: {
+          where: {
+            status: SignupStatus.CHECKED_IN,
+          },
+        },
       },
     });
 
@@ -484,42 +618,21 @@ export class EventService {
       throw new Error('Event not found');
     }
 
-    const pointsStructure = event.season.pointsStructure as Record<string, number>;
+    // Count checked-in players for dynamic points calculation
+    const checkedInCount = event.signups.length;
+    const pointsCalc = calculateEventPoints(checkedInCount);
 
-    // Calculate points for each result
+    // Calculate points for each result - only top 3 get points
     const resultsWithPoints = results.map((result) => {
       let pointsEarned = 0;
 
-      // Check exact position first
-      if (pointsStructure[result.position.toString()]) {
-        pointsEarned = pointsStructure[result.position.toString()];
-      } else {
-        // Check ranges like "11-15", "16-20", etc.
-        for (const [key, points] of Object.entries(pointsStructure)) {
-          if (key.includes('-')) {
-            const [min, max] = key.split('-').map(Number);
-            if (result.position >= min && result.position <= max) {
-              pointsEarned = points;
-              break;
-            }
-          } else if (key.includes('+')) {
-            const min = parseInt(key);
-            if (result.position >= min) {
-              pointsEarned = points;
-              break;
-            }
-          }
-        }
-      }
-
-      // Add knockout bonus
-      if (result.knockouts && pointsStructure.knockout) {
-        pointsEarned += result.knockouts * pointsStructure.knockout;
-      }
-
-      // Add participation points
-      if (pointsStructure.participation) {
-        pointsEarned += pointsStructure.participation;
+      // Only positions 1, 2, 3 get points
+      if (result.position === 1) {
+        pointsEarned = pointsCalc.first;
+      } else if (result.position === 2) {
+        pointsEarned = pointsCalc.second;
+      } else if (result.position === 3) {
+        pointsEarned = pointsCalc.third;
       }
 
       return {
@@ -562,6 +675,20 @@ export class EventService {
         position: 'asc',
       },
     });
+  }
+
+  /**
+   * Get points preview for an event based on current checked-in count
+   */
+  async getPointsPreview(eventId: string) {
+    const checkedInCount = await prisma.eventSignup.count({
+      where: {
+        eventId,
+        status: SignupStatus.CHECKED_IN,
+      },
+    });
+
+    return calculateEventPoints(checkedInCount);
   }
 
   /**
