@@ -558,7 +558,7 @@ export default function EventDetailPage() {
                       {playerResults.map((player) => (
                         <div 
                           key={player.userId}
-                          className={`p-3 rounded-lg ${
+                          className={`p-3 rounded-lg min-h-[72px] ${
                             player.attended ? 'bg-green-500/20' : 'bg-white/5'
                           }`}
                         >
@@ -577,44 +577,45 @@ export default function EventDetailPage() {
                                 </span>
                               </div>
                             </div>
-                            {player.attended && (
-                              <div className="flex items-center gap-4 pl-8">
-                                <div className="flex-1">
-                                  <label className="text-orange-200/70 text-xs block mb-1">Position</label>
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    max={playerResults.filter(p => p.attended).length}
-                                    value={player.position || ''}
-                                    onChange={(e) => updatePosition(player.userId, e.target.value ? parseInt(e.target.value) : null)}
-                                    placeholder="#"
-                                    className="w-full p-2 bg-white/10 border border-green-600/50 rounded text-white text-center"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="text-orange-200/70 text-xs block mb-1">KOs</label>
-                                  <div className="flex items-center gap-1">
-                                    <button
-                                      onClick={() => updateKnockouts(player.userId, player.knockouts - 1)}
-                                      className="w-8 h-8 bg-white/10 rounded text-white hover:bg-white/20"
-                                    >
-                                      -
-                                    </button>
-                                    <span className="w-8 text-center text-white">{player.knockouts}</span>
-                                    <button
-                                      onClick={() => updateKnockouts(player.userId, player.knockouts + 1)}
-                                      className="w-8 h-8 bg-white/10 rounded text-white hover:bg-white/20"
-                                    >
-                                      +
-                                    </button>
-                                  </div>
+                            <div className={`flex items-center gap-4 pl-8 ${!player.attended ? 'opacity-30 pointer-events-none' : ''}`}>
+                              <div className="flex-1">
+                                <label className="text-orange-200/70 text-xs block mb-1">Position</label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max={playerResults.filter(p => p.attended).length}
+                                  value={player.position || ''}
+                                  onChange={(e) => updatePosition(player.userId, e.target.value ? parseInt(e.target.value) : null)}
+                                  placeholder="#"
+                                  disabled={!player.attended}
+                                  className="w-full p-2 bg-white/10 border border-green-600/50 rounded text-white text-center disabled:opacity-50"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-orange-200/70 text-xs block mb-1">KOs</label>
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => updateKnockouts(player.userId, player.knockouts - 1)}
+                                    disabled={!player.attended}
+                                    className="w-8 h-8 bg-white/10 rounded text-white hover:bg-white/20 disabled:opacity-50"
+                                  >
+                                    -
+                                  </button>
+                                  <span className="w-8 text-center text-white">{player.knockouts}</span>
+                                  <button
+                                    onClick={() => updateKnockouts(player.userId, player.knockouts + 1)}
+                                    disabled={!player.attended}
+                                    className="w-8 h-8 bg-white/10 rounded text-white hover:bg-white/20 disabled:opacity-50"
+                                  >
+                                    +
+                                  </button>
                                 </div>
                               </div>
-                            )}
+                            </div>
                           </div>
 
                           {/* Desktop Layout */}
-                          <div className="hidden md:grid grid-cols-12 gap-2 items-center">
+                          <div className="hidden md:grid grid-cols-12 gap-2 items-center min-h-[40px]">
                             <div className="col-span-1">
                               <input
                                 type="checkbox"
@@ -629,40 +630,35 @@ export default function EventDetailPage() {
                               </span>
                             </div>
                             <div className="col-span-3">
-                              {player.attended ? (
-                                <input
-                                  type="number"
-                                  min="1"
-                                  max={playerResults.filter(p => p.attended).length}
-                                  value={player.position || ''}
-                                  onChange={(e) => updatePosition(player.userId, e.target.value ? parseInt(e.target.value) : null)}
-                                  placeholder="#"
-                                  className="w-full p-2 bg-white/10 border border-green-600/50 rounded text-white text-center"
-                                />
-                              ) : (
-                                <span className="text-gray-500">-</span>
-                              )}
+                              <input
+                                type="number"
+                                min="1"
+                                max={playerResults.filter(p => p.attended).length}
+                                value={player.position || ''}
+                                onChange={(e) => updatePosition(player.userId, e.target.value ? parseInt(e.target.value) : null)}
+                                placeholder="#"
+                                disabled={!player.attended}
+                                className={`w-full p-2 bg-white/10 border border-green-600/50 rounded text-white text-center disabled:opacity-30 ${!player.attended ? 'invisible' : ''}`}
+                              />
                             </div>
                             <div className="col-span-3">
-                              {player.attended ? (
-                                <div className="flex items-center gap-1">
-                                  <button
-                                    onClick={() => updateKnockouts(player.userId, player.knockouts - 1)}
-                                    className="w-8 h-8 bg-white/10 rounded text-white hover:bg-white/20"
-                                  >
-                                    -
-                                  </button>
-                                  <span className="w-8 text-center text-white">{player.knockouts}</span>
-                                  <button
-                                    onClick={() => updateKnockouts(player.userId, player.knockouts + 1)}
-                                    className="w-8 h-8 bg-white/10 rounded text-white hover:bg-white/20"
-                                  >
-                                    +
-                                  </button>
-                                </div>
-                              ) : (
-                                <span className="text-gray-500">-</span>
-                              )}
+                              <div className={`flex items-center gap-1 ${!player.attended ? 'invisible' : ''}`}>
+                                <button
+                                  onClick={() => updateKnockouts(player.userId, player.knockouts - 1)}
+                                  disabled={!player.attended}
+                                  className="w-8 h-8 bg-white/10 rounded text-white hover:bg-white/20 disabled:opacity-30"
+                                >
+                                  -
+                                </button>
+                                <span className="w-8 text-center text-white">{player.knockouts}</span>
+                                <button
+                                  onClick={() => updateKnockouts(player.userId, player.knockouts + 1)}
+                                  disabled={!player.attended}
+                                  className="w-8 h-8 bg-white/10 rounded text-white hover:bg-white/20 disabled:opacity-30"
+                                >
+                                  +
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </div>

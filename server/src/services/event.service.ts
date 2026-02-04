@@ -689,6 +689,9 @@ export class EventService {
       data: { status: EventStatus.COMPLETED },
     });
 
+    // Process no-shows: penalize registered players who didn't attend
+    await this.processNoShows(eventId);
+
     // Recalculate season standings (for stats like eventsPlayed, wins, etc.)
     await seasonService.recalculateStandings(event.seasonId);
 
