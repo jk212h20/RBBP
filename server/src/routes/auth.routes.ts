@@ -6,7 +6,9 @@ import {
   login, 
   getUserById, 
   findOrCreateLightningUser,
-  updateProfile
+  updateProfile,
+  linkLightningToAccount,
+  addEmailToAccount
 } from '../services/auth.service';
 import { 
   createChallenge, 
@@ -303,6 +305,106 @@ router.get('/providers', (req: Request, res: Response) => {
       lightning: true,
     },
   });
+});
+
+// ============================================
+// LINK LIGHTNING WALLET TO EXISTING ACCOUNT
+// ============================================
+
+/**
+ * GET /api/auth/link-lightning/challenge
+ * Get a challenge to link Lightning wallet to current account
+ */
+router.get('/link-lightning/challenge', authenticate, async (req: Request, res: Response) => {
+  try {
+    const challenge = await createChallenge();
+    
+    // Generate QR code as data URL
+    const qrCodeDataUrl = await QRCode.toDataURL(challenge.lnurl.toUpperCase(), {
+      errorCorrectionLevel: 'M',
+      margin: 2,
+      width: 256,
+    });
+
+    res.json({
+      k1: challenge.k1,
+      lnurl: challenge.lnurl,
+      qrCode: qrCodeDataUrl,
+      expiresIn: 300, // 5 minutes
+    });
+  } catch (error) {
+    console.error('Link lightning challenge error:', error);
+    res.status(500).json({ error: 'Failed to create challenge' });
+  }
+});
+
+/**
+ * GET /api/auth/link-lightning/status/:k1
+ * Check if challenge is verified and link to current account
+ */
+router.get('/link-lightning/status/:k1', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { k1 } = req.params;
+    const status = await getChallengeStatus(k1);
+
+    if (status.expired && !status.verified) {
+      res.json({ status: 'expired' });
+      return;
+    }
+
+    if (!status.verified) {
+      res.json({ status: 'pending' });
+      return;
+    }
+
+    // Challenge is verified, link pubkey to current user
+    const result = await linkLightningToAccount(req.user!.userId, status.pubkey!);
+
+    res.json({
+      status: 'linked',
+      user: result.user,
+      token: result.token,
+    });
+  } catch (error) {
+    console.error('Link lightning status error:', error);
+    const message = error instanceof Error ? error.message : 'Failed to link Lightning wallet';
+    res.status(400).json({ error: message });
+  }
+});
+
+// ============================================
+// ADD EMAIL/PASSWORD TO EXISTING ACCOUNT
+// ============================================
+
+/**
+ * POST /api/auth/add-email
+ * Add email and password to current account (for Lightning users)
+ */
+router.post('/add-email', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      res.status(400).json({ error: 'Email and password are required' });
+      return;
+    }
+
+    if (password.length < 8) {
+      res.status(400).json({ error: 'Password must be at least 8 characters' });
+      return;
+    }
+
+    const result = await addEmailToAccount(req.user!.userId, email, password);
+
+    res.json({
+      message: 'Email added successfully',
+      user: result.user,
+      token: result.token,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to add email';
+    res.status(400).json({ error: message });
+  }
 });
 
 export default router;

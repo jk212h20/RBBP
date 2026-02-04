@@ -11,6 +11,8 @@ interface User {
   role: string;
   avatar: string | null;
   authProvider: string;
+  googleId: string | null;
+  lightningPubkey: string | null;
 }
 
 interface AuthContextType {

@@ -74,6 +74,24 @@ export const authAPI = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
+
+  // Link Lightning wallet to existing account
+  linkLightningChallenge: () =>
+    fetchAPI<{ k1: string; lnurl: string; qrCode: string; expiresIn: number }>(
+      '/auth/link-lightning/challenge'
+    ),
+
+  linkLightningStatus: (k1: string) =>
+    fetchAPI<{ status: string; user?: any; token?: string }>(
+      `/auth/link-lightning/status/${k1}`
+    ),
+
+  // Add email/password to existing account
+  addEmail: (data: { email: string; password: string }) =>
+    fetchAPI<{ message: string; user: any; token: string }>('/auth/add-email', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };
 
 // Google OAuth URL

@@ -238,6 +238,85 @@ export interface UpdateProfileInput {
   email?: string;
 }
 
+/**
+ * Link Lightning wallet to existing account
+ */
+export async function linkLightningToAccount(userId: string, pubkey: string) {
+  // Check if pubkey is already linked to another account
+  const existingUser = await prisma.user.findUnique({
+    where: { lightningPubkey: pubkey },
+  });
+
+  if (existingUser) {
+    if (existingUser.id === userId) {
+      throw new Error('This Lightning wallet is already linked to your account');
+    }
+    throw new Error('This Lightning wallet is already linked to another account');
+  }
+
+  // Link the pubkey to the current user
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: { lightningPubkey: pubkey },
+    include: { profile: true },
+  });
+
+  // Generate new token with updated info
+  const token = generateToken(updatedUser);
+
+  return {
+    user: sanitizeUser(updatedUser),
+    token,
+  };
+}
+
+/**
+ * Add email and password to existing account (for Lightning users)
+ */
+export async function addEmailToAccount(userId: string, email: string, password: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  // Check if user already has email/password
+  if (user.email && user.password) {
+    throw new Error('This account already has email login configured');
+  }
+
+  // Check if email is already taken
+  const existingUser = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (existingUser) {
+    throw new Error('This email is already in use by another account');
+  }
+
+  // Hash password and update user
+  const hashedPassword = await hashPassword(password);
+
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: { 
+      email,
+      password: hashedPassword,
+    },
+    include: { profile: true },
+  });
+
+  // Generate new token with updated info
+  const token = generateToken(updatedUser);
+
+  return {
+    user: sanitizeUser(updatedUser),
+    token,
+  };
+}
+
 export async function updateProfile(userId: string, input: UpdateProfileInput) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
