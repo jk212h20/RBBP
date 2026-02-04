@@ -1096,24 +1096,46 @@ export default function AdminPage() {
                         </td>
                         <td className="py-3 px-4">
                           {u.id !== user?.id && (
-                            <button
-                              onClick={async () => {
-                                try {
-                                  await adminAPI.updateUserStatus(u.id, !u.isActive);
-                                  setMessage(`User ${u.isActive ? 'deactivated' : 'activated'} successfully!`);
-                                  fetchUsers();
-                                } catch (err: any) {
-                                  setError(err.message || 'Failed to update user status');
-                                }
-                              }}
-                              className={`text-xs px-2 py-1 rounded ${
-                                u.isActive 
-                                  ? 'bg-red-600/20 text-red-400 hover:bg-red-600/30' 
-                                  : 'bg-green-600/20 text-green-400 hover:bg-green-600/30'
-                              }`}
-                            >
-                              {u.isActive ? '🚫 Deactivate' : '✅ Activate'}
-                            </button>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await adminAPI.updateUserStatus(u.id, !u.isActive);
+                                    setMessage(`User ${u.isActive ? 'deactivated' : 'activated'} successfully!`);
+                                    fetchUsers();
+                                  } catch (err: any) {
+                                    setError(err.message || 'Failed to update user status');
+                                  }
+                                }}
+                                className={`text-xs px-2 py-1 rounded ${
+                                  u.isActive 
+                                    ? 'bg-red-600/20 text-red-400 hover:bg-red-600/30' 
+                                    : 'bg-green-600/20 text-green-400 hover:bg-green-600/30'
+                                }`}
+                              >
+                                {u.isActive ? '🚫 Deactivate' : '✅ Activate'}
+                              </button>
+                              {!u.isActive && (
+                                <button
+                                  onClick={async () => {
+                                    if (!confirm(`⚠️ PERMANENTLY DELETE "${u.name}"?\n\nThis will:\n• Remove all their data\n• Free up their email/lightning for reuse\n• Create a backup (recoverable by admin)\n\nThis action cannot be undone!`)) return;
+                                    try {
+                                      setError('');
+                                      const result = await adminAPI.deleteUser(u.id);
+                                      setMessage(result.message);
+                                      fetchUsers();
+                                      fetchStats();
+                                    } catch (err: any) {
+                                      setError(err.message || 'Failed to delete user');
+                                    }
+                                  }}
+                                  className="text-xs px-2 py-1 rounded bg-red-600/40 text-red-300 hover:bg-red-600/60"
+                                  title="Permanently delete this deactivated account"
+                                >
+                                  🗑️ Delete
+                                </button>
+                              )}
+                            </div>
                           )}
                         </td>
                       </tr>

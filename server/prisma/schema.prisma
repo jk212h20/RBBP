@@ -323,6 +323,21 @@ model Comment {
 }
 
 // ============================================
+// DELETED USERS (Archive/Backup)
+// ============================================
+
+model DeletedUser {
+  id            String   @id @default(cuid())
+  originalId    String   // Original user ID before deletion
+  userData      Json     // Full snapshot of user data at time of deletion
+  deletedBy     String   // Admin who deleted the account
+  reason        String?  // Optional reason for deletion
+  deletedAt     DateTime @default(now())
+
+  @@map("deleted_users")
+}
+
+// ============================================
 // LIGHTNING WITHDRAWALS
 // ============================================
 

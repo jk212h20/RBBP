@@ -281,6 +281,17 @@ export const adminAPI = {
       method: 'PUT',
       body: JSON.stringify({ isActive }),
     }),
+  
+  deleteUser: (userId: string, reason?: string) =>
+    fetchAPI<{ message: string; deletedUser: { id: string; name: string; email: string | null } }>(
+      `/admin/users/${userId}`,
+      {
+        method: 'DELETE',
+        body: JSON.stringify({ reason }),
+      }
+    ),
+  
+  getDeletedUsers: () => fetchAPI<any[]>('/admin/deleted-users'),
 };
 
 // ============================================
