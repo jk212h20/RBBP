@@ -135,10 +135,16 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!linkLightningData || linkLightningStatus !== 'pending') return;
 
+    console.log('[LinkLightning] Starting polling for k1:', linkLightningData.k1);
+
     const pollInterval = setInterval(async () => {
       try {
+        console.log('[LinkLightning] Polling status...');
         const status = await authAPI.linkLightningStatus(linkLightningData.k1);
+        console.log('[LinkLightning] Status response:', status);
+        
         if (status.status === 'linked') {
+          console.log('[LinkLightning] Successfully linked!');
           setLinkLightningStatus('linked');
           if (status.token) {
             localStorage.setItem('token', status.token);
@@ -151,17 +157,19 @@ export default function ProfilePage() {
             setLinkLightningStatus('idle');
           }, 2000);
         } else if (status.status === 'expired') {
+          console.log('[LinkLightning] Challenge expired');
           setLinkLightningStatus('error');
           setSaveMessage({ type: 'error', text: 'Link request expired. Please try again.' });
           setLinkLightningData(null);
+        } else {
+          console.log('[LinkLightning] Still pending...');
         }
       } catch (err: any) {
-        console.error('Failed to poll link lightning status:', err);
-        if (err.message?.includes('already linked')) {
-          setLinkLightningStatus('error');
-          setSaveMessage({ type: 'error', text: err.message });
-          setLinkLightningData(null);
-        }
+        console.error('[LinkLightning] Poll error:', err);
+        // Show ALL errors, not just "already linked"
+        setLinkLightningStatus('error');
+        setSaveMessage({ type: 'error', text: err.message || 'Failed to link Lightning wallet' });
+        setLinkLightningData(null);
       }
     }, 2000); // Poll every 2 seconds
 
