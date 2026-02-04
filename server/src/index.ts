@@ -64,13 +64,28 @@ app.use(cors({
   credentials: true
 }));
 
-// Rate limiting
-const limiter = rateLimit({
+// Rate limiting - General API (permissive for normal usage)
+const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 3000, // 3000 requests per 15 minutes per IP - plenty for normal usage
   message: { error: 'Too many requests, please try again later.' }
 });
-app.use(limiter);
+app.use(generalLimiter);
+
+// Failed login protection - only counts failed attempts (brute force protection)
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 6, // 6 failed attempts before lockout
+  skipSuccessfulRequests: true, // Only count failures!
+  message: { error: 'Too many failed login attempts. Please try again in 15 minutes.' }
+});
+
+// Lightning challenge generation limiter
+const lightningChallengeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // 20 challenge generations per 15 minutes
+  message: { error: 'Too many login attempts. Please try again later.' }
+});
 
 // Body parsing middleware - increased limit for base64 images
 app.use(express.json({ limit: '10mb' }));
@@ -133,7 +148,9 @@ app.get('/api', (req: Request, res: Response) => {
 // ROUTES
 // ============================================
 
-// Auth routes
+// Auth routes (with specific rate limiters for login endpoints)
+// Export limiters for use in auth routes
+export { loginLimiter, lightningChallengeLimiter };
 app.use('/api/auth', authRoutes);
 
 // ============================================

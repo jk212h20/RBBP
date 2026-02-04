@@ -18,6 +18,7 @@ import {
 import { authenticate } from '../middleware/auth.middleware';
 import { registerSchema, loginSchema, updateProfileSchema } from '../validators/auth.validator';
 import { isGoogleConfigured } from '../config/passport';
+import { loginLimiter, lightningChallengeLimiter } from '../index';
 
 const router = Router();
 
@@ -57,8 +58,9 @@ router.post('/register', async (req: Request, res: Response) => {
 /**
  * POST /api/auth/login
  * Login with email and password
+ * Rate limited: 6 failed attempts per 15 minutes per IP
  */
-router.post('/login', async (req: Request, res: Response) => {
+router.post('/login', loginLimiter, async (req: Request, res: Response) => {
   try {
     const validation = loginSchema.safeParse(req.body);
     
@@ -133,8 +135,9 @@ router.get('/google/callback', (req: Request, res: Response, next) => {
 /**
  * GET /api/auth/lightning/challenge
  * Get a new LNURL-auth challenge
+ * Rate limited: 20 challenges per 15 minutes per IP
  */
-router.get('/lightning/challenge', async (req: Request, res: Response) => {
+router.get('/lightning/challenge', lightningChallengeLimiter, async (req: Request, res: Response) => {
   try {
     const challenge = await createChallenge();
     
@@ -315,8 +318,9 @@ router.get('/providers', (req: Request, res: Response) => {
 /**
  * GET /api/auth/link-lightning/challenge
  * Get a challenge to link Lightning wallet to current account
+ * Rate limited: 20 challenges per 15 minutes per IP
  */
-router.get('/link-lightning/challenge', authenticate, async (req: Request, res: Response) => {
+router.get('/link-lightning/challenge', authenticate, lightningChallengeLimiter, async (req: Request, res: Response) => {
   try {
     const challenge = await createChallenge();
     
