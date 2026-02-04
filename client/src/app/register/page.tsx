@@ -38,11 +38,6 @@ export default function RegisterPage() {
       return;
     }
 
-    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
-      setError('Password must contain uppercase, lowercase, and a number');
-      return;
-    }
-
     setLoading(true);
 
     try {
@@ -87,6 +82,9 @@ export default function RegisterPage() {
                 required
                 minLength={2}
               />
+              <p className="mt-1 text-xs text-gray-500">
+                Please use your real name or whatever name you will use at the table so that tournament directors can easily award points.
+              </p>
             </div>
 
             <div>
@@ -119,7 +117,7 @@ export default function RegisterPage() {
                 minLength={8}
               />
               <p className="mt-1 text-xs text-gray-500">
-                Min 8 chars with uppercase, lowercase, and number
+                Minimum 8 characters
               </p>
             </div>
 

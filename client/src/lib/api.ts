@@ -65,7 +65,7 @@ export const authAPI = {
     ),
 
   lightningStatus: (k1: string) =>
-    fetchAPI<{ status: string; token?: string; user?: any; isNew?: boolean }>(
+    fetchAPI<{ status: string; token?: string; user?: any; isNew?: boolean; lightningBonusAwarded?: boolean }>(
       `/auth/lightning/status/${k1}`
     ),
 
@@ -82,7 +82,7 @@ export const authAPI = {
     ),
 
   linkLightningStatus: (k1: string) =>
-    fetchAPI<{ status: string; user?: any; token?: string }>(
+    fetchAPI<{ status: string; user?: any; token?: string; lightningBonusAwarded?: boolean }>(
       `/auth/link-lightning/status/${k1}`
     ),
 
@@ -292,6 +292,34 @@ export const adminAPI = {
     ),
   
   getDeletedUsers: () => fetchAPI<any[]>('/admin/deleted-users'),
+  
+  // Points management
+  getMigrationStatus: () => fetchAPI<{ pointsHistoryEnabled: boolean }>('/admin/migration-status'),
+  
+  runMigration: () => fetchAPI<{ message: string; success?: boolean; alreadyApplied?: boolean }>('/admin/run-migration', {
+    method: 'POST',
+  }),
+  
+  awardPoints: (data: { userId: string; seasonId: string; points: number; reason: string }) =>
+    fetchAPI<{ message: string; historyRecord: any }>('/admin/points/award', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  
+  getPointsUsers: () => fetchAPI<{ season: any; users: any[] }>('/admin/points/users'),
+  
+  getPointsHistory: (userId: string, seasonId?: string) => {
+    const query = seasonId ? `?seasonId=${seasonId}` : '';
+    return fetchAPI<any[]>(`/admin/points/history/${userId}${query}`);
+  },
+  
+  getUserDetails: (userId: string) => fetchAPI<any>(`/admin/users/${userId}/details`),
+  
+  updateUserNotes: (userId: string, notes: string) =>
+    fetchAPI<{ id: string; adminNotes: string }>(`/admin/users/${userId}/notes`, {
+      method: 'PUT',
+      body: JSON.stringify({ notes }),
+    }),
 };
 
 // ============================================

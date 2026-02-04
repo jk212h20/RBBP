@@ -71,6 +71,7 @@ export default function ProfilePage() {
     qrCode: string;
   } | null>(null);
   const [linkLightningStatus, setLinkLightningStatus] = useState<'idle' | 'pending' | 'linked' | 'error'>('idle');
+  const [showLightningBonus, setShowLightningBonus] = useState(false);
 
   // Add email/password state
   const [showAddEmail, setShowAddEmail] = useState(false);
@@ -150,6 +151,11 @@ export default function ProfilePage() {
             localStorage.setItem('token', status.token);
           }
           await refreshUser();
+          // Show bonus notification if awarded
+          if (status.lightningBonusAwarded) {
+            setShowLightningBonus(true);
+            setTimeout(() => setShowLightningBonus(false), 5000);
+          }
           setSaveMessage({ type: 'success', text: 'Lightning wallet linked successfully!' });
           // Auto-close after showing success
           setTimeout(() => {
@@ -349,6 +355,25 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-black">
+      {/* Lightning Bonus Notification */}
+      {showLightningBonus && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 animate-bounce">
+          <div className="bg-gradient-to-r from-yellow-500 to-orange-500 text-black px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3">
+            <span className="text-2xl">⚡</span>
+            <div>
+              <p className="font-bold">Thanks for linking Lightning!</p>
+              <p className="text-sm">+1 Point awarded to your season standings!</p>
+            </div>
+            <button 
+              onClick={() => setShowLightningBonus(false)}
+              className="ml-2 text-black/60 hover:text-black"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-black/30 backdrop-blur-sm border-b border-green-700/50">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">

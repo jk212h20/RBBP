@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { User, AuthProvider } from '@prisma/client';
 import prisma from '../lib/prisma';
+import { awardLightningBonusPoint } from './standings.service';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
@@ -189,7 +190,7 @@ export async function findOrCreateLightningUser(pubkey: string) {
   });
 
   if (user) {
-    return { user: sanitizeUser(user), token: generateToken(user), isNew: false };
+    return { user: sanitizeUser(user), token: generateToken(user), isNew: false, lightningBonusAwarded: false };
   }
 
   // Create new user with Lightning
@@ -206,7 +207,10 @@ export async function findOrCreateLightningUser(pubkey: string) {
     data: { userId: user.id },
   });
 
-  return { user: sanitizeUser(user), token: generateToken(user), isNew: true };
+  // Award 1 bonus point for signing up with Lightning
+  const bonusAwarded = await awardLightningBonusPoint(user.id);
+
+  return { user: sanitizeUser(user), token: generateToken(user), isNew: true, lightningBonusAwarded: bonusAwarded };
 }
 
 export async function getUserById(userId: string) {
@@ -261,12 +265,16 @@ export async function linkLightningToAccount(userId: string, pubkey: string) {
     include: { profile: true },
   });
 
+  // Award 1 bonus point for linking Lightning wallet
+  const bonusAwarded = await awardLightningBonusPoint(userId);
+
   // Generate new token with updated info
   const token = generateToken(updatedUser);
 
   return {
     user: sanitizeUser(updatedUser),
     token,
+    lightningBonusAwarded: bonusAwarded,
   };
 }
 

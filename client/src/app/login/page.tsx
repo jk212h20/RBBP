@@ -62,7 +62,12 @@ export default function LoginPage() {
           if (status.status === 'verified' && status.token) {
             setPollingLightning(false);
             await loginWithToken(status.token);
-            router.push('/dashboard');
+            // Redirect with lightning bonus flag if awarded
+            if (status.lightningBonusAwarded) {
+              router.push('/dashboard?lightningBonus=true');
+            } else {
+              router.push('/dashboard');
+            }
           } else if (status.status === 'expired') {
             setPollingLightning(false);
             setError('Lightning login expired. Please try again.');

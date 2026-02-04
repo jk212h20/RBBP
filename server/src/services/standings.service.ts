@@ -1,5 +1,64 @@
 import prisma from '../lib/prisma';
 
+/**
+ * Award 1 bonus point to a user for using Lightning authentication
+ * This is called when a user signs up with Lightning or links Lightning to their account
+ */
+export async function awardLightningBonusPoint(userId: string): Promise<boolean> {
+  try {
+    // Find the active season
+    const activeSeason = await prisma.season.findFirst({
+      where: { isActive: true }
+    });
+
+    if (!activeSeason) {
+      console.log('[Lightning Bonus] No active season found, skipping bonus point');
+      return false;
+    }
+
+    // Upsert the standing - add 1 point for Lightning signup
+    await prisma.standing.upsert({
+      where: {
+        seasonId_userId: {
+          seasonId: activeSeason.id,
+          userId
+        }
+      },
+      update: {
+        totalPoints: { increment: 1 }
+      },
+      create: {
+        seasonId: activeSeason.id,
+        userId,
+        totalPoints: 1,
+        eventsPlayed: 0,
+        wins: 0,
+        topThrees: 0,
+        knockouts: 0
+      }
+    });
+
+    // Update ranks for the season
+    const allStandings = await prisma.standing.findMany({
+      where: { seasonId: activeSeason.id },
+      orderBy: { totalPoints: 'desc' }
+    });
+
+    for (let i = 0; i < allStandings.length; i++) {
+      await prisma.standing.update({
+        where: { id: allStandings[i].id },
+        data: { rank: i + 1 }
+      });
+    }
+
+    console.log(`[Lightning Bonus] Awarded 1 point to user ${userId} for Lightning authentication`);
+    return true;
+  } catch (error) {
+    console.error('[Lightning Bonus] Error awarding bonus point:', error);
+    return false;
+  }
+}
+
 export const standingsService = {
   // Get current season standings
   async getCurrentStandings() {

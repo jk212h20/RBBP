@@ -224,6 +224,7 @@ router.get('/lightning/status/:k1', async (req: Request, res: Response) => {
       token: result.token,
       user: result.user,
       isNew: result.isNew,
+      lightningBonusAwarded: result.lightningBonusAwarded,
     });
   } catch (error) {
     console.error('Lightning status error:', error);
@@ -373,6 +374,7 @@ router.get('/link-lightning/status/:k1', authenticate, async (req: Request, res:
       status: 'linked',
       user: result.user,
       token: result.token,
+      lightningBonusAwarded: result.lightningBonusAwarded,
     });
   } catch (error) {
     console.error('[LinkLightning] Error:', error);

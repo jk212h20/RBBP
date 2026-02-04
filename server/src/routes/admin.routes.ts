@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { authenticate, requireAdmin } from '../middleware/auth.middleware';
 import prisma from '../lib/prisma';
 import { generateToken } from '../services/auth.service';
+import { pointsService } from '../services/points.service';
 
 const router = Router();
 
@@ -285,6 +286,192 @@ router.get('/stats', authenticate, requireAdmin, async (req: Request, res: Respo
   } catch (error) {
     console.error('Error fetching stats:', error);
     res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+});
+
+// ============================================
+// POINTS MANAGEMENT (Admin only)
+// ============================================
+
+// POST /api/admin/points/award - Award points to a user
+router.post('/points/award', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { userId, seasonId, points, reason } = req.body;
+    const adminId = req.user!.userId;
+
+    if (!userId || !seasonId || points === undefined || !reason) {
+      return res.status(400).json({ error: 'userId, seasonId, points, and reason are required' });
+    }
+
+    if (typeof points !== 'number') {
+      return res.status(400).json({ error: 'points must be a number' });
+    }
+
+    if (!reason.trim()) {
+      return res.status(400).json({ error: 'reason cannot be empty' });
+    }
+
+    const result = await pointsService.adjustPoints({
+      userId,
+      seasonId,
+      points,
+      reason: reason.trim(),
+      createdById: adminId,
+    });
+
+    res.json({ 
+      message: `${points > 0 ? 'Awarded' : 'Deducted'} ${Math.abs(points)} points`,
+      historyRecord: result 
+    });
+  } catch (error) {
+    console.error('Error awarding points:', error);
+    res.status(500).json({ error: 'Failed to award points' });
+  }
+});
+
+// GET /api/admin/points/users - Get users for points management (sorted by last login)
+router.get('/points/users', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const data = await pointsService.getUsersForPointsManagement();
+    res.json(data);
+  } catch (error) {
+    console.error('Error fetching users for points:', error);
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+// GET /api/admin/points/history/:userId - Get points history for a user
+router.get('/points/history/:userId', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const { seasonId } = req.query;
+    
+    const history = await pointsService.getUserPointsHistory(
+      userId, 
+      seasonId as string | undefined
+    );
+    
+    res.json(history);
+  } catch (error) {
+    console.error('Error fetching points history:', error);
+    res.status(500).json({ error: 'Failed to fetch points history' });
+  }
+});
+
+// GET /api/admin/users/:id/details - Get detailed user info for admin
+router.get('/users/:id/details', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const user = await pointsService.getUserAdminDetails(id);
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json(user);
+  } catch (error) {
+    console.error('Error fetching user details:', error);
+    res.status(500).json({ error: 'Failed to fetch user details' });
+  }
+});
+
+// PUT /api/admin/users/:id/notes - Update admin notes for a user
+router.put('/users/:id/notes', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { notes } = req.body;
+    
+    const result = await pointsService.updateAdminNotes(id, notes || '');
+    res.json(result);
+  } catch (error) {
+    console.error('Error updating admin notes:', error);
+    res.status(500).json({ error: 'Failed to update admin notes' });
+  }
+});
+
+// POST /api/admin/run-migration - Run pending database migrations (one-time setup)
+router.post('/run-migration', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    // Check if points_history table exists
+    const tableExists = await prisma.$queryRaw`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'points_history'
+      );
+    ` as any[];
+    
+    if (tableExists[0]?.exists) {
+      return res.json({ message: 'Migration already applied - points_history table exists', alreadyApplied: true });
+    }
+
+    // Run the migration SQL directly
+    await prisma.$executeRaw`
+      ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "lastLoginAt" TIMESTAMP(3);
+    `;
+    await prisma.$executeRaw`
+      ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "adminNotes" TEXT;
+    `;
+    await prisma.$executeRaw`
+      CREATE TABLE IF NOT EXISTS "points_history" (
+        "id" TEXT NOT NULL,
+        "userId" TEXT NOT NULL,
+        "seasonId" TEXT NOT NULL,
+        "points" INTEGER NOT NULL,
+        "reason" TEXT NOT NULL,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "createdById" TEXT,
+        CONSTRAINT "points_history_pkey" PRIMARY KEY ("id")
+      );
+    `;
+    await prisma.$executeRaw`
+      ALTER TABLE "points_history" DROP CONSTRAINT IF EXISTS "points_history_userId_fkey";
+    `;
+    await prisma.$executeRaw`
+      ALTER TABLE "points_history" ADD CONSTRAINT "points_history_userId_fkey" 
+      FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    `;
+    await prisma.$executeRaw`
+      ALTER TABLE "points_history" DROP CONSTRAINT IF EXISTS "points_history_seasonId_fkey";
+    `;
+    await prisma.$executeRaw`
+      ALTER TABLE "points_history" ADD CONSTRAINT "points_history_seasonId_fkey" 
+      FOREIGN KEY ("seasonId") REFERENCES "seasons"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    `;
+    await prisma.$executeRaw`
+      CREATE INDEX IF NOT EXISTS "points_history_userId_idx" ON "points_history"("userId");
+    `;
+    await prisma.$executeRaw`
+      CREATE INDEX IF NOT EXISTS "points_history_seasonId_idx" ON "points_history"("seasonId");
+    `;
+    await prisma.$executeRaw`
+      CREATE INDEX IF NOT EXISTS "points_history_createdAt_idx" ON "points_history"("createdAt");
+    `;
+
+    res.json({ message: 'Migration applied successfully! Points history feature is now enabled.', success: true });
+  } catch (error: any) {
+    console.error('Error running migration:', error);
+    res.status(500).json({ error: `Migration failed: ${error.message}` });
+  }
+});
+
+// GET /api/admin/migration-status - Check if points migration has been applied
+router.get('/migration-status', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const tableExists = await prisma.$queryRaw`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'points_history'
+      );
+    ` as any[];
+    
+    res.json({ 
+      pointsHistoryEnabled: tableExists[0]?.exists || false 
+    });
+  } catch (error) {
+    console.error('Error checking migration status:', error);
+    res.status(500).json({ error: 'Failed to check migration status' });
   }
 });
 

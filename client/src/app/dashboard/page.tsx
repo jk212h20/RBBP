@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { standingsAPI } from '@/lib/api';
@@ -23,11 +23,13 @@ interface SeasonStanding {
   } | null;
 }
 
-export default function DashboardPage() {
+function DashboardContent() {
   const { user, logout, isAuthenticated, loading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [seasonStanding, setSeasonStanding] = useState<SeasonStanding | null>(null);
   const [loadingStanding, setLoadingStanding] = useState(true);
+  const [showLightningBonus, setShowLightningBonus] = useState(false);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -40,6 +42,18 @@ export default function DashboardPage() {
       loadSeasonStanding();
     }
   }, [isAuthenticated]);
+
+  // Check for lightning bonus notification
+  useEffect(() => {
+    const lightningBonus = searchParams.get('lightningBonus');
+    if (lightningBonus === 'true') {
+      setShowLightningBonus(true);
+      // Clear the URL parameter
+      router.replace('/dashboard', { scroll: false });
+      // Auto-hide after 5 seconds
+      setTimeout(() => setShowLightningBonus(false), 5000);
+    }
+  }, [searchParams, router]);
 
   const loadSeasonStanding = async () => {
     try {
@@ -82,6 +96,25 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-black">
+      {/* Lightning Bonus Notification */}
+      {showLightningBonus && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 animate-bounce">
+          <div className="bg-gradient-to-r from-yellow-500 to-orange-500 text-black px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3">
+            <span className="text-2xl">⚡</span>
+            <div>
+              <p className="font-bold">Thanks for logging in with Lightning!</p>
+              <p className="text-sm">+1 Point awarded to your season standings!</p>
+            </div>
+            <button 
+              onClick={() => setShowLightningBonus(false)}
+              className="ml-2 text-black/60 hover:text-black"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Navigation */}
       <nav className="bg-black/30 border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -246,5 +279,21 @@ export default function DashboardPage() {
 
       </main>
     </div>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-green-800 to-black">
+      <div className="text-white text-xl">Loading...</div>
+    </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <DashboardContent />
+    </Suspense>
   );
 }
