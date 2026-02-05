@@ -8,6 +8,6 @@ buildCmd = "npm run build"
 [deploy]
 startCommand = "npx prisma migrate deploy && npm start"
 healthcheckPath = "/api/health"
-healthcheckTimeout = 100
+healthcheckTimeout = 300
 restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 5
+restartPolicyMaxRetries = 10
