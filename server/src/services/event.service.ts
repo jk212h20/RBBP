@@ -2,6 +2,7 @@ import prisma from '../lib/prisma';
 import { CreateEventInput, UpdateEventInput, ResultEntry, BulkCreateEventsInput } from '../validators/event.validator';
 import { EventStatus, SignupStatus } from '@prisma/client';
 import { seasonService } from './season.service';
+import { pointsService } from './points.service';
 
 // Points for registration/unregistration
 const REGISTRATION_POINTS = 1;
@@ -598,6 +599,7 @@ export class EventService {
    * - Points based on checked-in player count
    * - Only top 3 get points (60% / 30% / 10% rounded up)
    * - Uses diff-based point adjustment to preserve registration points
+   * - Creates points history records with reasons
    */
   async enterResults(eventId: string, results: ResultEntry[]) {
     const event = await prisma.event.findUnique({
@@ -622,10 +624,19 @@ export class EventService {
       throw new Error('Event not found');
     }
 
+    // Get event name for reason strings
+    const eventDetails = await prisma.event.findUnique({
+      where: { id: eventId },
+      select: { name: true },
+    });
+    const eventName = eventDetails?.name || 'Event';
+
     // Get OLD points earned by each user from existing results (before we delete them)
     const oldPointsByUser: Record<string, number> = {};
+    const oldPositionByUser: Record<string, number> = {};
     for (const result of event.results) {
       oldPointsByUser[result.userId] = result.pointsEarned;
+      oldPositionByUser[result.userId] = result.position;
     }
 
     // Count checked-in players for dynamic points calculation
@@ -662,7 +673,7 @@ export class EventService {
       data: resultsWithPoints,
     });
 
-    // Apply point diffs to standings
+    // Apply point diffs to standings with reasons
     // For each user in the new results, calculate: newPoints - oldPoints
     // and adjust their standing accordingly
     for (const result of resultsWithPoints) {
@@ -671,7 +682,18 @@ export class EventService {
       const diff = newPoints - oldPoints;
       
       if (diff !== 0) {
-        await this.adjustUserSeasonPoints(result.userId, event.seasonId, diff);
+        // Generate reason based on position
+        const positionLabel = result.position === 1 ? '1st place' : 
+                             result.position === 2 ? '2nd place' : 
+                             result.position === 3 ? '3rd place' : `${result.position}th place`;
+        const reason = `${positionLabel} finish at ${eventName}`;
+        
+        await pointsService.adjustPoints({
+          userId: result.userId,
+          seasonId: event.seasonId,
+          points: diff,
+          reason,
+        });
       }
     }
 
@@ -681,7 +703,18 @@ export class EventService {
     for (const [userId, oldPoints] of Object.entries(oldPointsByUser)) {
       if (!newUserIds.has(userId) && oldPoints > 0) {
         // User was removed from results, subtract their old points
-        await this.adjustUserSeasonPoints(userId, event.seasonId, -oldPoints);
+        const oldPosition = oldPositionByUser[userId];
+        const positionLabel = oldPosition === 1 ? '1st place' : 
+                             oldPosition === 2 ? '2nd place' : 
+                             oldPosition === 3 ? '3rd place' : `${oldPosition}th place`;
+        const reason = `Removed from ${positionLabel} at ${eventName} (results corrected)`;
+        
+        await pointsService.adjustPoints({
+          userId,
+          seasonId: event.seasonId,
+          points: -oldPoints,
+          reason,
+        });
       }
     }
 
