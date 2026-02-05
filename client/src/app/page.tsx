@@ -76,23 +76,8 @@ export default function HomePage() {
             🃏 Roatan Bitcoin Bar Poker
           </h1>
           <p className="text-xl md:text-2xl text-white/80 max-w-2xl mx-auto mb-8">
-            Track tournaments, climb the leaderboard, and join the best pub poker community in Roatan.
+            Play in free tournaments, win real bitcoin
           </p>
-
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              href="/events"
-              className="bg-green-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-green-700 transition shadow-lg"
-            >
-              View Events
-            </Link>
-            <Link
-              href="/leaderboard"
-              className="bg-white/10 backdrop-blur text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-white/20 transition border border-white/30"
-            >
-              Leaderboard
-            </Link>
-          </div>
         </div>
 
         {/* Upcoming Events & Top Players */}
@@ -166,7 +151,7 @@ export default function HomePage() {
                     <div className="text-right">
                       <span className="text-green-400 font-bold">{player.totalPoints} pts</span>
                       {player.wins > 0 && (
-                        <span className="text-yellow-400 text-sm ml-2">({player.wins} wins)</span>
+                        <span className="text-yellow-400 text-sm ml-2">({player.wins} {player.wins === 1 ? 'win' : 'wins'})</span>
                       )}
                     </div>
                   </div>

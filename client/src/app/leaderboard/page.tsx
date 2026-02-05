@@ -273,7 +273,7 @@ export default function LeaderboardPage() {
                       </div>
                       <div>
                         <p className="text-yellow-400 font-medium">{standing.wins}</p>
-                        <p className="text-green-300/60 text-xs">Wins</p>
+                        <p className="text-green-300/60 text-xs">{standing.wins === 1 ? 'Win' : 'Wins'}</p>
                       </div>
                       <div>
                         <p className="text-white font-medium">{standing.topThrees}</p>
