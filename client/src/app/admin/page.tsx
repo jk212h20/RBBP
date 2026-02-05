@@ -367,14 +367,21 @@ export default function AdminPage() {
 
   const handleDeleteVenue = async (venueId: string) => {
     if (!confirm('Are you sure you want to delete this venue?')) return;
+    
+    // Optimistic update - remove from UI immediately
+    const previousVenues = venues;
+    setVenues(prev => prev.filter(v => v.id !== venueId));
+    setStats(prev => prev ? { ...prev, venues: prev.venues - 1 } : null);
+    
     try {
       setError('');
       setMessage('');
       await venuesAPI.delete(venueId);
       setMessage('Venue deleted successfully!');
-      fetchVenues();
-      fetchStats();
     } catch (err: any) {
+      // Restore on error
+      setVenues(previousVenues);
+      setStats(prev => prev ? { ...prev, venues: prev.venues + 1 } : null);
       setError(err.message || 'Failed to delete venue');
     }
   };
@@ -423,14 +430,21 @@ export default function AdminPage() {
 
   const handleDeleteSeason = async (seasonId: string) => {
     if (!confirm('Are you sure you want to delete this season? This cannot be undone.')) return;
+    
+    // Optimistic update - remove from UI immediately
+    const previousSeasons = seasons;
+    setSeasons(prev => prev.filter(s => s.id !== seasonId));
+    setStats(prev => prev ? { ...prev, seasons: prev.seasons - 1 } : null);
+    
     try {
       setError('');
       setMessage('');
       await seasonsAPI.delete(seasonId);
       setMessage('Season deleted successfully!');
-      fetchSeasons();
-      fetchStats();
     } catch (err: any) {
+      // Restore on error
+      setSeasons(previousSeasons);
+      setStats(prev => prev ? { ...prev, seasons: prev.seasons + 1 } : null);
       setError(err.message || 'Failed to delete season');
     }
   };
@@ -449,27 +463,41 @@ export default function AdminPage() {
   };
 
   const handleStatusChange = async (eventId: string, newStatus: string) => {
+    // Optimistic update - update status in UI immediately
+    const previousEvents = events;
+    setEvents(prev => prev.map(e => 
+      e.id === eventId ? { ...e, status: newStatus as Event['status'] } : e
+    ));
+    
     try {
       setError('');
       setMessage('');
       await eventsAPI.updateStatus(eventId, newStatus);
       setMessage('Event status updated!');
-      fetchEvents();
     } catch (err: any) {
+      // Restore on error
+      setEvents(previousEvents);
       setError(err.message || 'Failed to update status');
     }
   };
 
   const handleDeleteEvent = async (eventId: string) => {
     if (!confirm('Delete this event? This will remove all signups and results.')) return;
+    
+    // Optimistic update - remove from UI immediately
+    const previousEvents = events;
+    setEvents(prev => prev.filter(e => e.id !== eventId));
+    setStats(prev => prev ? { ...prev, events: prev.events - 1 } : null);
+    
     try {
       setError('');
       setMessage('');
       await eventsAPI.delete(eventId);
       setMessage('Event deleted!');
-      fetchEvents();
-      fetchStats();
     } catch (err: any) {
+      // Restore on error
+      setEvents(previousEvents);
+      setStats(prev => prev ? { ...prev, events: prev.events + 1 } : null);
       setError(err.message || 'Failed to delete event');
     }
   };

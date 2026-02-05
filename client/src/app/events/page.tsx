@@ -81,24 +81,52 @@ export default function EventsPage() {
   };
 
   const handleSignup = async (eventId: string) => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !user) {
       window.location.href = '/login';
       return;
     }
 
+    // Optimistic update - add user to signups immediately
+    const previousEvents = events;
+    setEvents(prev => prev.map(e => 
+      e.id === eventId 
+        ? { 
+            ...e, 
+            signups: [...(e.signups || []), { userId: user.id }],
+            _count: { ...e._count, signups: e._count.signups + 1 }
+          } 
+        : e
+    ));
+
     try {
       await eventsAPI.signup(eventId);
-      loadEvents(); // Refresh
     } catch (err: any) {
+      // Restore on error
+      setEvents(previousEvents);
       alert(err.message || 'Failed to sign up');
     }
   };
 
   const handleCancelSignup = async (eventId: string) => {
+    if (!user) return;
+    
+    // Optimistic update - remove user from signups immediately
+    const previousEvents = events;
+    setEvents(prev => prev.map(e => 
+      e.id === eventId 
+        ? { 
+            ...e, 
+            signups: (e.signups || []).filter(s => s.userId !== user.id),
+            _count: { ...e._count, signups: Math.max(0, e._count.signups - 1) }
+          } 
+        : e
+    ));
+
     try {
       await eventsAPI.cancelSignup(eventId);
-      loadEvents(); // Refresh
     } catch (err: any) {
+      // Restore on error
+      setEvents(previousEvents);
       alert(err.message || 'Failed to cancel signup');
     }
   };
