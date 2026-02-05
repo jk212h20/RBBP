@@ -7,6 +7,7 @@ export const createEventSchema = z.object({
   dateTime: z.string().refine((date) => !isNaN(Date.parse(date)), {
     message: 'Invalid date/time',
   }),
+  registrationOpenDays: z.number().int().min(0).max(365).optional().default(10),
   maxPlayers: z.number().int().min(2).max(200).optional().default(50),
   buyIn: z.number().min(0).optional(),
   venueId: z.string().min(1, 'Venue is required'),
@@ -21,6 +22,7 @@ export const updateEventSchema = z.object({
   dateTime: z.string().refine((date) => !isNaN(Date.parse(date)), {
     message: 'Invalid date/time',
   }).optional(),
+  registrationOpenDays: z.number().int().min(0).max(365).optional(),
   maxPlayers: z.number().int().min(2).max(200).optional(),
   buyIn: z.number().min(0).optional().nullable(),
   venueId: z.string().optional(),
@@ -49,6 +51,7 @@ export const bulkCreateEventsSchema = z.object({
   time: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format (HH:MM)'),
   dayOfWeek: z.number().int().min(0).max(6), // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
   numberOfWeeks: z.number().int().min(1).max(52, 'Maximum 52 weeks'),
+  registrationOpenDays: z.number().int().min(0).max(365).optional().default(10),
   maxPlayers: z.number().int().min(2).max(200).optional().default(50),
   buyIn: z.number().min(0).optional(),
   venueId: z.string().min(1, 'Venue is required'),

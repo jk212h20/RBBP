@@ -156,14 +156,15 @@ enum EventStatus {
 }
 
 model Event {
-  id          String      @id @default(cuid())
-  name        String      // e.g., "Tuesday Night Poker @ Blue Marlin"
-  description String?
-  imageUrl    String?     // Base64 encoded image or URL
-  dateTime    DateTime
-  maxPlayers  Int         @default(20)
-  buyIn       Float?      // Optional buy-in amount
-  status      EventStatus @default(SCHEDULED)
+  id                    String      @id @default(cuid())
+  name                  String      // e.g., "Tuesday Night Poker @ Blue Marlin"
+  description           String?
+  imageUrl              String?     // Base64 encoded image or URL
+  dateTime              DateTime
+  registrationOpenDays  Int         @default(10)  // Days before event when registration opens
+  maxPlayers            Int         @default(20)
+  buyIn                 Float?      // Optional buy-in amount
+  status                EventStatus @default(SCHEDULED)
   
   venueId     String
   seasonId    String
