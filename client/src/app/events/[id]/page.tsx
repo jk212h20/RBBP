@@ -94,6 +94,13 @@ export default function EventDetailPage() {
   const [resultMessage, setResultMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [pointsPreview, setPointsPreview] = useState<PointsPreview | null>(null);
 
+  // Quick Add Player state
+  const [quickAddSearch, setQuickAddSearch] = useState('');
+  const [quickAddResults, setQuickAddResults] = useState<{ id: string; name: string; email: string | null; isGuest: boolean }[]>([]);
+  const [quickAddLoading, setQuickAddLoading] = useState(false);
+  const [quickAddMode, setQuickAddMode] = useState<'search' | 'guest'>('search');
+  const [guestName, setGuestName] = useState('');
+
   const canManageEvent = user && (user.role === 'ADMIN' || user.role === 'TOURNAMENT_DIRECTOR' || user.role === 'VENUE_MANAGER');
 
   useEffect(() => {
@@ -211,6 +218,50 @@ export default function EventDetailPage() {
     setPlayerResults(prev => prev.map(p => 
       p.userId === userId ? { ...p, knockouts: Math.max(0, knockouts) } : p
     ));
+  };
+
+  // Quick Add Player handlers
+  const handleQuickAddSearch = async (query: string) => {
+    setQuickAddSearch(query);
+    if (query.length < 2) {
+      setQuickAddResults([]);
+      return;
+    }
+    setQuickAddLoading(true);
+    try {
+      const results = await eventsAPI.searchPlayers(eventId, query);
+      setQuickAddResults(results);
+    } catch (err) {
+      console.error('Search failed:', err);
+      setQuickAddResults([]);
+    } finally {
+      setQuickAddLoading(false);
+    }
+  };
+
+  const handleQuickAddExisting = async (userId: string) => {
+    try {
+      await eventsAPI.quickAddPlayer(eventId, { userId });
+      setQuickAddSearch('');
+      setQuickAddResults([]);
+      setResultMessage({ type: 'success', text: 'Player added!' });
+      loadEvent();
+    } catch (err: any) {
+      setResultMessage({ type: 'error', text: err.message || 'Failed to add player' });
+    }
+  };
+
+  const handleQuickAddGuest = async () => {
+    if (guestName.trim().length < 2) return;
+    try {
+      await eventsAPI.quickAddPlayer(eventId, { name: guestName.trim() });
+      setGuestName('');
+      setQuickAddMode('search');
+      setResultMessage({ type: 'success', text: `Guest "${guestName.trim()}" added!` });
+      loadEvent();
+    } catch (err: any) {
+      setResultMessage({ type: 'error', text: err.message || 'Failed to add guest' });
+    }
   };
 
   const handleSaveResults = async (finalize: boolean = false) => {
@@ -507,6 +558,93 @@ export default function EventDetailPage() {
                       </button>
                     ))}
                   </div>
+                </div>
+
+                {/* Quick Add Player */}
+                <div>
+                  <h3 className="text-white font-medium mb-2">➕ Quick Add Player</h3>
+                  <p className="text-orange-200/70 text-sm mb-3">
+                    Add walk-ins who didn&apos;t register. Search existing users or create a guest.
+                  </p>
+                  <div className="flex gap-2 mb-3">
+                    <button
+                      onClick={() => setQuickAddMode('search')}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                        quickAddMode === 'search' ? 'bg-orange-500 text-white' : 'bg-white/10 text-white/70 hover:bg-white/20'
+                      }`}
+                    >
+                      🔍 Search User
+                    </button>
+                    <button
+                      onClick={() => setQuickAddMode('guest')}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                        quickAddMode === 'guest' ? 'bg-orange-500 text-white' : 'bg-white/10 text-white/70 hover:bg-white/20'
+                      }`}
+                    >
+                      👤 New Guest
+                    </button>
+                  </div>
+
+                  {quickAddMode === 'search' ? (
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={quickAddSearch}
+                        onChange={(e) => handleQuickAddSearch(e.target.value)}
+                        placeholder="Type a name to search..."
+                        className="w-full p-3 bg-white/10 border border-orange-500/50 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-orange-400"
+                      />
+                      {quickAddLoading && (
+                        <div className="absolute right-3 top-3.5">
+                          <div className="animate-spin h-5 w-5 border-2 border-orange-400 border-t-transparent rounded-full"></div>
+                        </div>
+                      )}
+                      {quickAddResults.length > 0 && (
+                        <div className="mt-2 bg-black/60 border border-orange-500/30 rounded-lg overflow-hidden">
+                          {quickAddResults.map(u => (
+                            <button
+                              key={u.id}
+                              onClick={() => handleQuickAddExisting(u.id)}
+                              className="w-full flex items-center gap-3 p-3 hover:bg-orange-500/20 transition text-left"
+                            >
+                              <div className="w-8 h-8 bg-orange-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                                {u.name.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <p className="text-white font-medium text-sm">{u.name}</p>
+                                <p className="text-white/50 text-xs">
+                                  {u.isGuest ? 'Guest' : u.email || 'No email'}
+                                </p>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {quickAddSearch.length >= 2 && !quickAddLoading && quickAddResults.length === 0 && (
+                        <p className="text-orange-200/50 text-sm mt-2">
+                          No users found. Try &quot;New Guest&quot; to add them by name.
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={guestName}
+                        onChange={(e) => setGuestName(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleQuickAddGuest()}
+                        placeholder="Guest name (min 2 chars)..."
+                        className="flex-1 p-3 bg-white/10 border border-orange-500/50 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-orange-400"
+                      />
+                      <button
+                        onClick={handleQuickAddGuest}
+                        disabled={guestName.trim().length < 2}
+                        className="px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-800 disabled:opacity-50 text-white rounded-lg font-medium transition"
+                      >
+                        Add
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Points Preview */}

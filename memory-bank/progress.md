@@ -1,211 +1,195 @@
-# Roatan Poker League - Progress
+# Progress — Roatan Poker League
 
-## 🎉 Current Status: PHASE 2 COMPLETE + TD FEATURES
-
-### Live URLs
-- **Frontend**: https://client-production-41b3.up.railway.app
-- **Backend API**: https://rbbp-production.up.railway.app/api
-- **GitHub**: https://github.com/jk212h20/RBBP
+## Last Updated: February 10, 2026
 
 ---
 
-## ✅ What Works
+## ✅ What's Built & Working
 
 ### Authentication System
-- [x] **Email/Password Login** - Fully working
-- [x] **Email/Password Registration** - Fully working  
-- [x] **Lightning Login (LNURL-auth)** - Fully working ⚡ (auto-shows QR)
-- [x] **Profile Editing** - Users can update name/email (especially for Lightning users)
-- [ ] **Google OAuth** - UI ready, awaiting Google credentials
+- [x] Email/password registration and login (bcrypt + JWT)
+- [x] Lightning Login (LNURL-auth) — QR scan with Bitcoin wallet
+- [x] Google OAuth callback handler (UI ready, needs credentials)
+- [x] JWT token management (7-day expiry, Bearer header)
+- [x] Role-based access control (Admin, Venue Manager, Tournament Director, Player)
+- [x] Link Lightning wallet to existing account
+- [x] Add email/password to Lightning-only account
+- [x] Profile management (name, email updates)
+- [x] Auth context (React Context for client-side auth state)
 
-### Backend (Express.js + PostgreSQL)
-- [x] Server deployed to Railway
-- [x] PostgreSQL database connected
-- [x] Prisma ORM with full schema
-- [x] JWT token authentication
-- [x] Health check endpoint
-- [x] CORS configured for client
-- [x] **Venues API** - Full CRUD
-- [x] **Seasons API** - Full CRUD with standings
-- [x] **Events API** - Full CRUD with signups/results
-- [x] **Profile Update API** - PUT /api/auth/profile
+### Venue Management
+- [x] Create, read, update, delete venues
+- [x] Venue manager assignment
+- [x] Venue list page (`/venues`)
+- [x] Venue detail page (`/venues/[id]`) with upcoming events
+- [x] Soft-delete (active/inactive toggle)
+- [x] Hard-delete for admin
+- [x] Zod validation for venue input
 
-### Frontend (Next.js 16)
-- [x] Client deployed to Railway
-- [x] Homepage with upcoming events & top players
-- [x] Login page with auto Lightning QR
-- [x] Registration page
-- [x] Dashboard (protected route)
-- [x] **Events list page** - With season filtering
-- [x] **Event detail page** - With signup/cancel
-- [x] **Leaderboard page** - Season standings
-- [x] **Profile page** - With edit functionality for name/email
-- [x] **Tournament Director Panel** - Results entry UI on event page
-- [x] Auth callback handler
-- [x] Responsive design
+### Season Management
+- [x] Create, read, update, delete seasons
+- [x] Season activation/deactivation (only one active at a time)
+- [x] Configurable points structure per season
+- [x] Season standings with auto-recalculation
+- [x] Zod validation for season input
 
-### Tournament Director Features
-- [x] TD Panel visible on event detail page (for TD/Admin/Venue Manager)
-- [x] Event status controls (Scheduled → Registration Open → In Progress)
-- [x] Attendance tracking (mark who showed up)
-- [x] Position entry for each player
-- [x] Knockout tracking
-- [x] Save Draft (editable results)
-- [x] Finalize Results (locks results, updates standings)
+### Event Management
+- [x] Create single events with full details
+- [x] Bulk event creation (recurring events)
+- [x] Event list page (`/events`) with filtering
+- [x] Event detail page (`/events/[id]`) with full lifecycle UI
+- [x] Event status flow: DRAFT → REGISTRATION_OPEN → IN_PROGRESS → COMPLETED / CANCELLED
+- [x] Configurable `registrationOpenDays` (default: 10 days before event)
+- [x] Event image upload (base64, ImageUpload component)
+- [x] Zod validation for event input
 
-### Database Schema
-All tables created:
-- `users` - User accounts with multi-auth support
-- `profiles` - User profiles/stats
-- `venues` - Poker venues
-- `seasons` - League seasons with points config
-- `events` - Tournament events
-- `event_signups` - Registrations
-- `results` - Tournament results
-- `standings` - Season standings (auto-calculated)
-- `achievements` - Badges
-- `user_achievements` - Earned badges
-- `lightning_challenges` - LNURL-auth challenges
-- `comments` - Event comments
+### Player Registration & Attendance
+- [x] Player signup for events
+- [x] Signup cancellation
+- [x] Waitlist when event is full (auto-promotion on cancellation)
+- [x] Check-in system for tournament directors
+- [x] No-show processing
+- [x] Signup status tracking (REGISTERED, WAITLISTED, CHECKED_IN, NO_SHOW, CANCELLED)
 
----
+### Tournament Director Panel
+- [x] Event status controls (advance through lifecycle)
+- [x] Attendance management (check-in players)
+- [x] Results entry (position, knockouts)
+- [x] Draft save for results
+- [x] Finalize results (locks in points)
+- [x] Points preview before finalizing
+- [x] Quick-add players (search existing or create guest)
 
-## 🚧 What's Left to Build
+### Guest Player System
+- [x] `isGuest` flag on User model for walk-in players
+- [x] Guest account creation from TD panel
+- [x] Guest merge tool in admin panel (transfers results, standings, signups)
+- [x] "(guest)" label on leaderboard for guest players
+- [x] Admin endpoints: `GET /admin/guest-users`, `POST /admin/merge-guest`
+- [x] Claim links: Admin generates unique URL for guest to self-claim account (`/claim/[token]`)
+- [x] Claim flow: Guest sets email + password → converts to real user, `isGuest` cleared
 
-### Authentication
-- [ ] Google OAuth (needs CLIENT_ID & CLIENT_SECRET from Google Console)
+### Scoring & Standings
+- [x] Dynamic points calculation (scales with checked-in player count)
+- [x] Base pool: 10 pts for ≤10 players, +2 per additional player
+- [x] Distribution: 60% / 30% / 10% for top 3 (rounded up)
+- [x] Knockout bonuses
+- [x] Season leaderboard page (`/leaderboard`)
+- [x] Auto-recalculate standings on result entry
+- [x] Player standings in dashboard
 
-### Admin Features
-- [x] Admin dashboard for managing venues/seasons/events
-- [x] User role management UI
-- [x] Result entry interface (via TD Panel)
+### Admin Panel (`/admin`)
+- [x] Multi-tab interface: Venues, Seasons, Events, Users, Withdrawals, Balance, Points
+- [x] Venue CRUD management
+- [x] Season CRUD management
+- [x] Event CRUD management
+- [x] User role management
+- [x] User deletion (soft-delete with archive)
+- [x] Admin notes on users
 
-### User Features
-- [x] User profile page with stats
-- [x] Event history
-- [ ] Achievement/badge display
+### Points Management (Admin)
+- [x] Manual point adjustments with reasons
+- [x] Bulk point awards to multiple users
+- [x] Points history audit trail (PointsHistory model)
+- [x] Points Tab admin component
 
-### Nice to Have
-- [ ] Email notifications
-- [ ] Event comments
-- [ ] Mobile app (React Native)
+### Lightning Network
+- [x] LNURL-auth: Challenge generation, QR display, signature verification
+- [x] LNURL-withdraw: Full withdrawal flow (create → QR → scan → pay)
+- [x] Voltage LND integration (REST API): node info, channel balance, invoice decode/pay
+- [x] Per-user Lightning balance tracking (credit/debit/set)
+- [x] Balance Tab admin component
+- [x] Withdrawals Tab admin component
+- [x] Withdrawal stats and management
+- [x] Expired challenge/withdrawal cleanup
 
----
+### User Experience
+- [x] Mobile-responsive design (MobileNav hamburger menu)
+- [x] Home page with upcoming events and leaderboard preview
+- [x] Player dashboard with personal events and standings
+- [x] Profile page with account management
 
-## API Endpoints Summary
-
-### Auth (`/api/auth`)
-- POST /register - Create account
-- POST /login - Email/password login
-- GET /me - Get current user
-- PUT /profile - Update user profile (name, email)
-- GET /lightning/challenge - Get LNURL QR
-- GET /lightning/callback - Wallet callback
-- GET /lightning/status/:k1 - Check auth status
-- GET /google - Start Google OAuth
-- GET /google/callback - Google callback
-
-### Venues (`/api/venues`)
-- GET / - List venues
-- GET /:id - Get venue
-- POST / - Create (Admin)
-- PUT /:id - Update (Admin/Manager)
-- DELETE /:id - Delete (Admin)
-
-### Seasons (`/api/seasons`)
-- GET / - List seasons
-- GET /current - Active season
-- GET /:id - Season details
-- GET /:id/standings - Leaderboard
-- POST / - Create (Admin)
-- PUT /:id - Update (Admin)
-- PUT /:id/activate - Set active
-- POST /:id/recalculate - Recalc standings
-
-### Events (`/api/events`)
-- GET / - List events
-- GET /upcoming - Upcoming events
-- GET /my - User's events
-- GET /:id - Event details
-- POST / - Create (Admin/Director)
-- PUT /:id - Update
-- PUT /:id/status - Update status
-- DELETE /:id - Delete (Admin)
-- POST /:id/signup - Register
-- DELETE /:id/signup - Cancel
-- GET /:id/signups - Get players
-- PUT /:id/checkin/:userId - Check in
-- POST /:id/results - Enter results
-- GET /:id/results - Get results
+### Deployment
+- [x] Railway deployment (client + server + PostgreSQL)
+- [x] Nixpacks build configuration for both services
+- [x] 8 database migrations applied successfully
 
 ---
 
-## Technical Notes
+## ❌ What's NOT Built Yet
 
-### Environment Variables (Railway - RBBP Server)
-```
-DATABASE_URL=<auto-set by Railway>
-JWT_SECRET=<set>
-JWT_REFRESH_SECRET=<set>
-SESSION_SECRET=<set>
-CORS_ORIGIN=https://client-production-41b3.up.railway.app
-LIGHTNING_AUTH_URL=https://rbbp-production.up.railway.app/api/auth/lightning
-```
+### High Priority
+- [ ] **Google OAuth activation** — UI and callback exist, just needs Google Cloud credentials
+- [ ] **Email notifications** — Nodemailer + SendGrid dependency installed, no service built
+- [ ] **Achievement/Badge system** — Schema exists (Achievement, UserAchievement models), no awarding logic or UI
+- [ ] **Event comments** — Schema exists (Comment model), no routes or UI
 
-### Environment Variables (Railway - Client)
-```
-NEXT_PUBLIC_API_URL=https://rbbp-production.up.railway.app/api
-```
+### Medium Priority
+- [ ] **Password reset flow** — No forgot-password email mechanism
+- [ ] **Player statistics page** — Detailed per-player stats beyond standings
+- [ ] **Event history/archive** — Past events browsing with filters
+- [ ] **Redis session store** — Currently MemoryStore (fine for single Railway instance)
+- [ ] **User withdrawal view** — Backend endpoint exists (`/api/withdrawals/my`), needs frontend page
 
-### Points Structure (Default)
-```json
-{
-  "1": 100,
-  "2": 80,
-  "3": 65,
-  "4": 55,
-  "5": 45,
-  "6": 40,
-  "7": 35,
-  "8": 30,
-  "9": 25,
-  "10": 20,
-  "11-15": 15,
-  "16-20": 10,
-  "21+": 5,
-  "knockout": 2,
-  "participation": 5
-}
-```
+### Low Priority / Nice-to-Have
+- [ ] **Real-time updates** — WebSocket for live event status
+- [ ] **Push notifications** — Event reminders
+- [ ] **CSV export** — Standings, results, player data
+- [ ] **Multi-language** — Spanish support for local audience
+- [ ] **Dark mode** — Theme toggle
+- [ ] **SEO optimization** — Meta tags, Open Graph
 
 ---
 
-## Recent Changes (Feb 1, 2026)
+## 🗄️ Database Schema (15 Models)
 
-### Latest Updates
-1. **Removed "Become Admin" button** from profile page (admin already exists)
-2. **Removed "multi-provider authentication" text** from dashboard
-3. **Added profile editing** - Users can now update their name and email
-   - Especially useful for Lightning users who get auto-generated names
-   - Backend: PUT /api/auth/profile endpoint
-   - Frontend: Edit Profile button on profile page
-4. **Tournament Director Results Entry UI**
-   - TD Panel on event detail page (visible to TD/Admin/Venue Manager)
-   - Event status controls (change between Scheduled/Registration Open/In Progress)
-   - Attendance tracking with checkboxes
-   - Position entry for each player who attended
-   - Knockout counter (+/- buttons)
-   - Save Draft button (saves results but keeps event editable)
-   - Finalize Results button (locks results, marks event COMPLETED, updates standings)
+| Model | Purpose |
+|-------|---------|
+| User | Core user account (email, password, role, lightningPubkey, balance) |
+| Profile | Extended user info (bio, avatar, phone) |
+| Venue | Poker venue (name, address, description, manager) |
+| Season | League season (name, dates, points structure, active flag) |
+| Event | Tournament event (date, venue, season, status, max players, buy-in) |
+| EventSignup | Player registration for events (status: registered/waitlisted/checked_in/etc.) |
+| Result | Tournament results (position, points, knockouts) |
+| Standing | Season standings (total points, events played, rank) |
+| Achievement | Achievement definitions (not yet used) |
+| UserAchievement | User-achievement junction (not yet used) |
+| LightningChallenge | LNURL-auth challenges (k1, pubkey, expiry) |
+| Comment | Event comments (not yet used) |
+| DeletedUser | Archived user data on soft-delete |
+| Withdrawal | Lightning withdrawal records (amount, status, LNURL data) |
+| PointsHistory | Audit trail for all point changes |
 
-### Phase 2 Implementation (Earlier)
-1. Created Venues API with full CRUD
-2. Created Seasons API with standings management
-3. Created Events API with signups and results
-4. Automatic points calculation from season config
-5. Standings auto-recalculate on result entry
-6. Events list page with season filtering
-7. Event detail page with signup/cancel
-8. Leaderboard page with season standings
-9. Updated homepage with live data
-10. Login page auto-shows Lightning QR
+---
+
+## 📊 API Routes Summary
+
+| Route File | Base Path | Key Endpoints |
+|------------|-----------|---------------|
+| auth.routes | `/api/auth` | register, login, google, lightning (challenge/verify/status), me, profile, link-lightning, add-email |
+| venue.routes | `/api/venues` | CRUD, assign-manager, by-manager |
+| season.routes | `/api/seasons` | CRUD, activate, current, standings, recalculate |
+| event.routes | `/api/events` | CRUD, bulk-create, signup, cancel, check-in, results, enter-results, points-preview, status, process-no-shows, adjust-points |
+| standings.routes | `/api/standings` | current, by-season, by-player, my-standing, my-all-seasons, recalculate |
+| admin.routes | `/api/admin` | users, user CRUD, role management, points (adjust/bulk/history), admin-notes, generate-claim-link, guest-users, merge-guest |
+| withdrawal.routes | `/api/withdrawals` | create, list, my-withdrawals, cancel, stats |
+| lnurl.routes | `/api/lnurl` | withdraw (LNURL-withdraw protocol endpoints) |
+| balance.routes | `/api/balance` | user-balance, all-balances, credit, debit, set, stats |
+
+---
+
+## 🔄 Migration History
+
+| Migration | Date | Description |
+|-----------|------|-------------|
+| `20260201220000` | Feb 1 | Add `nameSetAt` field to User |
+| `20260202201500` | Feb 2 | Add `imageUrl` to Event |
+| `20260202210800` | Feb 2 | Add Withdrawal model |
+| `20260202230100` | Feb 2 | Add `lightningBalance` to User |
+| `20260204181000` | Feb 4 | Add DeletedUser model |
+| `20260204190000` | Feb 4 | Add PointsHistory model |
+| `20260204200000` | Feb 4 | Add waitlist fields + points adjustments |
+| `20260205162200` | Feb 5 | Add `registrationOpenDays` to Event |
+| `20260210170000` | Feb 10 | Add `isGuest` flag to User |
+| `20260210180000` | Feb 10 | Add `claimToken` + `claimTokenExpiry` to User |

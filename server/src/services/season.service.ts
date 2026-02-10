@@ -197,6 +197,7 @@ export class SeasonService {
             id: true,
             name: true,
             avatar: true,
+            isGuest: true,
           },
         },
       },

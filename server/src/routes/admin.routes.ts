@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { authenticate, requireAdmin } from '../middleware/auth.middleware';
 import prisma from '../lib/prisma';
-import { generateToken } from '../services/auth.service';
+import { generateToken, generateClaimToken } from '../services/auth.service';
 import { pointsService } from '../services/points.service';
 
 const router = Router();
@@ -452,6 +452,201 @@ router.post('/run-migration', authenticate, requireAdmin, async (req: Request, r
   } catch (error: any) {
     console.error('Error running migration:', error);
     res.status(500).json({ error: `Migration failed: ${error.message}` });
+  }
+});
+
+// POST /api/admin/merge-guest - Merge a guest user's data into a real user account
+router.post('/merge-guest', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { guestUserId, realUserId } = req.body;
+
+    if (!guestUserId || !realUserId) {
+      return res.status(400).json({ error: 'guestUserId and realUserId are required' });
+    }
+
+    if (guestUserId === realUserId) {
+      return res.status(400).json({ error: 'Cannot merge a user into themselves' });
+    }
+
+    // Verify guest user exists and is actually a guest
+    const guestUser = await prisma.user.findUnique({
+      where: { id: guestUserId },
+      include: {
+        eventSignups: true,
+        results: true,
+        standings: true,
+      }
+    });
+
+    if (!guestUser) {
+      return res.status(404).json({ error: 'Guest user not found' });
+    }
+
+    if (!guestUser.isGuest) {
+      return res.status(400).json({ error: 'Source user is not a guest account' });
+    }
+
+    // Verify real user exists
+    const realUser = await prisma.user.findUnique({ where: { id: realUserId } });
+    if (!realUser) {
+      return res.status(404).json({ error: 'Target user not found' });
+    }
+
+    // Transfer all data in a transaction
+    await prisma.$transaction(async (tx) => {
+      // 1. Transfer event signups (skip if real user already signed up for same event)
+      for (const signup of guestUser.eventSignups) {
+        const existingSignup = await tx.eventSignup.findUnique({
+          where: { eventId_userId: { eventId: signup.eventId, userId: realUserId } }
+        });
+        if (existingSignup) {
+          // Real user already signed up — delete the guest's signup
+          await tx.eventSignup.delete({ where: { id: signup.id } });
+        } else {
+          await tx.eventSignup.update({
+            where: { id: signup.id },
+            data: { userId: realUserId }
+          });
+        }
+      }
+
+      // 2. Transfer results (skip if real user already has result for same event)
+      for (const result of guestUser.results) {
+        const existingResult = await tx.result.findFirst({
+          where: { eventId: result.eventId, userId: realUserId }
+        });
+        if (existingResult) {
+          await tx.result.delete({ where: { id: result.id } });
+        } else {
+          await tx.result.update({
+            where: { id: result.id },
+            data: { userId: realUserId }
+          });
+        }
+      }
+
+      // 3. Merge standings (combine points if both have standings for same season)
+      for (const standing of guestUser.standings) {
+        const existingStanding = await tx.standing.findUnique({
+          where: { seasonId_userId: { seasonId: standing.seasonId, userId: realUserId } }
+        });
+        if (existingStanding) {
+          // Merge: add guest's points/stats to real user's standing
+          await tx.standing.update({
+            where: { id: existingStanding.id },
+            data: {
+              totalPoints: existingStanding.totalPoints + standing.totalPoints,
+              eventsPlayed: existingStanding.eventsPlayed + standing.eventsPlayed,
+              wins: existingStanding.wins + standing.wins,
+              topThrees: existingStanding.topThrees + standing.topThrees,
+              knockouts: existingStanding.knockouts + standing.knockouts,
+            }
+          });
+          await tx.standing.delete({ where: { id: standing.id } });
+        } else {
+          await tx.standing.update({
+            where: { id: standing.id },
+            data: { userId: realUserId }
+          });
+        }
+      }
+
+      // 4. Transfer points history
+      await tx.pointsHistory.updateMany({
+        where: { userId: guestUserId },
+        data: { userId: realUserId }
+      });
+
+      // 5. Transfer withdrawals
+      await tx.withdrawal.updateMany({
+        where: { userId: guestUserId },
+        data: { userId: realUserId }
+      });
+
+      // 6. Delete the guest user (profile cascades)
+      await tx.user.delete({ where: { id: guestUserId } });
+    });
+
+    // Recalculate ranks for all seasons the guest had standings in
+    const affectedSeasonIds = guestUser.standings.map(s => s.seasonId);
+    for (const seasonId of affectedSeasonIds) {
+      const allStandings = await prisma.standing.findMany({
+        where: { seasonId },
+        orderBy: { totalPoints: 'desc' }
+      });
+      for (let i = 0; i < allStandings.length; i++) {
+        await prisma.standing.update({
+          where: { id: allStandings[i].id },
+          data: { rank: i + 1 }
+        });
+      }
+    }
+
+    res.json({
+      message: `Guest "${guestUser.name}" merged into "${realUser.name}". ${guestUser.results.length} results, ${guestUser.standings.length} standings, and ${guestUser.eventSignups.length} signups transferred.`,
+      mergedData: {
+        results: guestUser.results.length,
+        standings: guestUser.standings.length,
+        signups: guestUser.eventSignups.length,
+      }
+    });
+  } catch (error) {
+    console.error('Error merging guest:', error);
+    res.status(500).json({ error: 'Failed to merge guest user' });
+  }
+});
+
+// GET /api/admin/guest-users - Get all guest users for merge UI
+router.get('/guest-users', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const guests = await prisma.user.findMany({
+      where: { isGuest: true },
+      select: {
+        id: true,
+        name: true,
+        createdAt: true,
+        _count: {
+          select: {
+            results: true,
+            eventSignups: true,
+            standings: true,
+          }
+        }
+      },
+      orderBy: { name: 'asc' }
+    });
+
+    res.json(guests);
+  } catch (error) {
+    console.error('Error fetching guest users:', error);
+    res.status(500).json({ error: 'Failed to fetch guest users' });
+  }
+});
+
+// POST /api/admin/generate-claim-link - Generate a claim link for a guest user
+router.post('/generate-claim-link', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { guestUserId } = req.body;
+
+    if (!guestUserId) {
+      return res.status(400).json({ error: 'guestUserId is required' });
+    }
+
+    const result = await generateClaimToken(guestUserId);
+    
+    // Build the claim URL using the client URL
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+    const claimUrl = `${clientUrl}/claim/${result.token}`;
+
+    res.json({
+      claimUrl,
+      guestName: result.guestName,
+      expiresAt: result.expiresAt,
+      message: `Claim link generated for ${result.guestName}. Share this link with the player.`
+    });
+  } catch (error: any) {
+    console.error('Error generating claim link:', error);
+    res.status(400).json({ error: error.message || 'Failed to generate claim link' });
   }
 });
 

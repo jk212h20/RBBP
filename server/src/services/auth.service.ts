@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { User, AuthProvider } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { awardLightningBonusPoint } from './standings.service';
@@ -322,6 +323,103 @@ export async function addEmailToAccount(userId: string, email: string, password:
   return {
     user: sanitizeUser(updatedUser),
     token,
+  };
+}
+
+// ============================================
+// GUEST CLAIM TOKEN
+// ============================================
+
+/**
+ * Generate a claim token for a guest user (admin action)
+ * Token expires in 7 days
+ */
+export async function generateClaimToken(guestUserId: string) {
+  const user = await prisma.user.findUnique({ where: { id: guestUserId } });
+  
+  if (!user) throw new Error('User not found');
+  if (!user.isGuest) throw new Error('User is not a guest account');
+  
+  // Generate a secure random token
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+  
+  await prisma.user.update({
+    where: { id: guestUserId },
+    data: {
+      claimToken: token,
+      claimTokenExpiry: expiry,
+    },
+  });
+  
+  return { token, expiresAt: expiry, guestName: user.name };
+}
+
+/**
+ * Validate a claim token and return guest info
+ */
+export async function validateClaimToken(token: string) {
+  const user = await prisma.user.findUnique({
+    where: { claimToken: token },
+  });
+  
+  if (!user) throw new Error('Invalid or expired claim link');
+  if (!user.isGuest) throw new Error('This account has already been claimed');
+  if (user.claimTokenExpiry && user.claimTokenExpiry < new Date()) {
+    throw new Error('This claim link has expired. Ask the admin for a new one.');
+  }
+  
+  return {
+    guestName: user.name,
+    guestId: user.id,
+  };
+}
+
+/**
+ * Claim a guest account: set email/password, convert from guest to real user
+ */
+export async function claimGuestAccount(token: string, email: string, password: string, name?: string) {
+  const user = await prisma.user.findUnique({
+    where: { claimToken: token },
+  });
+  
+  if (!user) throw new Error('Invalid or expired claim link');
+  if (!user.isGuest) throw new Error('This account has already been claimed');
+  if (user.claimTokenExpiry && user.claimTokenExpiry < new Date()) {
+    throw new Error('This claim link has expired. Ask the admin for a new one.');
+  }
+  
+  // Check if email is already taken
+  const existingUser = await prisma.user.findUnique({ where: { email } });
+  if (existingUser) throw new Error('This email is already in use');
+  
+  const hashedPassword = await hashPassword(password);
+  
+  const updatedUser = await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      email,
+      password: hashedPassword,
+      name: name || user.name,
+      nameSetAt: name ? new Date() : user.nameSetAt,
+      isGuest: false,
+      authProvider: AuthProvider.EMAIL,
+      claimToken: null,
+      claimTokenExpiry: null,
+    },
+    include: { profile: true },
+  });
+  
+  // Create profile if it doesn't exist
+  if (!updatedUser.profile) {
+    await prisma.profile.create({ data: { userId: updatedUser.id } });
+  }
+  
+  const jwtToken = generateToken(updatedUser);
+  
+  return {
+    user: sanitizeUser(updatedUser),
+    token: jwtToken,
   };
 }
 

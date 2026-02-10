@@ -3,6 +3,7 @@ import { eventService } from '../services/event.service';
 import { createEventSchema, updateEventSchema, bulkResultsSchema, bulkCreateEventsSchema } from '../validators/event.validator';
 import { authenticate, requireAdmin, requireTournamentDirector } from '../middleware/auth.middleware';
 import { EventStatus } from '@prisma/client';
+import prisma from '../lib/prisma';
 
 const router = Router();
 
@@ -337,6 +338,131 @@ router.get('/:id/waitlist-position', authenticate, async (req: Request, res: Res
   } catch (error) {
     console.error('Error fetching waitlist position:', error);
     res.status(500).json({ error: 'Failed to fetch waitlist position' });
+  }
+});
+
+// ============================================
+// QUICK ADD PLAYER (Tournament Director)
+// ============================================
+
+/**
+ * GET /api/events/:id/search-players
+ * Search users by name for quick-add (TD/Admin only)
+ * Excludes users already signed up for this event
+ */
+router.get('/:id/search-players', authenticate, requireTournamentDirector, async (req: Request, res: Response) => {
+  try {
+    const query = (req.query.q as string || '').trim();
+    if (query.length < 2) {
+      return res.json([]);
+    }
+
+    const eventId = req.params.id;
+
+    // Get users already signed up for this event
+    const existingSignups = await prisma.eventSignup.findMany({
+      where: { eventId, status: { not: 'CANCELLED' } },
+      select: { userId: true },
+    });
+    const excludeIds = existingSignups.map(s => s.userId);
+
+    // Search users by name (case-insensitive)
+    const users = await prisma.user.findMany({
+      where: {
+        name: { contains: query, mode: 'insensitive' },
+        isActive: true,
+        id: { notIn: excludeIds },
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        isGuest: true,
+      },
+      take: 10,
+      orderBy: { name: 'asc' },
+    });
+
+    res.json(users);
+  } catch (error) {
+    console.error('Error searching players:', error);
+    res.status(500).json({ error: 'Failed to search players' });
+  }
+});
+
+/**
+ * POST /api/events/:id/quick-add
+ * Quick-add an existing user to an event (TD/Admin only)
+ * Bypasses normal signup flow (no maxPlayers/waitlist check)
+ * Body: { userId: string } for existing user
+ *   OR  { name: string } for creating a guest stub account
+ */
+router.post('/:id/quick-add', authenticate, requireTournamentDirector, async (req: Request, res: Response) => {
+  try {
+    const eventId = req.params.id;
+    const { userId, name } = req.body;
+
+    // Verify event exists
+    const event = await eventService.getEventById(eventId);
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    let targetUserId: string;
+
+    if (userId) {
+      // Adding an existing user
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      targetUserId = userId;
+    } else if (name && name.trim().length >= 2) {
+      // Create a guest stub account
+      const guestUser = await prisma.user.create({
+        data: {
+          name: name.trim(),
+          isGuest: true,
+          authProvider: 'EMAIL', // placeholder
+        },
+      });
+      targetUserId = guestUser.id;
+    } else {
+      return res.status(400).json({ error: 'Either userId or name (min 2 chars) is required' });
+    }
+
+    // Check if already signed up
+    const existingSignup = await prisma.eventSignup.findUnique({
+      where: { eventId_userId: { eventId, userId: targetUserId } },
+    });
+
+    if (existingSignup && existingSignup.status !== 'CANCELLED') {
+      return res.status(400).json({ error: 'Player is already signed up for this event' });
+    }
+
+    // Create or update signup (reactivate if previously cancelled)
+    let signup;
+    if (existingSignup) {
+      signup = await prisma.eventSignup.update({
+        where: { id: existingSignup.id },
+        data: { status: 'REGISTERED', registeredAt: new Date() },
+        include: { user: { select: { id: true, name: true, isGuest: true } } },
+      });
+    } else {
+      signup = await prisma.eventSignup.create({
+        data: {
+          eventId,
+          userId: targetUserId,
+          status: 'REGISTERED',
+        },
+        include: { user: { select: { id: true, name: true, isGuest: true } } },
+      });
+    }
+
+    res.status(201).json(signup);
+  } catch (error: any) {
+    console.error('Error quick-adding player:', error);
+    res.status(500).json({ error: error.message || 'Failed to quick-add player' });
   }
 });
 

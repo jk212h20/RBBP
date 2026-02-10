@@ -8,7 +8,9 @@ import {
   findOrCreateLightningUser,
   updateProfile,
   linkLightningToAccount,
-  addEmailToAccount
+  addEmailToAccount,
+  validateClaimToken,
+  claimGuestAccount
 } from '../services/auth.service';
 import { 
   createChallenge, 
@@ -418,6 +420,62 @@ router.post('/add-email', authenticate, async (req: Request, res: Response) => {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to add email';
+    res.status(400).json({ error: message });
+  }
+});
+
+// ============================================
+// GUEST ACCOUNT CLAIM
+// ============================================
+
+/**
+ * GET /api/auth/claim/:token
+ * Validate a claim token and return guest info
+ */
+router.get('/claim/:token', async (req: Request, res: Response) => {
+  try {
+    const { token } = req.params;
+    const result = await validateClaimToken(token);
+    
+    res.json({
+      valid: true,
+      guestName: result.guestName,
+      guestId: result.guestId,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Invalid claim token';
+    res.status(400).json({ valid: false, error: message });
+  }
+});
+
+/**
+ * POST /api/auth/claim/:token
+ * Claim a guest account by setting email and password
+ */
+router.post('/claim/:token', async (req: Request, res: Response) => {
+  try {
+    const { token } = req.params;
+    const { email, password, name } = req.body;
+
+    if (!email || !password) {
+      res.status(400).json({ error: 'Email and password are required' });
+      return;
+    }
+
+    if (password.length < 8) {
+      res.status(400).json({ error: 'Password must be at least 8 characters' });
+      return;
+    }
+
+    const result = await claimGuestAccount(token, email, password, name);
+
+    res.json({
+      message: 'Account claimed successfully! You can now log in.',
+      user: result.user,
+      token: result.token,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to claim account';
     res.status(400).json({ error: message });
   }
 });

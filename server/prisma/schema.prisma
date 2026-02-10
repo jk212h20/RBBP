@@ -49,6 +49,13 @@ model User {
   // Lightning balance (sats owed to user)
   lightningBalanceSats Int      @default(0)
   
+  // Guest flag (for walk-in players added by TD)
+  isGuest       Boolean      @default(false)
+  
+  // Claim token (for guest account claiming via link)
+  claimToken       String?   @unique
+  claimTokenExpiry DateTime?
+  
   // Admin-only notes (hidden from user)
   adminNotes    String?
 

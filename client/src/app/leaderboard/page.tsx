@@ -17,6 +17,7 @@ interface Standing {
     id: string;
     name: string;
     avatar?: string;
+    isGuest?: boolean;
   };
 }
 
@@ -201,10 +202,15 @@ export default function LeaderboardPage() {
 
                       {/* Player */}
                       <div className="col-span-4 flex items-center gap-3">
-                        <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center text-white font-bold">
+                        <div className={`w-10 h-10 ${standing.user.isGuest ? 'bg-gray-500' : 'bg-green-600'} rounded-full flex items-center justify-center text-white font-bold`}>
                           {standing.user.name.charAt(0).toUpperCase()}
                         </div>
-                        <span className="text-white font-medium truncate">{standing.user.name}</span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-white font-medium truncate">{standing.user.name}</span>
+                          {standing.user.isGuest && (
+                            <span className="text-xs bg-gray-600/50 text-gray-300 px-1.5 py-0.5 rounded flex-shrink-0">Guest</span>
+                          )}
+                        </div>
                       </div>
 
                       {/* Points */}
@@ -256,10 +262,15 @@ export default function LeaderboardPage() {
                         <span className="text-2xl font-bold">
                           {index < 3 ? rankInfo.emoji : `#${index + 1}`}
                         </span>
-                        <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center text-white font-bold">
+                        <div className={`w-10 h-10 ${standing.user.isGuest ? 'bg-gray-500' : 'bg-green-600'} rounded-full flex items-center justify-center text-white font-bold`}>
                           {standing.user.name.charAt(0).toUpperCase()}
                         </div>
-                        <span className="text-white font-medium">{standing.user.name}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-white font-medium">{standing.user.name}</span>
+                          {standing.user.isGuest && (
+                            <span className="text-xs bg-gray-600/50 text-gray-300 px-1.5 py-0.5 rounded">Guest</span>
+                          )}
+                        </div>
                       </div>
                       <div className="text-right">
                         <p className="text-xl font-bold text-green-400">{standing.totalPoints}</p>

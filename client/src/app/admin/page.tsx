@@ -116,6 +116,13 @@ interface User {
   eventsPlayed?: number;
 }
 
+interface GuestUser {
+  id: string;
+  name: string;
+  createdAt: string;
+  _count: { results: number; eventSignups: number; standings: number };
+}
+
 export default function AdminPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -193,6 +200,16 @@ export default function AdminPage() {
   const [loadingSignups, setLoadingSignups] = useState(false);
   const [resultsMode, setResultsMode] = useState(false);
   const [resultEntries, setResultEntries] = useState<ResultEntry[]>([]);
+  
+  // Guest merge state
+  const [guestUsers, setGuestUsers] = useState<GuestUser[]>([]);
+  const [loadingGuests, setLoadingGuests] = useState(false);
+  const [showGuestMerge, setShowGuestMerge] = useState(false);
+  const [selectedGuestId, setSelectedGuestId] = useState('');
+  const [selectedRealUserId, setSelectedRealUserId] = useState('');
+  const [merging, setMerging] = useState(false);
+  const [claimLinkUrl, setClaimLinkUrl] = useState('');
+  const [generatingClaim, setGeneratingClaim] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -1213,6 +1230,163 @@ export default function AdminPage() {
               </div>
             )}
             
+            {/* Guest Merge Section */}
+            <div className="mt-6 border-t border-gray-700 pt-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold">👤→👥 Merge Guest Accounts</h3>
+                <button
+                  onClick={async () => {
+                    setShowGuestMerge(!showGuestMerge);
+                    if (!showGuestMerge && guestUsers.length === 0) {
+                      setLoadingGuests(true);
+                      try {
+                        const guests = await adminAPI.getGuestUsers();
+                        setGuestUsers(guests);
+                      } catch (err) {
+                        console.error('Failed to fetch guests:', err);
+                      } finally {
+                        setLoadingGuests(false);
+                      }
+                    }
+                  }}
+                  className={`px-4 py-2 rounded text-sm font-semibold ${showGuestMerge ? 'bg-gray-600' : 'bg-orange-600 hover:bg-orange-700'}`}
+                >
+                  {showGuestMerge ? '✕ Close' : '🔀 Merge Guests'}
+                </button>
+              </div>
+              
+              {showGuestMerge && (
+                <div className="bg-gray-700/50 rounded-lg p-4 space-y-4">
+                  <p className="text-gray-400 text-sm">
+                    Merge a guest player's results, standings, and signups into a real user account. 
+                    The guest account will be deleted after merging.
+                  </p>
+                  
+                  {loadingGuests ? (
+                    <div className="text-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-400 mx-auto"></div>
+                    </div>
+                  ) : guestUsers.length === 0 ? (
+                    <p className="text-gray-500 text-center py-4">No guest accounts found.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-gray-400 mb-1 text-sm">Guest Account (source - will be deleted)</label>
+                        <select
+                          value={selectedGuestId}
+                          onChange={(e) => setSelectedGuestId(e.target.value)}
+                          className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
+                        >
+                          <option value="">Select a guest account...</option>
+                          {guestUsers.map((g) => (
+                            <option key={g.id} value={g.id}>
+                              {g.name} — {g._count.results} results, {g._count.standings} standings, {g._count.eventSignups} signups
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-gray-400 mb-1 text-sm">Real User Account (target - will receive data)</label>
+                        <select
+                          value={selectedRealUserId}
+                          onChange={(e) => setSelectedRealUserId(e.target.value)}
+                          className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
+                        >
+                          <option value="">Select a real user...</option>
+                          {users.filter(u => !guestUsers.some(g => g.id === u.id)).map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {u.name} ({u.email || 'no email'}) — {u.seasonPoints || 0} pts
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <button
+                        disabled={!selectedGuestId || !selectedRealUserId || merging}
+                        onClick={async () => {
+                          const guestName = guestUsers.find(g => g.id === selectedGuestId)?.name;
+                          const realName = users.find(u => u.id === selectedRealUserId)?.name;
+                          if (!confirm(`Merge guest "${guestName}" into "${realName}"?\n\nThis will transfer all results, standings, and signups. The guest account will be permanently deleted.`)) return;
+                          setMerging(true);
+                          setError('');
+                          setMessage('');
+                          try {
+                            const result = await adminAPI.mergeGuest(selectedGuestId, selectedRealUserId);
+                            setMessage(result.message);
+                            setSelectedGuestId('');
+                            setSelectedRealUserId('');
+                            // Refresh data
+                            const guests = await adminAPI.getGuestUsers();
+                            setGuestUsers(guests);
+                            fetchUsers();
+                          } catch (err: any) {
+                            setError(err.message || 'Failed to merge guest');
+                          } finally {
+                            setMerging(false);
+                          }
+                        }}
+                        className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-3 rounded font-semibold"
+                      >
+                        {merging ? '⏳ Merging...' : '🔀 Merge Guest into Real User'}
+                      </button>
+
+                      {/* Generate Claim Link */}
+                      <div className="border-t border-gray-600 pt-4 mt-4">
+                        <h4 className="text-sm font-semibold text-gray-300 mb-2">🔗 Or: Generate Claim Link</h4>
+                        <p className="text-gray-500 text-xs mb-3">
+                          Generate a link to send to the guest player so they can claim their account themselves (set email & password).
+                        </p>
+                        <div className="flex gap-2">
+                          <button
+                            disabled={!selectedGuestId || generatingClaim}
+                            onClick={async () => {
+                              setGeneratingClaim(true);
+                              setError('');
+                              setClaimLinkUrl('');
+                              try {
+                                const result = await adminAPI.generateClaimLink(selectedGuestId);
+                                setClaimLinkUrl(result.claimUrl);
+                                setMessage(`Claim link generated for ${result.guestName}! Expires ${new Date(result.expiresAt).toLocaleDateString()}.`);
+                              } catch (err: any) {
+                                setError(err.message || 'Failed to generate claim link');
+                              } finally {
+                                setGeneratingClaim(false);
+                              }
+                            }}
+                            className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-2 rounded text-sm font-semibold"
+                          >
+                            {generatingClaim ? '⏳ Generating...' : '🔗 Generate Link'}
+                          </button>
+                        </div>
+                        {claimLinkUrl && (
+                          <div className="mt-3 bg-gray-800 border border-blue-500/30 rounded p-3">
+                            <p className="text-xs text-gray-400 mb-1">Send this link to the player:</p>
+                            <div className="flex gap-2 items-center">
+                              <input
+                                type="text"
+                                readOnly
+                                value={claimLinkUrl}
+                                className="flex-1 p-2 bg-gray-700 border border-gray-600 rounded text-white text-xs font-mono"
+                              />
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(claimLinkUrl);
+                                  setMessage('Claim link copied to clipboard!');
+                                }}
+                                className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-xs font-semibold whitespace-nowrap"
+                              >
+                                📋 Copy
+                              </button>
+                            </div>
+                            <p className="text-gray-500 text-xs mt-2">⏰ Link expires in 7 days. Player will set their email & password to claim the account.</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div className="mt-4 text-gray-400 text-sm">
               <p>💡 <strong>Roles:</strong></p>
               <ul className="mt-2 space-y-1 ml-4">

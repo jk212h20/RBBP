@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { eventsAPI, authAPI, standingsAPI, balanceAPI } from '@/lib/api';
+import { eventsAPI, authAPI, standingsAPI, balanceAPI, withdrawalsAPI } from '@/lib/api';
 
 interface UserEvent {
   id: string;
@@ -73,6 +73,10 @@ export default function ProfilePage() {
   const [linkLightningStatus, setLinkLightningStatus] = useState<'idle' | 'pending' | 'linked' | 'error'>('idle');
   const [showLightningBonus, setShowLightningBonus] = useState(false);
 
+  // Withdrawal history state
+  const [myWithdrawals, setMyWithdrawals] = useState<any[]>([]);
+  const [loadingWithdrawals, setLoadingWithdrawals] = useState(true);
+
   // Add email/password state
   const [showAddEmail, setShowAddEmail] = useState(false);
   const [addEmailData, setAddEmailData] = useState({ email: '', password: '', confirmPassword: '' });
@@ -94,6 +98,7 @@ export default function ProfilePage() {
       loadMyEvents();
       loadSeasonStanding();
       loadBalance();
+      loadWithdrawals();
     }
   }, [isAuthenticated]);
 
@@ -120,6 +125,7 @@ export default function ProfilePage() {
             setWithdrawalData(null);
             setWithdrawalStatus('PENDING');
             loadBalance();
+            loadWithdrawals();
           }, 3000);
         } else if (status.status === 'FAILED' || status.status === 'EXPIRED') {
           setWithdrawalStatus(status.status as 'FAILED' | 'EXPIRED');
@@ -191,6 +197,18 @@ export default function ProfilePage() {
       console.error('Failed to load balance:', err);
     } finally {
       setLoadingBalance(false);
+    }
+  };
+
+  const loadWithdrawals = async () => {
+    setLoadingWithdrawals(true);
+    try {
+      const data = await withdrawalsAPI.getMy();
+      setMyWithdrawals(data);
+    } catch (err) {
+      console.error('Failed to load withdrawals:', err);
+    } finally {
+      setLoadingWithdrawals(false);
     }
   };
 
@@ -860,6 +878,56 @@ export default function ProfilePage() {
           <p className="text-yellow-200/50 text-xs mt-4 text-center">
             💡 Winnings are credited to your balance. Withdraw anytime to your Lightning wallet!
           </p>
+        </div>
+
+        {/* Withdrawal History */}
+        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 p-4 md:p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg md:text-xl font-bold text-white">📋 Withdrawal History</h2>
+            <button
+              onClick={loadWithdrawals}
+              className="text-green-400 hover:text-green-300 text-sm"
+            >
+              🔄 Refresh
+            </button>
+          </div>
+
+          {loadingWithdrawals ? (
+            <div className="flex items-center justify-center py-6">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-400"></div>
+            </div>
+          ) : myWithdrawals.length === 0 ? (
+            <p className="text-green-300/60 text-center py-6 text-sm">No withdrawals yet</p>
+          ) : (
+            <div className="space-y-2">
+              {myWithdrawals.slice(0, 20).map((w: any) => (
+                <div key={w.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-lg flex-shrink-0">
+                      {w.status === 'PAID' ? '✅' : w.status === 'PENDING' ? '⏳' : w.status === 'CLAIMED' ? '📥' : w.status === 'EXPIRED' ? '⏰' : '❌'}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-white font-medium text-sm">
+                        {w.amountSats?.toLocaleString() || '—'} sats
+                      </p>
+                      <p className="text-green-300/60 text-xs truncate">
+                        {new Date(w.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
+                  <span className={`text-xs font-medium px-2 py-1 rounded-full flex-shrink-0 ${
+                    w.status === 'PAID' ? 'bg-green-500/20 text-green-400' :
+                    w.status === 'PENDING' ? 'bg-yellow-500/20 text-yellow-400' :
+                    w.status === 'CLAIMED' ? 'bg-blue-500/20 text-blue-400' :
+                    w.status === 'EXPIRED' ? 'bg-gray-500/20 text-gray-400' :
+                    'bg-red-500/20 text-red-400'
+                  }`}>
+                    {w.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Season Points Card */}

@@ -264,6 +264,18 @@ export const eventsAPI = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  // Quick Add Player (TD/Admin)
+  searchPlayers: (eventId: string, query: string) =>
+    fetchAPI<{ id: string; name: string; email: string | null; isGuest: boolean }[]>(
+      `/events/${eventId}/search-players?q=${encodeURIComponent(query)}`
+    ),
+
+  quickAddPlayer: (eventId: string, data: { userId?: string; name?: string }) =>
+    fetchAPI<any>(`/events/${eventId}/quick-add`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };
 
 // ============================================
@@ -329,6 +341,34 @@ export const adminAPI = {
     fetchAPI<{ id: string; adminNotes: string }>(`/admin/users/${userId}/notes`, {
       method: 'PUT',
       body: JSON.stringify({ notes }),
+    }),
+
+  // Guest merge
+  getGuestUsers: () => fetchAPI<{
+    id: string;
+    name: string;
+    createdAt: string;
+    _count: { results: number; eventSignups: number; standings: number };
+  }[]>('/admin/guest-users'),
+
+  mergeGuest: (guestUserId: string, realUserId: string) =>
+    fetchAPI<{
+      message: string;
+      mergedData: { results: number; standings: number; signups: number };
+    }>('/admin/merge-guest', {
+      method: 'POST',
+      body: JSON.stringify({ guestUserId, realUserId }),
+    }),
+
+  // Guest claim link
+  generateClaimLink: (guestUserId: string) =>
+    fetchAPI<{
+      claimUrl: string;
+      token: string;
+      expiresAt: string;
+      guestName: string;
+    }>(`/admin/guest-users/${guestUserId}/claim-link`, {
+      method: 'POST',
     }),
 };
 
