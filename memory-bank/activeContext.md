@@ -7,7 +7,7 @@ The application is **live and deployed on Railway** with all core features funct
 
 ## Recent Work (Feb 2026)
 
-### Feb 11 — Homepage Redesign, Logo, TD Panel Fix, Total Entrants Override & Deployment Fix
+### Feb 11 — Homepage Redesign, Logo, TD Panel Fix, Total Entrants Override, FAQ & Deployment Fix
 - **Homepage Logo & Blue Theme**: Processed `Logo.png` (4096x4096) → `client/public/logo.png` (512x512, clean 8x downscale via LANCZOS) with transparent background (flood-fill from edges). Displayed at 300x300 in hero section to the left of "Welcome to RBBP" title. Small 28x28 logo in MobileNav header. Changed homepage background from green gradient to blue gradient (`#3d7a94` → `#5595b0` → `#2a5f78`) matching the sky blue inside the logo's ship wheel.
 - **TD Panel Default Open**: Changed `showManagement` initial state to `true` so Quick Add Player and other TD tools are visible immediately when visiting an event page (was defaulting to collapsed/hidden)
 - **Total Entrants Override**: New feature allowing TDs to override the player count used for points calculation
@@ -16,6 +16,13 @@ The application is **live and deployed on Railway** with all core features funct
   - Frontend: Number input in TD Panel with Set/Clear buttons
   - Client API: `eventsAPI.setTotalEntrants(eventId, value)`
   - Migration: `20260211190000_add_total_entrants`
+- **FAQ System**: Public FAQ page + admin CRUD management
+  - `Faq` model: question, answer, sortOrder, isActive
+  - Backend: `GET /faq` (public, active only), `GET /faq/admin` (all), `POST /faq`, `PUT /faq/:id`, `DELETE /faq/:id`
+  - Frontend: `/faq` public page with accordion UI, `FaqTab` component in admin panel
+  - Client API: `faqAPI.getAll()`, `faqAPI.getAllAdmin()`, `faqAPI.create()`, `faqAPI.update()`, `faqAPI.delete()`
+  - MobileNav: FAQ link added to navigation
+  - Migration: `20260211200000_add_faq`
 - **Deployment Resilience**: Added `timeout 60` + `|| echo` fallback to `prisma migrate deploy` in both `railway.toml` and `nixpacks.toml` start commands, so server starts even if migration hangs/fails
 
 ### Feb 10 — Withdrawal History UI, Quick Add Players, Guest Merge & Claim Links
@@ -78,7 +85,8 @@ client/src/
 │   ├── events/             # Event list + detail pages
 │   ├── leaderboard/        # Season standings
 │   ├── profile/            # User profile management
-│   ├── admin/              # Multi-tab admin panel
+│   ├── admin/              # Multi-tab admin panel (incl. FAQ tab)
+│   ├── faq/                # Public FAQ page
 │   ├── venues/             # Venue list + detail pages
 │   └── auth/callback/      # Google OAuth callback handler
 ├── components/
@@ -86,7 +94,8 @@ client/src/
 │   ├── ImageUpload.tsx     # Base64 image upload component
 │   ├── BalanceTab.tsx      # Admin: Lightning balance management
 │   ├── WithdrawalsTab.tsx  # Admin: Withdrawal management
-│   └── PointsTab.tsx       # Admin: Points adjustment UI
+│   ├── PointsTab.tsx       # Admin: Points adjustment UI
+│   └── FaqTab.tsx          # Admin: FAQ management UI
 ├── context/
 │   └── AuthContext.tsx      # React Context for auth state + JWT
 └── lib/
@@ -99,7 +108,7 @@ server/src/
 ├── index.ts                # Express app setup, route mounting, CORS
 ├── config/passport.ts      # Passport strategies (Google, Lightning)
 ├── middleware/auth.middleware.ts  # JWT verification, role checks
-├── routes/                 # 9 route files (auth, venue, season, event, standings, admin, withdrawal, lnurl, balance)
+├── routes/                 # 10 route files (auth, venue, season, event, standings, admin, withdrawal, lnurl, balance, faq)
 ├── services/               # 10 service files (business logic layer)
 ├── validators/             # 4 Zod validation schemas
 ├── types/express.d.ts      # Express type augmentation
@@ -107,7 +116,7 @@ server/src/
 ```
 
 ### Database (Prisma / PostgreSQL)
-15 models: User, Profile, Venue, Season, Event, EventSignup, Result, Standing, Achievement, UserAchievement, LightningChallenge, Comment, DeletedUser, Withdrawal, PointsHistory
+16 models: User, Profile, Venue, Season, Event, EventSignup, Result, Standing, Achievement, UserAchievement, LightningChallenge, Comment, DeletedUser, Withdrawal, PointsHistory, Faq
 
 ## Key Patterns & Decisions
 

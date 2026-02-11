@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 
 interface MobileNavProps {
-  currentPage?: 'home' | 'events' | 'leaderboard' | 'venues' | 'dashboard';
+  currentPage?: 'home' | 'events' | 'leaderboard' | 'venues' | 'dashboard' | 'faq';
 }
 
 export default function MobileNav({ currentPage }: MobileNavProps) {
@@ -18,6 +18,7 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
     { href: '/events', label: 'Events', key: 'events' },
     { href: '/leaderboard', label: 'Leaderboard', key: 'leaderboard' },
     { href: '/venues', label: 'Venues', key: 'venues' },
+    { href: '/faq', label: 'FAQ', key: 'faq' },
   ];
 
   return (

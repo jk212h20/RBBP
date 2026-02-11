@@ -14,6 +14,7 @@ import adminRoutes from './routes/admin.routes';
 import withdrawalRoutes from './routes/withdrawal.routes';
 import lnurlRoutes from './routes/lnurl.routes';
 import balanceRoutes from './routes/balance.routes';
+import faqRoutes from './routes/faq.routes';
 
 // Load environment variables
 dotenv.config();
@@ -188,6 +189,9 @@ app.use('/api/lnurl', lnurlRoutes);
 
 // Balance routes (user Lightning balance management)
 app.use('/api/balance', balanceRoutes);
+
+// FAQ routes (public + admin CRUD)
+app.use('/api/faq', faqRoutes);
 
 // ============================================
 // ERROR HANDLING

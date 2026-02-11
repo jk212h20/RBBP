@@ -386,6 +386,22 @@ model Withdrawal {
 }
 
 // ============================================
+// FAQ
+// ============================================
+
+model Faq {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("faqs")
+}
+
+// ============================================
 // POINTS HISTORY (Audit trail for all point changes)
 // ============================================
 

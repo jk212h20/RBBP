@@ -9,6 +9,7 @@ import ImageUpload from '@/components/ImageUpload';
 import WithdrawalsTab from '@/components/WithdrawalsTab';
 import BalanceTab from '@/components/BalanceTab';
 import PointsTab from '@/components/PointsTab';
+import FaqTab from '@/components/FaqTab';
 
 interface Stats {
   users: number;
@@ -126,7 +127,7 @@ interface GuestUser {
 export default function AdminPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'overview' | 'venues' | 'seasons' | 'events' | 'users' | 'points' | 'balances' | 'withdrawals' | 'setup'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'venues' | 'seasons' | 'events' | 'users' | 'points' | 'balances' | 'withdrawals' | 'setup' | 'faq'>('overview');
   const [stats, setStats] = useState<Stats | null>(null);
   const [venues, setVenues] = useState<any[]>([]);
   const [seasons, setSeasons] = useState<any[]>([]);
@@ -616,7 +617,7 @@ export default function AdminPage() {
         {/* Tabs - Scrollable on mobile */}
         <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
           <div className="flex gap-2 mb-6 border-b border-gray-700 pb-4 min-w-max">
-            {['overview', 'users', 'points', 'venues', 'seasons', 'events', 'balances', 'withdrawals'].map((tab) => (
+            {['overview', 'users', 'points', 'venues', 'seasons', 'events', 'balances', 'withdrawals', 'faq'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => {
@@ -634,7 +635,7 @@ export default function AdminPage() {
                     : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
               >
-                {tab === 'points' ? '🎯 Points' : tab}
+                {tab === 'points' ? '🎯 Points' : tab === 'faq' ? '❓ FAQ' : tab}
               </button>
             ))}
           </div>
@@ -1407,6 +1408,11 @@ export default function AdminPage() {
         {/* Withdrawals Tab */}
         {activeTab === 'withdrawals' && (
           <WithdrawalsTab users={users} fetchUsers={fetchUsers} setMessage={setMessage} setError={setError} />
+        )}
+
+        {/* FAQ Tab */}
+        {activeTab === 'faq' && (
+          <FaqTab setMessage={setMessage} setError={setError} />
         )}
 
         {/* Points Tab */}

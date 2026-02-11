@@ -502,6 +502,30 @@ export const balanceAPI = {
     fetchAPI<{ userId: string; balanceSats: number }>(`/balance/admin/user/${userId}`),
 };
 
+// ============================================
+// FAQ API
+// ============================================
+export const faqAPI = {
+  getAll: () => fetchAPI<{ id: string; question: string; answer: string; sortOrder: number }[]>('/faq'),
+
+  getAllAdmin: () => fetchAPI<{ id: string; question: string; answer: string; sortOrder: number; isActive: boolean; createdAt: string; updatedAt: string }[]>('/faq/all'),
+
+  create: (data: { question: string; answer: string; sortOrder?: number }) =>
+    fetchAPI<any>('/faq', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: Partial<{ question: string; answer: string; sortOrder: number; isActive: boolean }>) =>
+    fetchAPI<any>(`/faq/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string) =>
+    fetchAPI<{ message: string }>(`/faq/${id}`, { method: 'DELETE' }),
+};
+
 // Default export for simple usage
 const api = {
   get: <T>(endpoint: string) => fetchAPI<T>(endpoint),
