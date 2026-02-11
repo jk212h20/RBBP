@@ -88,7 +88,7 @@ export default function EventDetailPage() {
   const { isAuthenticated, user } = useAuth();
 
   // Tournament Director state
-  const [showManagement, setShowManagement] = useState(false);
+  const [showManagement, setShowManagement] = useState(true);
   const [playerResults, setPlayerResults] = useState<PlayerResult[]>([]);
   const [savingResults, setSavingResults] = useState(false);
   const [resultMessage, setResultMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -100,6 +100,10 @@ export default function EventDetailPage() {
   const [quickAddLoading, setQuickAddLoading] = useState(false);
   const [quickAddMode, setQuickAddMode] = useState<'search' | 'guest'>('search');
   const [guestName, setGuestName] = useState('');
+
+  // Total Entrants state
+  const [totalEntrantsInput, setTotalEntrantsInput] = useState('');
+  const [savingTotalEntrants, setSavingTotalEntrants] = useState(false);
 
   const canManageEvent = user && (user.role === 'ADMIN' || user.role === 'TOURNAMENT_DIRECTOR' || user.role === 'VENUE_MANAGER');
 
@@ -261,6 +265,26 @@ export default function EventDetailPage() {
       loadEvent();
     } catch (err: any) {
       setResultMessage({ type: 'error', text: err.message || 'Failed to add guest' });
+    }
+  };
+
+  // Total Entrants handler
+  const handleSetTotalEntrants = async () => {
+    setSavingTotalEntrants(true);
+    try {
+      const value = totalEntrantsInput.trim() === '' ? null : parseInt(totalEntrantsInput);
+      if (value !== null && (isNaN(value) || value < 1)) {
+        setResultMessage({ type: 'error', text: 'Total entrants must be a positive number' });
+        setSavingTotalEntrants(false);
+        return;
+      }
+      await eventsAPI.setTotalEntrants(eventId, value);
+      setResultMessage({ type: 'success', text: value ? `Total entrants set to ${value}` : 'Total entrants override cleared' });
+      loadEvent();
+    } catch (err: any) {
+      setResultMessage({ type: 'error', text: err.message || 'Failed to set total entrants' });
+    } finally {
+      setSavingTotalEntrants(false);
     }
   };
 
@@ -645,6 +669,41 @@ export default function EventDetailPage() {
                       </button>
                     </div>
                   )}
+                </div>
+
+                {/* Total Entrants Override */}
+                <div>
+                  <h3 className="text-white font-medium mb-2">📊 Total Entrants</h3>
+                  <p className="text-orange-200/70 text-sm mb-3">
+                    Override the total player count for points calculation (e.g., if some players aren&apos;t in the system).
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      min="1"
+                      value={totalEntrantsInput}
+                      onChange={(e) => setTotalEntrantsInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSetTotalEntrants()}
+                      placeholder={`Current: ${registeredCount} registered`}
+                      className="flex-1 p-3 bg-white/10 border border-orange-500/50 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-orange-400"
+                    />
+                    <button
+                      onClick={handleSetTotalEntrants}
+                      disabled={savingTotalEntrants}
+                      className="px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-800 disabled:opacity-50 text-white rounded-lg font-medium transition"
+                    >
+                      {savingTotalEntrants ? '...' : 'Set'}
+                    </button>
+                    {totalEntrantsInput && (
+                      <button
+                        onClick={() => { setTotalEntrantsInput(''); handleSetTotalEntrants(); }}
+                        className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white/70 rounded-lg text-sm transition"
+                        title="Clear override"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Points Preview */}

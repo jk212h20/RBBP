@@ -466,4 +466,37 @@ router.post('/:id/quick-add', authenticate, requireTournamentDirector, async (re
   }
 });
 
+// ============================================
+// TOTAL ENTRANTS OVERRIDE (Tournament Director)
+// ============================================
+
+/**
+ * PUT /api/events/:id/total-entrants
+ * Set or clear the total entrants override for an event (TD/Admin only)
+ * Body: { totalEntrants: number | null }
+ */
+router.put('/:id/total-entrants', authenticate, requireTournamentDirector, async (req: Request, res: Response) => {
+  try {
+    const eventId = req.params.id;
+    const { totalEntrants } = req.body;
+
+    // Validate: must be null or a positive integer
+    if (totalEntrants !== null && totalEntrants !== undefined) {
+      const num = Number(totalEntrants);
+      if (!Number.isInteger(num) || num < 1) {
+        return res.status(400).json({ error: 'totalEntrants must be a positive integer or null' });
+      }
+    }
+
+    const result = await eventService.setTotalEntrants(
+      eventId,
+      totalEntrants === null || totalEntrants === undefined ? null : Number(totalEntrants)
+    );
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error setting total entrants:', error);
+    res.status(500).json({ error: error.message || 'Failed to set total entrants' });
+  }
+});
+
 export default router;

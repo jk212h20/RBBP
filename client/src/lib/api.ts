@@ -276,6 +276,13 @@ export const eventsAPI = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  // Total Entrants Override (TD/Admin)
+  setTotalEntrants: (eventId: string, totalEntrants: number | null) =>
+    fetchAPI<{ id: string; totalEntrants: number | null }>(`/events/${eventId}/total-entrants`, {
+      method: 'PUT',
+      body: JSON.stringify({ totalEntrants }),
+    }),
 };
 
 // ============================================

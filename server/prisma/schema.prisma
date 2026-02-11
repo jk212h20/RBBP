@@ -171,6 +171,7 @@ model Event {
   registrationOpenDays  Int         @default(10)  // Days before event when registration opens
   maxPlayers            Int         @default(20)
   buyIn                 Float?      // Optional buy-in amount
+  totalEntrants         Int?        // Manual override for total player count (for points calc)
   status                EventStatus @default(SCHEDULED)
   
   venueId     String

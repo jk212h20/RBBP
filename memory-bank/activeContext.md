@@ -1,11 +1,20 @@
 # Active Context — Roatan Poker League
 
-## Last Updated: February 10, 2026
+## Last Updated: February 11, 2026
 
 ## Current State
 The application is **live and deployed on Railway** with all core features functional. The system handles the full poker league lifecycle: venue management, season/event creation, player registration, tournament execution, results entry, standings calculation, and Lightning Network payouts.
 
 ## Recent Work (Feb 2026)
+
+### Feb 11 — TD Panel Visibility Fix & Total Entrants Override
+- **TD Panel Default Open**: Changed `showManagement` initial state to `true` so Quick Add Player and other TD tools are visible immediately when visiting an event page (was defaulting to collapsed/hidden)
+- **Total Entrants Override**: New feature allowing TDs to override the player count used for points calculation
+  - `totalEntrants` nullable Int field on Event model
+  - Backend: `PUT /events/:id/total-entrants` route + `setTotalEntrants` service method
+  - Frontend: Number input in TD Panel with Set/Clear buttons
+  - Client API: `eventsAPI.setTotalEntrants(eventId, value)`
+  - Migration: `20260211190000_add_total_entrants`
 
 ### Feb 10 — Withdrawal History UI, Quick Add Players, Guest Merge & Claim Links
 - **Withdrawal History**: Added user-facing withdrawal history section to profile page

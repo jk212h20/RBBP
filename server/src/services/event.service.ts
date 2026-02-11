@@ -750,14 +750,36 @@ export class EventService {
    * Get points preview for an event based on current checked-in count
    */
   async getPointsPreview(eventId: string) {
-    const checkedInCount = await prisma.eventSignup.count({
-      where: {
-        eventId,
-        status: SignupStatus.CHECKED_IN,
-      },
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      select: { totalEntrants: true },
     });
 
-    return calculateEventPoints(checkedInCount);
+    // Use totalEntrants override if set, otherwise count checked-in players
+    let playerCount: number;
+    if (event?.totalEntrants) {
+      playerCount = event.totalEntrants;
+    } else {
+      playerCount = await prisma.eventSignup.count({
+        where: {
+          eventId,
+          status: SignupStatus.CHECKED_IN,
+        },
+      });
+    }
+
+    return calculateEventPoints(playerCount);
+  }
+
+  /**
+   * Set total entrants override for an event (TD/Admin only)
+   */
+  async setTotalEntrants(eventId: string, totalEntrants: number | null) {
+    return prisma.event.update({
+      where: { id: eventId },
+      data: { totalEntrants },
+      select: { id: true, totalEntrants: true },
+    });
   }
 
   /**
