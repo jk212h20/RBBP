@@ -5,7 +5,7 @@ nixPkgs = ["nodejs-18_x", "npm-9_x"]
 cmds = ["npm ci", "npx prisma generate"]
 
 [phases.build]
-cmds = ["npm run build"]
+cmds = ["npm run build", "npx prisma migrate deploy"]
 
 [start]
-cmd = "npx prisma migrate deploy; npm start"
+cmd = "npm start"
