@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 
 interface MobileNavProps {
@@ -24,8 +25,9 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
       <div className="max-w-7xl mx-auto px-4 py-4">
         <div className="flex justify-between items-center">
           {/* Logo */}
-          <Link href="/" className="text-xl sm:text-2xl font-bold text-white">
-            🃏 Roatan Bitcoin Bar Poker
+          <Link href="/" className="flex items-center gap-2 text-xl sm:text-2xl font-bold text-white">
+            <Image src="/logo.png" alt="RBBP" width={28} height={28} />
+            Roatan Bitcoin Bar Poker
           </Link>
 
           {/* Desktop Navigation */}

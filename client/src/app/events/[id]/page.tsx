@@ -941,7 +941,7 @@ export default function EventDetailPage() {
           ) : (
             <div className="space-y-4">
               {/* Registered players */}
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div className={canManageEvent && !isFinalized ? 'space-y-2' : 'grid grid-cols-2 md:grid-cols-3 gap-3'}>
                 {event.signups
                   .filter(s => s.status !== 'WAITLISTED' && s.status !== 'CANCELLED')
                   .map((signup) => (
@@ -951,12 +951,50 @@ export default function EventDetailPage() {
                         signup.status === 'CHECKED_IN' ? 'bg-green-500/20 border border-green-500/30' : 'bg-white/5'
                       }`}
                     >
-                      <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-white font-bold">
+                      <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0">
                         {signup.user.name.charAt(0).toUpperCase()}
                       </div>
-                      <span className="text-white text-sm truncate">{signup.user.name}</span>
+                      <span className="text-white text-sm truncate flex-1">{signup.user.name}</span>
                       {signup.status === 'CHECKED_IN' && (
-                        <span className="text-green-400 text-xs">✓</span>
+                        <span className="text-green-400 text-xs flex-shrink-0">✓</span>
+                      )}
+                      {/* Admin/TD controls */}
+                      {canManageEvent && !isFinalized && (
+                        <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
+                          {signup.status !== 'CHECKED_IN' && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await eventsAPI.checkIn(eventId, signup.user.id);
+                                  setResultMessage({ type: 'success', text: `${signup.user.name} checked in` });
+                                  loadEvent();
+                                } catch (err: any) {
+                                  setResultMessage({ type: 'error', text: err.message || 'Failed to check in' });
+                                }
+                              }}
+                              className="px-2 py-1 bg-green-600/50 hover:bg-green-600 text-green-200 hover:text-white rounded text-xs font-medium transition"
+                              title="Check in"
+                            >
+                              ✓ Check In
+                            </button>
+                          )}
+                          <button
+                            onClick={async () => {
+                              if (!confirm(`Remove ${signup.user.name} from this event?`)) return;
+                              try {
+                                await eventsAPI.removePlayer(eventId, signup.user.id);
+                                setResultMessage({ type: 'success', text: `${signup.user.name} removed` });
+                                loadEvent();
+                              } catch (err: any) {
+                                setResultMessage({ type: 'error', text: err.message || 'Failed to remove player' });
+                              }
+                            }}
+                            className="px-2 py-1 bg-red-600/30 hover:bg-red-600 text-red-300 hover:text-white rounded text-xs font-medium transition"
+                            title="Remove player"
+                          >
+                            ✕
+                          </button>
+                        </div>
                       )}
                     </div>
                   ))}
@@ -966,7 +1004,7 @@ export default function EventDetailPage() {
               {waitlistedCount > 0 && (
                 <div>
                   <h3 className="text-yellow-400 font-medium mb-2 text-sm">⏳ Waitlist</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className={canManageEvent && !isFinalized ? 'space-y-2' : 'grid grid-cols-2 md:grid-cols-3 gap-3'}>
                     {event.signups
                       .filter(s => s.status === 'WAITLISTED')
                       .map((signup, index) => (
@@ -974,10 +1012,31 @@ export default function EventDetailPage() {
                           key={signup.id}
                           className="flex items-center gap-2 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg"
                         >
-                          <div className="w-6 h-6 bg-yellow-600/50 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                          <div className="w-6 h-6 bg-yellow-600/50 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                             {index + 1}
                           </div>
-                          <span className="text-yellow-200 text-sm truncate">{signup.user.name}</span>
+                          <span className="text-yellow-200 text-sm truncate flex-1">{signup.user.name}</span>
+                          {/* Admin/TD controls for waitlisted */}
+                          {canManageEvent && !isFinalized && (
+                            <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
+                              <button
+                                onClick={async () => {
+                                  if (!confirm(`Remove ${signup.user.name} from the waitlist?`)) return;
+                                  try {
+                                    await eventsAPI.removePlayer(eventId, signup.user.id);
+                                    setResultMessage({ type: 'success', text: `${signup.user.name} removed from waitlist` });
+                                    loadEvent();
+                                  } catch (err: any) {
+                                    setResultMessage({ type: 'error', text: err.message || 'Failed to remove player' });
+                                  }
+                                }}
+                                className="px-2 py-1 bg-red-600/30 hover:bg-red-600 text-red-300 hover:text-white rounded text-xs font-medium transition"
+                                title="Remove from waitlist"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          )}
                         </div>
                       ))}
                   </div>

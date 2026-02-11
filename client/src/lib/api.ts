@@ -226,6 +226,9 @@ export const eventsAPI = {
   
   checkIn: (eventId: string, userId: string) =>
     fetchAPI<any>(`/events/${eventId}/checkin/${userId}`, { method: 'PUT' }),
+
+  removePlayer: (eventId: string, userId: string) =>
+    fetchAPI<{ message: string }>(`/events/${eventId}/signup/${userId}`, { method: 'DELETE' }),
   
   // Results
   enterResults: (eventId: string, results: { userId: string; position: number; knockouts?: number }[]) =>

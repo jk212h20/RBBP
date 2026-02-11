@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import MobileNav from '@/components/MobileNav';
 import { useAuth } from '@/context/AuthContext';
 import { eventsAPI, seasonsAPI } from '@/lib/api';
@@ -66,18 +67,28 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-black">
+    <div className="min-h-screen" style={{ background: 'linear-gradient(to bottom right, #3d7a94, #5595b0, #2a5f78)' }}>
       <MobileNav currentPage="home" />
 
       {/* Hero Section */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="text-center mb-16">
-          <h1 className="text-5xl md:text-7xl font-bold text-white mb-6">
-            🃏 Roatan Bitcoin Bar Poker
-          </h1>
-          <p className="text-xl md:text-2xl text-white/80 max-w-2xl mx-auto mb-8">
-            Play in free tournaments, win real bitcoin
-          </p>
+        <div className="flex flex-col md:flex-row items-center justify-center gap-6 mb-16">
+          <Image
+            src="/logo.png"
+            alt="RBBP Logo"
+            width={300}
+            height={300}
+            className="flex-shrink-0"
+            priority
+          />
+          <div className="text-center md:text-left">
+            <h1 className="text-5xl md:text-7xl font-bold text-white mb-4">
+              Welcome to RBBP
+            </h1>
+            <p className="text-xl md:text-2xl text-white/80 max-w-2xl">
+              Play in free tournaments, win real bitcoin
+            </p>
+          </div>
         </div>
 
         {/* Upcoming Events & Top Players */}

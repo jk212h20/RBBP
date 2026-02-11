@@ -268,6 +268,59 @@ router.put('/:id/checkin/:userId', authenticate, requireTournamentDirector, asyn
   }
 });
 
+/**
+ * DELETE /api/events/:id/signup/:userId
+ * Remove a player from an event (Admin/Tournament Director)
+ * Sets their signup status to CANCELLED
+ */
+router.delete('/:id/signup/:userId', authenticate, requireTournamentDirector, async (req: Request, res: Response) => {
+  try {
+    const eventId = req.params.id;
+    const userId = req.params.userId;
+
+    const signup = await prisma.eventSignup.findUnique({
+      where: { eventId_userId: { eventId, userId } },
+    });
+
+    if (!signup) {
+      return res.status(404).json({ error: 'Signup not found' });
+    }
+
+    if (signup.status === 'CANCELLED') {
+      return res.status(400).json({ error: 'Signup is already cancelled' });
+    }
+
+    const wasRegistered = signup.status === 'REGISTERED' || signup.status === 'CHECKED_IN';
+
+    await prisma.eventSignup.update({
+      where: { id: signup.id },
+      data: { status: 'CANCELLED' },
+    });
+
+    // If a registered/checked-in player was removed and there's a waitlist, promote the next person
+    if (wasRegistered) {
+      const event = await prisma.event.findUnique({ where: { id: eventId } });
+      if (event) {
+        const nextWaitlisted = await prisma.eventSignup.findFirst({
+          where: { eventId, status: 'WAITLISTED' },
+          orderBy: { registeredAt: 'asc' },
+        });
+        if (nextWaitlisted) {
+          await prisma.eventSignup.update({
+            where: { id: nextWaitlisted.id },
+            data: { status: 'REGISTERED' },
+          });
+        }
+      }
+    }
+
+    res.json({ message: 'Player removed from event' });
+  } catch (error) {
+    console.error('Error removing player:', error);
+    res.status(500).json({ error: 'Failed to remove player' });
+  }
+});
+
 // ============================================
 // RESULTS ENDPOINTS
 // ============================================

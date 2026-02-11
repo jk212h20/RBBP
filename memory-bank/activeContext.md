@@ -7,7 +7,8 @@ The application is **live and deployed on Railway** with all core features funct
 
 ## Recent Work (Feb 2026)
 
-### Feb 11 — TD Panel Visibility Fix & Total Entrants Override
+### Feb 11 — Homepage Redesign, Logo, TD Panel Fix, Total Entrants Override & Deployment Fix
+- **Homepage Logo & Blue Theme**: Processed `Logo.png` (4096x4096) → `client/public/logo.png` (512x512, clean 8x downscale via LANCZOS) with transparent background (flood-fill from edges). Displayed at 300x300 in hero section to the left of "Welcome to RBBP" title. Small 28x28 logo in MobileNav header. Changed homepage background from green gradient to blue gradient (`#3d7a94` → `#5595b0` → `#2a5f78`) matching the sky blue inside the logo's ship wheel.
 - **TD Panel Default Open**: Changed `showManagement` initial state to `true` so Quick Add Player and other TD tools are visible immediately when visiting an event page (was defaulting to collapsed/hidden)
 - **Total Entrants Override**: New feature allowing TDs to override the player count used for points calculation
   - `totalEntrants` nullable Int field on Event model
@@ -15,6 +16,7 @@ The application is **live and deployed on Railway** with all core features funct
   - Frontend: Number input in TD Panel with Set/Clear buttons
   - Client API: `eventsAPI.setTotalEntrants(eventId, value)`
   - Migration: `20260211190000_add_total_entrants`
+- **Deployment Resilience**: Added `timeout 60` + `|| echo` fallback to `prisma migrate deploy` in both `railway.toml` and `nixpacks.toml` start commands, so server starts even if migration hangs/fails
 
 ### Feb 10 — Withdrawal History UI, Quick Add Players, Guest Merge & Claim Links
 - **Withdrawal History**: Added user-facing withdrawal history section to profile page
