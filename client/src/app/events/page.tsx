@@ -176,7 +176,7 @@ export default function EventsPage() {
   const getStatusBadge = (status: string) => {
     const badges: Record<string, string> = {
       SCHEDULED: 'bg-blue-100 text-blue-800',
-      REGISTRATION_OPEN: 'bg-green-100 text-green-800',
+      REGISTRATION_OPEN: 'bg-blue-100 text-blue-800',
       IN_PROGRESS: 'bg-yellow-100 text-yellow-800',
       COMPLETED: 'bg-gray-100 text-gray-800',
       CANCELLED: 'bg-red-100 text-red-800',
@@ -187,14 +187,14 @@ export default function EventsPage() {
   const isUpcoming = (event: Event) => new Date(event.dateTime) > new Date();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-black">
+    <div className="min-h-screen ">
       <MobileNav currentPage="events" />
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Page Title */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">🃏 Poker Events</h1>
-          <p className="text-green-200">Find and register for upcoming tournaments</p>
+          <p className="text-blue-100">Find and register for upcoming tournaments</p>
         </div>
 
         {/* Filters */}
@@ -202,7 +202,7 @@ export default function EventsPage() {
           <select
             value={selectedSeason}
             onChange={(e) => setSelectedSeason(e.target.value)}
-            className="bg-white/10 text-white border border-green-600/50 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="bg-white/10 text-white border border-blue-600/50 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">All Upcoming Events</option>
             {seasons.map((season) => (
@@ -216,8 +216,8 @@ export default function EventsPage() {
         {/* Events Grid */}
         {loading ? (
           <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-400 mx-auto"></div>
-            <p className="text-green-200 mt-4">Loading events...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto"></div>
+            <p className="text-blue-100 mt-4">Loading events...</p>
           </div>
         ) : error ? (
           <div className="text-center py-12">
@@ -225,8 +225,8 @@ export default function EventsPage() {
           </div>
         ) : events.length === 0 ? (
           <div className="text-center py-12 bg-white/5 rounded-xl">
-            <p className="text-green-200 text-lg">No events found</p>
-            <p className="text-green-300/60 mt-2">Check back later for upcoming tournaments</p>
+            <p className="text-blue-100 text-lg">No events found</p>
+            <p className="text-blue-200/60 mt-2">Check back later for upcoming tournaments</p>
           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -239,7 +239,7 @@ export default function EventsPage() {
               return (
                 <div
                   key={event.id}
-                  className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 overflow-hidden hover:border-green-500/50 transition"
+                  className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 overflow-hidden hover:border-blue-500/50 transition"
                 >
                   {/* Thumbnail image */}
                   {event.imageUrl && (
@@ -267,14 +267,14 @@ export default function EventsPage() {
                     <h3 className="text-xl font-bold text-white mb-2">{event.name}</h3>
                     
                     {/* Event info */}
-                    <div className="space-y-2 text-sm text-green-200">
+                    <div className="space-y-2 text-sm text-blue-100">
                       <p className="flex items-center gap-2">
                         📅 {formatDate(event.dateTime)}
                       </p>
                       <p className="flex items-center gap-2">
                         📍 {event.venue.name}
                         {event.venue.address && (
-                          <span className="text-green-300/60">— {event.venue.address}</span>
+                          <span className="text-blue-200/60">— {event.venue.address}</span>
                         )}
                       </p>
 
@@ -303,7 +303,7 @@ export default function EventsPage() {
                     </div>
 
                     {event.description && (
-                      <p className="mt-3 text-green-300/70 text-sm line-clamp-2">
+                      <p className="mt-3 text-blue-200/70 text-sm line-clamp-2">
                         {event.description}
                       </p>
                     )}
@@ -312,7 +312,7 @@ export default function EventsPage() {
                     <div className="mt-4 flex gap-2">
                       <Link
                         href={`/events/${event.id}`}
-                        className="flex-1 text-center bg-green-600/20 text-green-400 py-2 rounded-lg hover:bg-green-600/30 transition"
+                        className="flex-1 text-center bg-blue-600/20 text-blue-300 py-2 rounded-lg hover:bg-blue-600/30 transition"
                       >
                         View Details
                       </Link>
@@ -327,7 +327,7 @@ export default function EventsPage() {
                         ) : (
                           <button
                             onClick={() => handleSignup(event.id)}
-                            className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition"
+                            className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
                           >
                             Sign Up
                           </button>

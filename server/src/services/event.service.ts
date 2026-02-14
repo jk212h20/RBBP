@@ -643,8 +643,14 @@ export class EventService {
     }
 
     // Count checked-in players for dynamic points calculation
+    // Use totalEntrants override if set, otherwise use checked-in count
     const checkedInCount = event.signups.length;
-    const pointsCalc = calculateEventPoints(checkedInCount);
+    const eventRecord = await prisma.event.findUnique({
+      where: { id: eventId },
+      select: { totalEntrants: true },
+    });
+    const playerCountForPoints = eventRecord?.totalEntrants ?? checkedInCount;
+    const pointsCalc = calculateEventPoints(playerCountForPoints);
 
     // Calculate points for each result - only top 3 get points
     const resultsWithPoints = results.map((result) => {

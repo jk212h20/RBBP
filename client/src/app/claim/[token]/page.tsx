@@ -140,7 +140,7 @@ export default function ClaimPage() {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center px-4">
         <div className="max-w-md w-full bg-gray-800 rounded-xl p-8 text-center">
-          <div className="text-green-400 text-5xl mb-4">✅</div>
+          <div className="text-blue-300 text-5xl mb-4">✅</div>
           <h1 className="text-2xl font-bold text-white mb-4">Account Claimed!</h1>
           <p className="text-gray-300 mb-2">{success}</p>
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-500 mx-auto mt-4"></div>

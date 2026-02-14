@@ -1,6 +1,6 @@
 # Progress — Roatan Poker League
 
-## Last Updated: February 10, 2026
+## Last Updated: February 14, 2026
 
 ---
 
@@ -59,6 +59,10 @@
 - [x] Finalize results (locks in points)
 - [x] Points preview before finalizing
 - [x] Quick-add players (search existing or create guest)
+- [x] Total entrants override (TD sets actual player count for points calc)
+- [x] Dynamic extra player slots (blank search dropdowns appear when totalEntrants > attended count)
+- [x] Extra slots react to attendance checkbox toggles (unchecking a player adds a blank slot)
+- [x] Extra slot players included in save/finalize results
 
 ### Guest Player System
 - [x] `isGuest` flag on User model for walk-in players
@@ -193,3 +197,8 @@
 | `20260205162200` | Feb 5 | Add `registrationOpenDays` to Event |
 | `20260210170000` | Feb 10 | Add `isGuest` flag to User |
 | `20260210180000` | Feb 10 | Add `claimToken` + `claimTokenExpiry` to User |
+| `20260211190000` | Feb 11 | Add `totalEntrants` to Event |
+| `20260211200000` | Feb 11 | Add Faq model |
+| `20260214152400` | Feb 14 | Add `registrationCloseMinutes` to Event |
+| `20260214160000` | Feb 14 | Add `profileImage` + `bio` to Profile |
+| `20260214170000` | Feb 14 | Add VenueApplication model |

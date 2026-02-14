@@ -102,7 +102,7 @@ export default function VenueApplicationsTab({ setMessage, setError }: Props) {
       case 'PENDING':
         return <span className="bg-yellow-600/20 text-yellow-400 px-2 py-1 rounded text-xs">⏳ Pending</span>;
       case 'APPROVED':
-        return <span className="bg-green-600/20 text-green-400 px-2 py-1 rounded text-xs">✅ Approved</span>;
+        return <span className="bg-blue-600/20 text-blue-300 px-2 py-1 rounded text-xs">✅ Approved</span>;
       case 'REJECTED':
         return <span className="bg-red-600/20 text-red-400 px-2 py-1 rounded text-xs">❌ Rejected</span>;
       default:
@@ -121,7 +121,7 @@ export default function VenueApplicationsTab({ setMessage, setError }: Props) {
               onClick={() => setFilter(s)}
               className={`px-3 py-1 rounded text-sm ${
                 filter === s
-                  ? 'bg-green-600 text-white'
+                  ? 'bg-blue-600 text-white'
                   : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
               }`}
             >
@@ -133,7 +133,7 @@ export default function VenueApplicationsTab({ setMessage, setError }: Props) {
 
       {loading ? (
         <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-400 mx-auto"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto"></div>
           <p className="text-gray-400 mt-2">Loading applications...</p>
         </div>
       ) : applications.length === 0 ? (
@@ -190,7 +190,7 @@ export default function VenueApplicationsTab({ setMessage, setError }: Props) {
                   <button
                     onClick={() => handleApprove(app.id)}
                     disabled={processing === app.id}
-                    className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded text-sm font-semibold"
+                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-4 py-2 rounded text-sm font-semibold"
                   >
                     {processing === app.id ? '⏳...' : '✅ Approve & Create Venue'}
                   </button>

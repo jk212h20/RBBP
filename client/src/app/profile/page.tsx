@@ -400,7 +400,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-green-800 to-black">
+      <div className="min-h-screen flex items-center justify-center ">
         <div className="text-white text-xl">Loading...</div>
       </div>
     );
@@ -411,7 +411,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-black">
+    <div className="min-h-screen ">
       {/* Lightning Bonus Notification */}
       {showLightningBonus && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 animate-bounce">
@@ -432,7 +432,7 @@ export default function ProfilePage() {
       )}
 
       {/* Header */}
-      <header className="bg-black/30 backdrop-blur-sm border-b border-green-700/50">
+      <header className="bg-black/30 backdrop-blur-sm border-b border-blue-700/50">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="text-xl md:text-2xl font-bold text-white">
             🃏 RBBP
@@ -440,7 +440,7 @@ export default function ProfilePage() {
           <nav className="flex items-center gap-2 md:gap-4">
             <Link href="/events" className="text-white/80 hover:text-white text-sm md:text-base">Events</Link>
             <Link href="/leaderboard" className="text-white/80 hover:text-white text-sm md:text-base hidden sm:inline">Leaderboard</Link>
-            <Link href="/dashboard" className="bg-green-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg hover:bg-green-700 text-sm md:text-base">
+            <Link href="/dashboard" className="bg-blue-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg hover:bg-blue-700 text-sm md:text-base">
               Dashboard
             </Link>
           </nav>
@@ -449,7 +449,7 @@ export default function ProfilePage() {
 
       <main className="max-w-4xl mx-auto px-4 py-6 md:py-8">
         {/* Back Link */}
-        <Link href="/dashboard" className="text-green-400 hover:text-green-300 mb-4 md:mb-6 inline-block text-sm md:text-base">
+        <Link href="/dashboard" className="text-blue-300 hover:text-blue-200 mb-4 md:mb-6 inline-block text-sm md:text-base">
           ← Back to Dashboard
         </Link>
 
@@ -465,11 +465,11 @@ export default function ProfilePage() {
         )}
 
         {/* Profile Header */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 p-4 md:p-6 mb-6">
+        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 p-4 md:p-6 mb-6">
           {!isEditing ? (
             <>
               <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
-                <div className="w-20 h-20 md:w-24 md:h-24 bg-green-600 rounded-full flex items-center justify-center text-white text-3xl md:text-4xl font-bold flex-shrink-0">
+                <div className="w-20 h-20 md:w-24 md:h-24 bg-blue-600 rounded-full flex items-center justify-center text-white text-3xl md:text-4xl font-bold flex-shrink-0">
                   {user.avatar ? (
                     <img src={user.avatar} alt={user.name} className="w-full h-full rounded-full" />
                   ) : (
@@ -478,18 +478,18 @@ export default function ProfilePage() {
                 </div>
                 <div className="flex-1 text-center sm:text-left">
                   <h1 className="text-2xl md:text-3xl font-bold text-white">{user.name}</h1>
-                  <p className="text-green-200">{user.email || 'No email set'}</p>
-                  <p className="text-green-300/60 text-sm mt-1">
+                  <p className="text-blue-100">{user.email || 'No email set'}</p>
+                  <p className="text-blue-200/60 text-sm mt-1">
                     Logged in with {getAuthBadge()} • {user.role}
                   </p>
                   {nameIsLocked && (
-                    <p className="text-green-400/60 text-xs mt-1">✓ Name verified</p>
+                    <p className="text-blue-300/60 text-xs mt-1">✓ Name verified</p>
                   )}
                 </div>
                 {!nameIsLocked && (
                   <button
                     onClick={startEditing}
-                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition text-sm md:text-base w-full sm:w-auto"
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition text-sm md:text-base w-full sm:w-auto"
                   >
                     ✏️ Edit Profile
                   </button>
@@ -497,14 +497,14 @@ export default function ProfilePage() {
               </div>
 
               {saveMessage && (
-                <div className={`mt-4 p-3 rounded-lg ${saveMessage.type === 'success' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                <div className={`mt-4 p-3 rounded-lg ${saveMessage.type === 'success' ? 'bg-blue-500/20 text-blue-300' : 'bg-red-500/20 text-red-400'}`}>
                   {saveMessage.text}
                 </div>
               )}
 
               {/* Admin badge if already admin */}
               {user.role === 'ADMIN' && (
-                <div className="mt-6 pt-6 border-t border-green-600/30 flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
+                <div className="mt-6 pt-6 border-t border-blue-600/30 flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
                   <span className="inline-flex items-center gap-2 bg-purple-600/20 text-purple-300 px-4 py-2 rounded-lg text-sm">
                     👑 You are an Admin
                   </span>
@@ -522,14 +522,14 @@ export default function ProfilePage() {
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-green-200 text-sm mb-1">
+                  <label className="block text-blue-100 text-sm mb-1">
                     {needsRealName ? 'Your Real Name *' : 'Display Name *'}
                   </label>
                   <input
                     type="text"
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
-                    className="w-full p-3 bg-white/10 border border-green-600/50 rounded-lg text-white placeholder-green-300/50 focus:outline-none focus:border-green-500"
+                    className="w-full p-3 bg-white/10 border border-blue-600/50 rounded-lg text-white placeholder-blue-200/50 focus:outline-none focus:border-blue-500"
                     placeholder={needsRealName ? "Enter your real name (e.g., John Smith)" : "Your display name"}
                     autoFocus={needsRealName}
                   />
@@ -539,21 +539,21 @@ export default function ProfilePage() {
                     </p>
                   )}
                   {nameIsLocked && (
-                    <p className="text-green-400/60 text-sm mt-1">
+                    <p className="text-blue-300/60 text-sm mt-1">
                       ✓ Your name has been set and cannot be changed.
                     </p>
                   )}
                 </div>
                 
                 <div>
-                  <label className="block text-green-200 text-sm mb-1">
+                  <label className="block text-blue-100 text-sm mb-1">
                     Email {!user.email && <span className="text-yellow-400">(not set)</span>}
                   </label>
                   <input
                     type="email"
                     value={editEmail}
                     onChange={(e) => setEditEmail(e.target.value)}
-                    className="w-full p-3 bg-white/10 border border-green-600/50 rounded-lg text-white placeholder-green-300/50 focus:outline-none focus:border-green-500"
+                    className="w-full p-3 bg-white/10 border border-blue-600/50 rounded-lg text-white placeholder-blue-200/50 focus:outline-none focus:border-blue-500"
                     placeholder="your@email.com"
                   />
                   {user.authProvider === 'LIGHTNING' && !user.email && (
@@ -564,7 +564,7 @@ export default function ProfilePage() {
                 </div>
 
                 {saveMessage && (
-                  <div className={`p-3 rounded-lg ${saveMessage.type === 'success' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                  <div className={`p-3 rounded-lg ${saveMessage.type === 'success' ? 'bg-blue-500/20 text-blue-300' : 'bg-red-500/20 text-red-400'}`}>
                     {saveMessage.text}
                   </div>
                 )}
@@ -573,7 +573,7 @@ export default function ProfilePage() {
                   <button
                     onClick={handleSaveProfile}
                     disabled={saving}
-                    className="bg-green-600 hover:bg-green-700 disabled:bg-green-800 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-medium transition w-full sm:w-auto"
+                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-medium transition w-full sm:w-auto"
                   >
                     {saving ? 'Saving...' : needsRealName ? 'Set My Name' : 'Save Changes'}
                   </button>
@@ -593,7 +593,7 @@ export default function ProfilePage() {
         </div>
 
         {/* About Me Card - Profile Image & Bio */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 p-4 md:p-6 mb-6">
+        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 p-4 md:p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg md:text-xl font-bold text-white">📝 About Me</h2>
             {!editingDetails && (
@@ -604,7 +604,7 @@ export default function ProfilePage() {
                   setEditingDetails(true);
                   setSaveMessage(null);
                 }}
-                className="text-green-400 hover:text-green-300 text-sm font-medium"
+                className="text-blue-300 hover:text-blue-200 text-sm font-medium"
               >
                 ✏️ Edit
               </button>
@@ -613,20 +613,20 @@ export default function ProfilePage() {
 
           {loadingDetails ? (
             <div className="flex items-center justify-center py-6">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-400"></div>
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400"></div>
             </div>
           ) : editingDetails ? (
             <div className="space-y-4">
               {/* Profile Image Upload */}
               <div>
-                <label className="block text-green-200 text-sm mb-2">Profile Photo</label>
+                <label className="block text-blue-100 text-sm mb-2">Profile Photo</label>
                 <div className="flex items-center gap-4">
                   {editProfileImage ? (
                     <div className="relative">
                       <img
                         src={editProfileImage}
                         alt="Profile"
-                        className="w-24 h-24 rounded-full object-cover border-2 border-green-500"
+                        className="w-24 h-24 rounded-full object-cover border-2 border-blue-500"
                       />
                       <button
                         type="button"
@@ -637,7 +637,7 @@ export default function ProfilePage() {
                       </button>
                     </div>
                   ) : (
-                    <label className="w-24 h-24 rounded-full border-2 border-dashed border-gray-500 flex flex-col items-center justify-center cursor-pointer hover:border-green-500 hover:bg-white/5 transition">
+                    <label className="w-24 h-24 rounded-full border-2 border-dashed border-gray-500 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-white/5 transition">
                       <span className="text-2xl">📷</span>
                       <span className="text-gray-400 text-[10px]">Upload</span>
                       <input
@@ -679,13 +679,13 @@ export default function ProfilePage() {
 
               {/* Bio Text */}
               <div>
-                <label className="block text-green-200 text-sm mb-1">Bio</label>
+                <label className="block text-blue-100 text-sm mb-1">Bio</label>
                 <textarea
                   value={editBio}
                   onChange={(e) => setEditBio(e.target.value)}
                   maxLength={500}
                   rows={3}
-                  className="w-full p-3 bg-white/10 border border-green-600/50 rounded-lg text-white placeholder-green-300/50 focus:outline-none focus:border-green-500 resize-none"
+                  className="w-full p-3 bg-white/10 border border-blue-600/50 rounded-lg text-white placeholder-blue-200/50 focus:outline-none focus:border-blue-500 resize-none"
                   placeholder="Tell other players a bit about yourself..."
                 />
                 <p className="text-gray-500 text-xs text-right">{editBio.length}/500</p>
@@ -695,7 +695,7 @@ export default function ProfilePage() {
                 <button
                   onClick={handleSaveDetails}
                   disabled={savingDetails}
-                  className="bg-green-600 hover:bg-green-700 disabled:bg-green-800 text-white px-5 py-2 rounded-lg font-medium transition text-sm"
+                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white px-5 py-2 rounded-lg font-medium transition text-sm"
                 >
                   {savingDetails ? 'Saving...' : 'Save'}
                 </button>
@@ -714,7 +714,7 @@ export default function ProfilePage() {
                 <img
                   src={profileImage}
                   alt="Profile"
-                  className="w-20 h-20 rounded-full object-cover border-2 border-green-600/50 flex-shrink-0"
+                  className="w-20 h-20 rounded-full object-cover border-2 border-blue-600/50 flex-shrink-0"
                 />
               ) : (
                 <div className="w-20 h-20 rounded-full bg-white/5 border-2 border-dashed border-gray-600 flex items-center justify-center flex-shrink-0">
@@ -723,7 +723,7 @@ export default function ProfilePage() {
               )}
               <div className="flex-1 min-w-0">
                 {bio ? (
-                  <p className="text-green-100 text-sm whitespace-pre-wrap">{bio}</p>
+                  <p className="text-blue-100 text-sm whitespace-pre-wrap">{bio}</p>
                 ) : (
                   <p className="text-gray-500 text-sm italic">No bio yet. Click Edit to add one!</p>
                 )}
@@ -733,7 +733,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Linked Login Methods Card */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 p-4 md:p-6 mb-6">
+        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 p-4 md:p-6 mb-6">
           <h2 className="text-lg md:text-xl font-bold text-white mb-4">🔐 Login Methods</h2>
           
           <div className="space-y-3">
@@ -743,23 +743,23 @@ export default function ProfilePage() {
                 <span className="text-2xl">✉️</span>
                 <div>
                   <p className="text-white font-medium">Email & Password</p>
-                  <p className="text-green-300/60 text-sm">
+                  <p className="text-blue-200/60 text-sm">
                     {user.email && user.authProvider !== 'LIGHTNING' ? user.email : 
                      user.email && user.authProvider === 'LIGHTNING' ? user.email : 'Not configured'}
                   </p>
                 </div>
               </div>
               {user.email && user.authProvider !== 'LIGHTNING' ? (
-                <span className="text-green-400 text-sm">✓ Linked</span>
+                <span className="text-blue-300 text-sm">✓ Linked</span>
               ) : user.authProvider === 'LIGHTNING' && !user.email ? (
                 <button
                   onClick={() => setShowAddEmail(true)}
-                  className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition"
                 >
                   + Add Email
                 </button>
               ) : user.authProvider === 'LIGHTNING' && user.email ? (
-                <span className="text-green-400 text-sm">✓ Linked</span>
+                <span className="text-blue-300 text-sm">✓ Linked</span>
               ) : null}
             </div>
 
@@ -769,13 +769,13 @@ export default function ProfilePage() {
                 <span className="text-2xl">🔵</span>
                 <div>
                   <p className="text-white font-medium">Google</p>
-                  <p className="text-green-300/60 text-sm">
+                  <p className="text-blue-200/60 text-sm">
                     {user.googleId ? 'Connected' : 'Not connected'}
                   </p>
                 </div>
               </div>
               {user.googleId ? (
-                <span className="text-green-400 text-sm">✓ Linked</span>
+                <span className="text-blue-300 text-sm">✓ Linked</span>
               ) : (
                 <span className="text-gray-500 text-sm">Coming soon</span>
               )}
@@ -787,13 +787,13 @@ export default function ProfilePage() {
                 <span className="text-2xl">⚡</span>
                 <div>
                   <p className="text-white font-medium">Lightning Wallet</p>
-                  <p className="text-green-300/60 text-sm">
+                  <p className="text-blue-200/60 text-sm">
                     {user.lightningPubkey ? `${user.lightningPubkey.slice(0, 8)}...${user.lightningPubkey.slice(-8)}` : 'Not connected'}
                   </p>
                 </div>
               </div>
               {user.lightningPubkey ? (
-                <span className="text-green-400 text-sm">✓ Linked</span>
+                <span className="text-blue-300 text-sm">✓ Linked</span>
               ) : (
                 <button
                   onClick={async () => {
@@ -848,32 +848,32 @@ export default function ProfilePage() {
               <h3 className="text-white font-bold mb-4">✉️ Add Email & Password</h3>
               <div className="space-y-3">
                 <div>
-                  <label className="block text-green-200 text-sm mb-1">Email</label>
+                  <label className="block text-blue-100 text-sm mb-1">Email</label>
                   <input
                     type="email"
                     value={addEmailData.email}
                     onChange={(e) => setAddEmailData({ ...addEmailData, email: e.target.value })}
-                    className="w-full p-3 bg-white/10 border border-green-600/50 rounded-lg text-white placeholder-green-300/50 focus:outline-none focus:border-green-500"
+                    className="w-full p-3 bg-white/10 border border-blue-600/50 rounded-lg text-white placeholder-blue-200/50 focus:outline-none focus:border-blue-500"
                     placeholder="your@email.com"
                   />
                 </div>
                 <div>
-                  <label className="block text-green-200 text-sm mb-1">Password</label>
+                  <label className="block text-blue-100 text-sm mb-1">Password</label>
                   <input
                     type="password"
                     value={addEmailData.password}
                     onChange={(e) => setAddEmailData({ ...addEmailData, password: e.target.value })}
-                    className="w-full p-3 bg-white/10 border border-green-600/50 rounded-lg text-white placeholder-green-300/50 focus:outline-none focus:border-green-500"
+                    className="w-full p-3 bg-white/10 border border-blue-600/50 rounded-lg text-white placeholder-blue-200/50 focus:outline-none focus:border-blue-500"
                     placeholder="At least 8 characters"
                   />
                 </div>
                 <div>
-                  <label className="block text-green-200 text-sm mb-1">Confirm Password</label>
+                  <label className="block text-blue-100 text-sm mb-1">Confirm Password</label>
                   <input
                     type="password"
                     value={addEmailData.confirmPassword}
                     onChange={(e) => setAddEmailData({ ...addEmailData, confirmPassword: e.target.value })}
-                    className="w-full p-3 bg-white/10 border border-green-600/50 rounded-lg text-white placeholder-green-300/50 focus:outline-none focus:border-green-500"
+                    className="w-full p-3 bg-white/10 border border-blue-600/50 rounded-lg text-white placeholder-blue-200/50 focus:outline-none focus:border-blue-500"
                     placeholder="Confirm password"
                   />
                 </div>
@@ -908,7 +908,7 @@ export default function ProfilePage() {
                       }
                     }}
                     disabled={addingEmail}
-                    className="bg-green-600 hover:bg-green-700 disabled:bg-green-800 text-white px-4 py-2 rounded-lg font-medium transition"
+                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white px-4 py-2 rounded-lg font-medium transition"
                   >
                     {addingEmail ? 'Adding...' : 'Add Email'}
                   </button>
@@ -979,10 +979,10 @@ export default function ProfilePage() {
                 // Success state
                 <div className="flex flex-col items-center gap-4 py-8">
                   <div className="text-6xl">✅</div>
-                  <h3 className="text-green-400 font-bold text-xl text-center">
+                  <h3 className="text-blue-300 font-bold text-xl text-center">
                     Withdrawal Complete!
                   </h3>
-                  <p className="text-green-200/80 text-center">
+                  <p className="text-blue-100/80 text-center">
                     {withdrawalData.amountSats.toLocaleString()} sats sent to your wallet
                   </p>
                 </div>
@@ -1060,12 +1060,12 @@ export default function ProfilePage() {
         </div>
 
         {/* Withdrawal History */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 p-4 md:p-6 mb-6">
+        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 p-4 md:p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg md:text-xl font-bold text-white">📋 Withdrawal History</h2>
             <button
               onClick={loadWithdrawals}
-              className="text-green-400 hover:text-green-300 text-sm"
+              className="text-blue-300 hover:text-blue-200 text-sm"
             >
               🔄 Refresh
             </button>
@@ -1073,10 +1073,10 @@ export default function ProfilePage() {
 
           {loadingWithdrawals ? (
             <div className="flex items-center justify-center py-6">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-400"></div>
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400"></div>
             </div>
           ) : myWithdrawals.length === 0 ? (
-            <p className="text-green-300/60 text-center py-6 text-sm">No withdrawals yet</p>
+            <p className="text-blue-200/60 text-center py-6 text-sm">No withdrawals yet</p>
           ) : (
             <div className="space-y-2">
               {myWithdrawals.slice(0, 20).map((w: any) => (
@@ -1089,13 +1089,13 @@ export default function ProfilePage() {
                       <p className="text-white font-medium text-sm">
                         {w.amountSats?.toLocaleString() || '—'} sats
                       </p>
-                      <p className="text-green-300/60 text-xs truncate">
+                      <p className="text-blue-200/60 text-xs truncate">
                         {new Date(w.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
                       </p>
                     </div>
                   </div>
                   <span className={`text-xs font-medium px-2 py-1 rounded-full flex-shrink-0 ${
-                    w.status === 'PAID' ? 'bg-green-500/20 text-green-400' :
+                    w.status === 'PAID' ? 'bg-blue-500/20 text-blue-300' :
                     w.status === 'PENDING' ? 'bg-yellow-500/20 text-yellow-400' :
                     w.status === 'CLAIMED' ? 'bg-blue-500/20 text-blue-400' :
                     w.status === 'EXPIRED' ? 'bg-gray-500/20 text-gray-400' :
@@ -1152,7 +1152,7 @@ export default function ProfilePage() {
                 <p className="text-yellow-200/70 text-xs">Events</p>
               </div>
               <div className="bg-black/20 rounded-lg p-3 text-center">
-                <p className="text-2xl md:text-3xl font-bold text-green-400">
+                <p className="text-2xl md:text-3xl font-bold text-blue-300">
                   {seasonStanding.standing?.wins || 0}
                 </p>
                 <p className="text-yellow-200/70 text-xs">Wins</p>
@@ -1170,36 +1170,36 @@ export default function ProfilePage() {
         {/* All-Time Stats */}
         <h3 className="text-white font-semibold mb-3 text-sm">All-Time Stats</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 p-3 md:p-4 text-center">
-            <p className="text-2xl md:text-3xl font-bold text-green-400">{stats.totalPoints}</p>
-            <p className="text-green-200 text-xs md:text-sm">Total Points</p>
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 p-3 md:p-4 text-center">
+            <p className="text-2xl md:text-3xl font-bold text-blue-300">{stats.totalPoints}</p>
+            <p className="text-blue-100 text-xs md:text-sm">Total Points</p>
           </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 p-3 md:p-4 text-center">
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 p-3 md:p-4 text-center">
             <p className="text-2xl md:text-3xl font-bold text-white">{stats.eventsPlayed}</p>
-            <p className="text-green-200 text-xs md:text-sm">Events Played</p>
+            <p className="text-blue-100 text-xs md:text-sm">Events Played</p>
           </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 p-3 md:p-4 text-center">
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 p-3 md:p-4 text-center">
             <p className="text-2xl md:text-3xl font-bold text-yellow-400">{stats.wins}</p>
-            <p className="text-green-200 text-xs md:text-sm">Wins</p>
+            <p className="text-blue-100 text-xs md:text-sm">Wins</p>
           </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 p-3 md:p-4 text-center">
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 p-3 md:p-4 text-center">
             <p className="text-2xl md:text-3xl font-bold text-orange-400">{stats.topThrees}</p>
-            <p className="text-green-200 text-xs md:text-sm">Top 3 Finishes</p>
+            <p className="text-blue-100 text-xs md:text-sm">Top 3 Finishes</p>
           </div>
         </div>
 
         {/* Event History */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 p-4 md:p-6">
+        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 p-4 md:p-6">
           <h2 className="text-lg md:text-xl font-bold text-white mb-4">📅 Event History</h2>
           
           {loadingEvents ? (
             <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-400 mx-auto"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto"></div>
             </div>
           ) : myEvents.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-green-300/60">No events yet</p>
-              <Link href="/events" className="text-green-400 hover:underline mt-2 inline-block">
+              <p className="text-blue-200/60">No events yet</p>
+              <Link href="/events" className="text-blue-300 hover:underline mt-2 inline-block">
                 Browse upcoming events →
               </Link>
             </div>
@@ -1214,7 +1214,7 @@ export default function ProfilePage() {
                   <div className="flex justify-between items-start gap-2">
                     <div className="min-w-0 flex-1">
                       <h3 className="text-white font-medium text-sm md:text-base truncate">{event.name}</h3>
-                      <p className="text-green-300/60 text-xs md:text-sm truncate">
+                      <p className="text-blue-200/60 text-xs md:text-sm truncate">
                         {event.venue.name} • {formatDate(event.dateTime)}
                       </p>
                     </div>
@@ -1227,7 +1227,7 @@ export default function ProfilePage() {
                              event.results[0].position === 3 ? '🥉' : 
                              `#${event.results[0].position}`}
                           </p>
-                          <p className="text-green-400 text-xs md:text-sm">{event.results[0].pointsEarned} pts</p>
+                          <p className="text-blue-300 text-xs md:text-sm">{event.results[0].pointsEarned} pts</p>
                         </>
                       ) : event.signups && event.signups.length > 0 ? (
                         <span className="text-blue-400 text-xs md:text-sm">Registered</span>

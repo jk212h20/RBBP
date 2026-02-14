@@ -68,7 +68,7 @@ function DashboardContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-green-800 to-black">
+      <div className="min-h-screen flex items-center justify-center ">
         <div className="text-white text-xl">Loading...</div>
       </div>
     );
@@ -97,7 +97,7 @@ function DashboardContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-black">
+    <div className="min-h-screen ">
       {/* Lightning Bonus Notification */}
       {showLightningBonus && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 animate-bounce">
@@ -143,7 +143,7 @@ function DashboardContent() {
         {/* Welcome Card - Simplified */}
         <div className="bg-white rounded-2xl shadow-2xl p-6 mb-8">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
+            <div className="w-14 h-14 bg-blue-500 rounded-full flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
               {user.avatar ? (
                 <img src={user.avatar} alt={user.name} className="w-full h-full rounded-full" />
               ) : (
@@ -213,7 +213,7 @@ function DashboardContent() {
                 <p className="text-yellow-200/70 text-sm">Events</p>
               </div>
               <div className="bg-black/20 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-green-400">
+                <p className="text-3xl font-bold text-blue-300">
                   {seasonStanding.standing?.wins || 0}
                 </p>
                 <p className="text-yellow-200/70 text-sm">Wins</p>
@@ -278,7 +278,7 @@ function DashboardContent() {
 
 function LoadingFallback() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-green-800 to-black">
+    <div className="min-h-screen flex items-center justify-center ">
       <div className="text-white text-xl">Loading...</div>
     </div>
   );

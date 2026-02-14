@@ -7,9 +7,17 @@ The application is **live and deployed on Railway** with all core features funct
 
 ## Recent Work (Feb 2026)
 
-### Feb 14 — Logo Fix, Blue Background Site-wide, Venue Applications, Profile Image & Bio, Registration Close Cutoff, Enhanced Event Panels & CSV Exports
+### Feb 14 — Total Entrants Dynamic Slots, Logo Fix, Blue Background Site-wide, Venue Applications, Profile Image & Bio, Registration Close Cutoff, Enhanced Event Panels & CSV Exports
+- **Total Entrants → Dynamic Extra Player Slots**: When admin/TD sets total entrants higher than attended registered players, blank search-by-typing dropdown slots appear automatically in the TD panel. These slots let the TD assign unregistered players (walk-ins) to the extra positions. Key behaviors:
+  - Setting total entrants immediately recalculates the points preview locally (60/30/10 split)
+  - Extra blank slots = totalEntrants - attendedRegisteredCount - alreadyFilledExtraSlots
+  - Unchecking a registered player's attendance checkbox also creates an extra blank slot (since the total stays the same but attended count drops)
+  - Each extra slot has a typeahead search dropdown (reuses `searchPlayers` API) that filters out already-assigned players
+  - Filled extra slots show position input + knockout counter, same as registered players
+  - All extra slot players are included in save/finalize results alongside registered attended players
+  - Server `enterResults` already uses `totalEntrants` override for points calculation
 - **Logo Transparency Fix**: Reprocessed `client/public/logo.png` with aggressive edge cleanup (flood-fill + 3-pass erosion + post-downscale fringe removal) to eliminate white pixel artifacts around edges. Result: 139K transparent pixels, only 3.4K semi-transparent (vs backup's 7.7K). `logo_backup.png` kept as reference.
-- **Blue Gradient Background Site-wide**: Applied blue gradient (`#3d7a94` → `#5595b0` → `#2a5f78`) to `globals.css` body so ALL pages have the blue background (previously only homepage had it inline). Removed dark mode override. Set white foreground text.
+- **Blue Gradient Background Site-wide**: Applied blue gradient (`#3d7a94` → `#5595b0` → `#2a5f78`) to `globals.css` body so ALL pages have the blue background (previously only homepage had it inline). Removed dark mode override. Set white foreground text. Removed all per-page `bg-gradient-to-br from-green-900 via-green-800 to-black` classes from 11 page files. Converted ALL green Tailwind accent colors (borders, text, bg, hover, focus, placeholder, divide) to blue equivalents across all .tsx files — zero green references remain in the codebase.
 - **Venue Application System**: Any logged-in user can apply to add their venue to the platform
   - `VenueApplication` model: name, address, description, contactName, contactEmail, contactPhone, status (PENDING/APPROVED/REJECTED), adminNotes, applicantId, venueId (set on approval)
   - Backend: `venue-application.routes.ts` with 4 endpoints:

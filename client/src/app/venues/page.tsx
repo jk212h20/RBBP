@@ -41,7 +41,7 @@ export default function VenuesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-black">
+    <div className="min-h-screen ">
       <MobileNav currentPage="venues" />
 
       <main className="max-w-7xl mx-auto px-4 py-8">
@@ -49,11 +49,11 @@ export default function VenuesPage() {
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-4xl font-bold text-white mb-2">📍 Poker Venues</h1>
-            <p className="text-green-200">Find poker nights at venues across Roatan</p>
+            <p className="text-blue-100">Find poker nights at venues across Roatan</p>
           </div>
           <Link
             href="/venues/apply"
-            className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg transition text-center whitespace-nowrap"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg transition text-center whitespace-nowrap"
           >
             🏢 Apply to Add Venue
           </Link>
@@ -62,8 +62,8 @@ export default function VenuesPage() {
         {/* Venues Grid */}
         {loading ? (
           <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-400 mx-auto"></div>
-            <p className="text-green-200 mt-4">Loading venues...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto"></div>
+            <p className="text-blue-100 mt-4">Loading venues...</p>
           </div>
         ) : error ? (
           <div className="text-center py-12">
@@ -71,21 +71,21 @@ export default function VenuesPage() {
           </div>
         ) : venues.length === 0 ? (
           <div className="text-center py-12 bg-white/5 rounded-xl">
-            <p className="text-green-200 text-lg">No venues found</p>
-            <p className="text-green-300/60 mt-2">Venues will be added soon!</p>
+            <p className="text-blue-100 text-lg">No venues found</p>
+            <p className="text-blue-200/60 mt-2">Venues will be added soon!</p>
           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {venues.map((venue) => (
               <div
                 key={venue.id}
-                className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 overflow-hidden hover:border-green-500/50 transition"
+                className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 overflow-hidden hover:border-blue-500/50 transition"
               >
                 <div className="p-6">
                   <div className="flex justify-between items-start mb-3">
                     <h3 className="text-xl font-bold text-white">{venue.name}</h3>
                     {venue.isActive ? (
-                      <span className="bg-green-500/20 text-green-400 px-2 py-1 rounded-full text-xs">
+                      <span className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded-full text-xs">
                         Active
                       </span>
                     ) : (
@@ -95,7 +95,7 @@ export default function VenuesPage() {
                     )}
                   </div>
                   
-                  <div className="space-y-2 text-sm text-green-200">
+                  <div className="space-y-2 text-sm text-blue-100">
                     <p className="flex items-center gap-2">
                       📍 {venue.address}
                     </p>
@@ -117,7 +117,7 @@ export default function VenuesPage() {
                   </div>
 
                   {venue.description && (
-                    <p className="mt-3 text-green-300/70 text-sm line-clamp-2">
+                    <p className="mt-3 text-blue-200/70 text-sm line-clamp-2">
                       {venue.description}
                     </p>
                   )}
@@ -125,7 +125,7 @@ export default function VenuesPage() {
                   <div className="mt-4">
                     <Link
                       href={`/events?venueId=${venue.id}`}
-                      className="block text-center bg-green-600/20 text-green-400 py-2 rounded-lg hover:bg-green-600/30 transition"
+                      className="block text-center bg-blue-600/20 text-blue-300 py-2 rounded-lg hover:bg-blue-600/30 transition"
                     >
                       View Events at this Venue
                     </Link>

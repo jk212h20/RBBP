@@ -130,7 +130,7 @@ export default function ExportsTab({ setMessage, setError }: ExportsTabProps) {
         {EXPORTS.map((exp) => (
           <div
             key={exp.key}
-            className="bg-gray-700/50 border border-gray-600 rounded-lg p-4 flex flex-col justify-between hover:border-green-500/50 transition"
+            className="bg-gray-700/50 border border-gray-600 rounded-lg p-4 flex flex-col justify-between hover:border-blue-500/50 transition"
           >
             <div>
               <div className="flex items-center gap-2 mb-2">
@@ -144,10 +144,10 @@ export default function ExportsTab({ setMessage, setError }: ExportsTabProps) {
               disabled={downloading !== null}
               className={`w-full py-2 rounded font-semibold text-sm transition ${
                 downloading === exp.key
-                  ? 'bg-green-600/50 text-green-300 cursor-wait'
+                  ? 'bg-blue-600/50 text-blue-200 cursor-wait'
                   : downloading !== null
                   ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                  : 'bg-green-600 hover:bg-green-700 text-white'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
               }`}
             >
               {downloading === exp.key ? '⏳ Downloading...' : '⬇️ Download CSV'}

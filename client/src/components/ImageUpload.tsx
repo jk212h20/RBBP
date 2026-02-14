@@ -130,10 +130,10 @@ export default function ImageUpload({
       ) : (
         <div 
           onClick={() => fileInputRef.current?.click()}
-          className="w-full h-48 border-2 border-dashed border-gray-600 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-green-500 hover:bg-gray-700/30 transition"
+          className="w-full h-48 border-2 border-dashed border-gray-600 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-gray-700/30 transition"
         >
           {uploading ? (
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-400"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
           ) : (
             <>
               <span className="text-4xl mb-2">📷</span>

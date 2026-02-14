@@ -146,7 +146,7 @@ export default function WithdrawalsTab({ users, fetchUsers, setMessage, setError
       case 'CLAIMED':
         return 'bg-blue-600/30 text-blue-400';
       case 'PAID':
-        return 'bg-green-600/30 text-green-400';
+        return 'bg-blue-600/30 text-blue-300';
       case 'EXPIRED':
         return 'bg-gray-600/30 text-gray-400';
       case 'FAILED':
@@ -159,7 +159,7 @@ export default function WithdrawalsTab({ users, fetchUsers, setMessage, setError
   if (loading) {
     return (
       <div className="text-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-400 mx-auto"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto"></div>
         <p className="text-gray-400 mt-2">Loading withdrawals...</p>
       </div>
     );
@@ -180,7 +180,7 @@ export default function WithdrawalsTab({ users, fetchUsers, setMessage, setError
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <p className="text-gray-400 text-xs">Status</p>
-              <p className="text-green-400 font-bold">✅ Connected</p>
+              <p className="text-blue-300 font-bold">✅ Connected</p>
             </div>
             <div>
               <p className="text-gray-400 text-xs">Node Alias</p>
@@ -212,7 +212,7 @@ export default function WithdrawalsTab({ users, fetchUsers, setMessage, setError
           </div>
           <div className="bg-gray-800 rounded-lg p-4">
             <p className="text-gray-400 text-xs">Paid</p>
-            <p className="text-2xl font-bold text-green-400">{stats.paid}</p>
+            <p className="text-2xl font-bold text-blue-300">{stats.paid}</p>
           </div>
           <div className="bg-gray-800 rounded-lg p-4">
             <p className="text-gray-400 text-xs">Failed</p>
@@ -292,7 +292,7 @@ export default function WithdrawalsTab({ users, fetchUsers, setMessage, setError
         <div className="bg-gray-800 rounded-lg p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold">Recent Withdrawals</h2>
-            <button onClick={fetchData} className="text-green-400 hover:text-green-300 text-sm">
+            <button onClick={fetchData} className="text-blue-300 hover:text-blue-200 text-sm">
               🔄 Refresh
             </button>
           </div>

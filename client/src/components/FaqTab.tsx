@@ -125,7 +125,7 @@ export default function FaqTab({ setMessage, setError }: FaqTabProps) {
               setForm({ question: '', answer: '', sortOrder: faqs.length });
             }}
             className={`px-4 py-2 rounded text-sm font-semibold ${
-              showForm ? 'bg-gray-600' : 'bg-green-600 hover:bg-green-700'
+              showForm ? 'bg-gray-600' : 'bg-blue-600 hover:bg-blue-700'
             }`}
           >
             {showForm ? '✕ Cancel' : '➕ Add FAQ'}
@@ -170,7 +170,7 @@ export default function FaqTab({ setMessage, setError }: FaqTabProps) {
             <button
               type="submit"
               disabled={!form.question.trim() || !form.answer.trim()}
-              className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-6 py-2 rounded font-semibold"
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-6 py-2 rounded font-semibold"
             >
               ➕ Create FAQ
             </button>
@@ -232,7 +232,7 @@ export default function FaqTab({ setMessage, setError }: FaqTabProps) {
         {/* FAQ List */}
         {loading ? (
           <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-400 mx-auto"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto"></div>
             <p className="text-gray-400 mt-2">Loading FAQs...</p>
           </div>
         ) : faqs.length === 0 ? (
@@ -243,7 +243,7 @@ export default function FaqTab({ setMessage, setError }: FaqTabProps) {
               <div
                 key={faq.id}
                 className={`bg-gray-700 p-4 rounded border-l-4 ${
-                  faq.isActive ? 'border-green-500' : 'border-gray-500 opacity-60'
+                  faq.isActive ? 'border-blue-500' : 'border-gray-500 opacity-60'
                 }`}
               >
                 <div className="flex justify-between items-start">
@@ -269,7 +269,7 @@ export default function FaqTab({ setMessage, setError }: FaqTabProps) {
                       className={`text-sm ${
                         faq.isActive
                           ? 'text-yellow-400 hover:text-yellow-300'
-                          : 'text-green-400 hover:text-green-300'
+                          : 'text-blue-300 hover:text-blue-200'
                       }`}
                     >
                       {faq.isActive ? '👁️ Hide' : '👁️ Show'}

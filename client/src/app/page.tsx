@@ -123,13 +123,13 @@ export default function HomePage() {
           <div className="bg-white/10 backdrop-blur rounded-2xl p-6 border border-white/10">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold text-white">📅 Upcoming Events</h2>
-              <Link href="/events" className="text-green-400 hover:text-green-300 text-sm">
+              <Link href="/events" className="text-blue-300 hover:text-blue-200 text-sm">
                 View All →
               </Link>
             </div>
             {loadingData ? (
               <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-400 mx-auto"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto"></div>
               </div>
             ) : upcomingEvents.length === 0 ? (
               <p className="text-white/60 text-center py-8">No upcoming events</p>
@@ -158,7 +158,7 @@ export default function HomePage() {
                         <div className="flex justify-between items-start">
                           <h3 className="text-white font-semibold text-lg">{event.name}</h3>
                           {/* Countdown badge */}
-                          <span className="bg-green-600/30 text-green-300 text-xs font-bold px-2 py-1 rounded-lg whitespace-nowrap ml-2">
+                          <span className="bg-blue-600/30 text-blue-200 text-xs font-bold px-2 py-1 rounded-lg whitespace-nowrap ml-2">
                             ⏱ {formatCountdown(event.dateTime)}
                           </span>
                         </div>
@@ -170,7 +170,7 @@ export default function HomePage() {
                         )}
 
                         {/* Date */}
-                        <p className="text-green-400 text-sm mt-2">{formatDate(event.dateTime)}</p>
+                        <p className="text-blue-300 text-sm mt-2">{formatDate(event.dateTime)}</p>
 
                         {/* Players & Points row */}
                         <div className="flex justify-between items-center mt-3">
@@ -198,13 +198,13 @@ export default function HomePage() {
           <div className="bg-white/10 backdrop-blur rounded-2xl p-6 border border-white/10">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold text-white">🏆 Top Players</h2>
-              <Link href="/leaderboard" className="text-green-400 hover:text-green-300 text-sm">
+              <Link href="/leaderboard" className="text-blue-300 hover:text-blue-200 text-sm">
                 Full Standings →
               </Link>
             </div>
             {loadingData ? (
               <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-400 mx-auto"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto"></div>
               </div>
             ) : topPlayers.length === 0 ? (
               <p className="text-white/60 text-center py-8">No standings yet</p>
@@ -227,7 +227,7 @@ export default function HomePage() {
                       <span className="text-white font-medium">{player.user.name}</span>
                     </div>
                     <div className="text-right">
-                      <span className="text-green-400 font-bold">{player.totalPoints} pts</span>
+                      <span className="text-blue-300 font-bold">{player.totalPoints} pts</span>
                       {player.wins > 0 && (
                         <span className="text-yellow-400 text-sm ml-2">({player.wins} {player.wins === 1 ? 'win' : 'wins'})</span>
                       )}
@@ -272,7 +272,7 @@ export default function HomePage() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
                 href="/register"
-                className="bg-green-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-green-700 transition"
+                className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 transition"
               >
                 Create Account
               </Link>

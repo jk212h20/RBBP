@@ -45,7 +45,7 @@ function AuthCallbackContent() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-green-800 to-black">
+      <div className="min-h-screen flex items-center justify-center ">
         <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md mx-4">
           <div className="text-center">
             <div className="text-5xl mb-4">❌</div>
@@ -55,7 +55,7 @@ function AuthCallbackContent() {
             <p className="text-gray-600 mb-6">{error}</p>
             <button
               onClick={() => router.push('/login')}
-              className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition"
+              className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
             >
               Back to Login
             </button>
@@ -66,10 +66,10 @@ function AuthCallbackContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-green-800 to-black">
+    <div className="min-h-screen flex items-center justify-center ">
       <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md mx-4">
         <div className="text-center">
-          <div className="animate-spin w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <div className="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
           <h1 className="text-xl font-bold text-gray-900">
             Completing authentication...
           </h1>
@@ -82,10 +82,10 @@ function AuthCallbackContent() {
 
 function LoadingFallback() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-green-800 to-black">
+    <div className="min-h-screen flex items-center justify-center ">
       <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md mx-4">
         <div className="text-center">
-          <div className="animate-spin w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <div className="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
           <h1 className="text-xl font-bold text-gray-900">Loading...</h1>
         </div>
       </div>

@@ -183,7 +183,7 @@ export default function PointsTab({ setMessage, setError }: Props) {
     return (
       <div className="bg-gray-800 rounded-lg p-6">
         <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-400 mx-auto"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto"></div>
           <p className="text-gray-400 mt-2">Checking feature status...</p>
         </div>
       </div>
@@ -255,10 +255,10 @@ export default function PointsTab({ setMessage, setError }: Props) {
             
             {/* User Selection */}
             {selectedUser ? (
-              <div className="bg-green-500/10 border border-green-500/30 rounded p-4">
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded p-4">
                 <div className="flex justify-between items-center">
                   <div>
-                    <p className="font-bold text-green-400">{selectedUser.name}</p>
+                    <p className="font-bold text-blue-300">{selectedUser.name}</p>
                     <p className="text-gray-400 text-sm">
                       Current Points: <span className="text-yellow-400 font-bold">{selectedUser.seasonPoints}</span>
                       {selectedUser.rank && <span className="ml-2">(Rank #{selectedUser.rank})</span>}
@@ -301,7 +301,7 @@ export default function PointsTab({ setMessage, setError }: Props) {
                   disabled={awarding || !pointsReason.trim() || pointsAmount === 0}
                   className={`mt-4 w-full py-3 rounded font-semibold ${
                     pointsAmount > 0 
-                      ? 'bg-green-600 hover:bg-green-700' 
+                      ? 'bg-blue-600 hover:bg-blue-700' 
                       : pointsAmount < 0 
                         ? 'bg-red-600 hover:bg-red-700'
                         : 'bg-gray-600'
@@ -317,7 +317,7 @@ export default function PointsTab({ setMessage, setError }: Props) {
               <div className="max-h-64 overflow-y-auto space-y-2">
                 {loadingUsers ? (
                   <div className="text-center py-4">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-400 mx-auto"></div>
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400 mx-auto"></div>
                   </div>
                 ) : filteredUsers.length === 0 ? (
                   <p className="text-gray-400 text-center py-4">
@@ -366,7 +366,7 @@ export default function PointsTab({ setMessage, setError }: Props) {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-gray-700/50 rounded p-3">
             <p className="text-gray-400 text-xs">Total Players</p>
-            <p className="text-xl font-bold text-green-400">{users.length}</p>
+            <p className="text-xl font-bold text-blue-300">{users.length}</p>
           </div>
           <div className="bg-gray-700/50 rounded p-3">
             <p className="text-gray-400 text-xs">With Points</p>
@@ -408,7 +408,7 @@ export default function PointsTab({ setMessage, setError }: Props) {
             
             {loadingHistory ? (
               <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-400 mx-auto"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto"></div>
               </div>
             ) : history.length === 0 ? (
               <p className="text-gray-400 text-center py-8">No points history found</p>
@@ -423,7 +423,7 @@ export default function PointsTab({ setMessage, setError }: Props) {
                           {entry.season.name} • {new Date(entry.createdAt).toLocaleString()}
                         </p>
                       </div>
-                      <span className={`font-bold ${entry.points > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      <span className={`font-bold ${entry.points > 0 ? 'text-blue-300' : 'text-red-400'}`}>
                         {entry.points > 0 ? '+' : ''}{entry.points}
                       </span>
                     </div>

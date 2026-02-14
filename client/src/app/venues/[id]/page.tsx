@@ -66,17 +66,17 @@ export default function VenueDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-green-800 to-black">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-400"></div>
+      <div className="min-h-screen flex items-center justify-center ">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
       </div>
     );
   }
 
   if (error || !venue) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-black text-white p-8">
+      <div className="min-h-screen  text-white p-8">
         <div className="max-w-4xl mx-auto">
-          <Link href="/venues" className="text-green-400 hover:text-green-300 mb-8 inline-block">
+          <Link href="/venues" className="text-blue-300 hover:text-blue-200 mb-8 inline-block">
             ← Back to Venues
           </Link>
           <div className="bg-red-500/20 border border-red-500 text-red-400 p-6 rounded-lg text-center">
@@ -92,11 +92,11 @@ export default function VenueDetailPage() {
   const pastEvents = events.filter(e => new Date(e.dateTime) <= new Date() || e.status === 'COMPLETED');
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-black text-white">
+    <div className="min-h-screen  text-white">
       {/* Header */}
       <header className="bg-black/30 border-b border-white/10 p-4">
         <div className="max-w-4xl mx-auto flex justify-between items-center">
-          <Link href="/venues" className="text-green-400 hover:text-green-300">
+          <Link href="/venues" className="text-blue-300 hover:text-blue-200">
             ← Back to Venues
           </Link>
           <Link href="/dashboard" className="text-white/70 hover:text-white">
@@ -125,12 +125,12 @@ export default function VenueDetailPage() {
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <h1 className="text-3xl font-bold mb-2">{venue.name}</h1>
-                  <p className="text-green-400 flex items-center gap-2">
+                  <p className="text-blue-300 flex items-center gap-2">
                     📍 {venue.address}
                   </p>
                 </div>
                 {venue.isActive ? (
-                  <span className="bg-green-600/30 text-green-400 px-3 py-1 rounded-full text-sm">
+                  <span className="bg-blue-600/30 text-blue-300 px-3 py-1 rounded-full text-sm">
                     Active
                   </span>
                 ) : (
@@ -168,7 +168,7 @@ export default function VenueDetailPage() {
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-white/10 backdrop-blur rounded-xl p-4 text-center">
-            <p className="text-3xl font-bold text-green-400">{events.length}</p>
+            <p className="text-3xl font-bold text-blue-300">{events.length}</p>
             <p className="text-gray-400 text-sm">Total Events</p>
           </div>
           <div className="bg-white/10 backdrop-blur rounded-xl p-4 text-center">
@@ -249,7 +249,7 @@ export default function VenueDetailPage() {
                       </p>
                     </div>
                     <div className="text-right">
-                      <span className="text-green-400 text-sm">✅ Completed</span>
+                      <span className="text-blue-300 text-sm">✅ Completed</span>
                       <p className="text-gray-500 text-xs">{event._count?.signups || 0} players</p>
                     </div>
                   </div>

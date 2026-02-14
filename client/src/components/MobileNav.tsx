@@ -28,7 +28,7 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
   ];
 
   return (
-    <header className="bg-black/30 backdrop-blur-sm border-b border-green-700/50">
+    <header className="bg-black/30 backdrop-blur-sm border-b border-blue-700/50">
       <div className="max-w-7xl mx-auto px-4 py-4">
         <div className="flex justify-between items-center">
           {/* Logo */}
@@ -45,7 +45,7 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
                 href={link.href}
                 className={`${
                   currentPage === link.key
-                    ? 'text-green-400 font-medium'
+                    ? 'text-blue-300 font-medium'
                     : 'text-white/80 hover:text-white'
                 } transition`}
               >
@@ -66,14 +66,14 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
             {isAuthenticated ? (
               <Link
                 href="/dashboard"
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
               >
                 Dashboard
               </Link>
             ) : (
               <Link
                 href="/login"
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
               >
                 Sign In
               </Link>
@@ -100,7 +100,7 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
 
         {/* Mobile Menu */}
         {isOpen && (
-          <nav className="md:hidden mt-4 pb-4 border-t border-green-700/50 pt-4">
+          <nav className="md:hidden mt-4 pb-4 border-t border-blue-700/50 pt-4">
             <div className="flex flex-col space-y-3">
               {navLinks.map((link) => (
                 <Link
@@ -109,7 +109,7 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
                   onClick={() => setIsOpen(false)}
                   className={`${
                     currentPage === link.key
-                      ? 'text-green-400 font-medium'
+                      ? 'text-blue-300 font-medium'
                       : 'text-white/80'
                   } py-2 text-lg`}
                 >
@@ -118,7 +118,7 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
               ))}
 
               {/* External Links */}
-              <div className="border-t border-green-700/50 pt-3 mt-2">
+              <div className="border-t border-blue-700/50 pt-3 mt-2">
                 {externalLinks.map((link) => (
                   <a
                     key={link.href}
@@ -133,13 +133,13 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
                 ))}
               </div>
               
-              <div className="border-t border-green-700/50 pt-3 mt-2">
+              <div className="border-t border-blue-700/50 pt-3 mt-2">
                 {isAuthenticated ? (
                   <>
                     <Link
                       href="/dashboard"
                       onClick={() => setIsOpen(false)}
-                      className="block py-2 text-lg text-green-400 font-medium"
+                      className="block py-2 text-lg text-blue-300 font-medium"
                     >
                       Dashboard
                     </Link>
@@ -181,7 +181,7 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
                     <Link
                       href="/register"
                       onClick={() => setIsOpen(false)}
-                      className="block py-2 text-lg text-green-400 font-medium"
+                      className="block py-2 text-lg text-blue-300 font-medium"
                     >
                       Sign Up
                     </Link>

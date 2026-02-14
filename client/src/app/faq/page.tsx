@@ -45,7 +45,7 @@ export default function FAQPage() {
 
         {loading ? (
           <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-400 mx-auto"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto"></div>
           </div>
         ) : faqs.length === 0 ? (
           <div className="bg-white/10 backdrop-blur rounded-2xl p-8 border border-white/10 text-center">

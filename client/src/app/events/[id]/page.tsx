@@ -52,6 +52,7 @@ interface EventDetail {
       avatar?: string;
     };
   }[];
+  totalEntrants?: number | null;
   _count: {
     signups: number;
     results: number;
@@ -65,6 +66,19 @@ interface PlayerResult {
   attended: boolean;
   position: number | null;
   knockouts: number;
+}
+
+interface ExtraPlayerSlot {
+  id: string; // unique key for React
+  userId: string | null;
+  name: string;
+  attended: boolean;
+  position: number | null;
+  knockouts: number;
+  // search state
+  searchQuery: string;
+  searchResults: { id: string; name: string; email: string | null; isGuest: boolean }[];
+  searchLoading: boolean;
 }
 
 interface PointsPreview {
@@ -105,8 +119,62 @@ export default function EventDetailPage() {
   // Total Entrants state
   const [totalEntrantsInput, setTotalEntrantsInput] = useState('');
   const [savingTotalEntrants, setSavingTotalEntrants] = useState(false);
+  const [totalEntrantsValue, setTotalEntrantsValue] = useState<number | null>(null);
+
+  // Extra player slots (for unaccounted players when totalEntrants > attended registered)
+  const [extraSlots, setExtraSlots] = useState<ExtraPlayerSlot[]>([]);
 
   const canManageEvent = user && (user.role === 'ADMIN' || user.role === 'TOURNAMENT_DIRECTOR' || user.role === 'VENUE_MANAGER');
+
+  // Calculate extra slots needed when totalEntrants or attendance changes
+  useEffect(() => {
+    if (totalEntrantsValue === null || !canManageEvent) {
+      setExtraSlots([]);
+      return;
+    }
+    const attendedCount = playerResults.filter(p => p.attended).length;
+    const filledExtraCount = extraSlots.filter(s => s.userId !== null).length;
+    const neededTotal = Math.max(0, totalEntrantsValue - attendedCount - filledExtraCount);
+    
+    // Keep existing filled slots, adjust blank slots
+    const filledSlots = extraSlots.filter(s => s.userId !== null);
+    const currentBlanks = extraSlots.filter(s => s.userId === null);
+    
+    if (neededTotal > currentBlanks.length) {
+      // Add more blank slots
+      const newBlanks = Array.from({ length: neededTotal - currentBlanks.length }, (_, i) => ({
+        id: `extra-${Date.now()}-${i}`,
+        userId: null,
+        name: '',
+        attended: true,
+        position: null,
+        knockouts: 0,
+        searchQuery: '',
+        searchResults: [],
+        searchLoading: false,
+      }));
+      setExtraSlots([...filledSlots, ...currentBlanks, ...newBlanks]);
+    } else if (neededTotal < currentBlanks.length) {
+      // Remove excess blank slots from the end
+      setExtraSlots([...filledSlots, ...currentBlanks.slice(0, neededTotal)]);
+    }
+    // If equal, no change needed
+  }, [totalEntrantsValue, playerResults.filter(p => p.attended).length]);
+
+  // Calculate local points preview based on totalEntrants
+  useEffect(() => {
+    if (totalEntrantsValue !== null && canManageEvent) {
+      const extraPlayers = Math.max(0, totalEntrantsValue - 10);
+      const totalPool = 10 + (extraPlayers * 2);
+      setPointsPreview({
+        first: Math.ceil(totalPool * 0.60),
+        second: Math.ceil(totalPool * 0.30),
+        third: Math.ceil(totalPool * 0.10),
+        totalPool,
+        playerCount: totalEntrantsValue,
+      });
+    }
+  }, [totalEntrantsValue]);
 
   useEffect(() => {
     loadEvent();
@@ -158,6 +226,12 @@ export default function EventDetailPage() {
         };
       });
       setPlayerResults(initialResults);
+
+      // Initialize totalEntrantsValue from event data
+      if (event.totalEntrants) {
+        setTotalEntrantsValue(event.totalEntrants);
+        setTotalEntrantsInput(String(event.totalEntrants));
+      }
     }
   }, [event, canManageEvent]);
 
@@ -280,6 +354,10 @@ export default function EventDetailPage() {
         return;
       }
       await eventsAPI.setTotalEntrants(eventId, value);
+      setTotalEntrantsValue(value);
+      if (value === null) {
+        setExtraSlots([]);
+      }
       setResultMessage({ type: 'success', text: value ? `Total entrants set to ${value}` : 'Total entrants override cleared' });
       loadEvent();
     } catch (err: any) {
@@ -289,15 +367,80 @@ export default function EventDetailPage() {
     }
   };
 
+  // Extra slot search handler
+  const handleExtraSlotSearch = async (slotId: string, query: string) => {
+    setExtraSlots(prev => prev.map(s => 
+      s.id === slotId ? { ...s, searchQuery: query, searchLoading: query.length >= 2 } : s
+    ));
+    if (query.length < 2) {
+      setExtraSlots(prev => prev.map(s => 
+        s.id === slotId ? { ...s, searchResults: [], searchLoading: false } : s
+      ));
+      return;
+    }
+    try {
+      const results = await eventsAPI.searchPlayers(eventId, query);
+      // Filter out players already in playerResults or other extra slots
+      const existingIds = new Set([
+        ...playerResults.map(p => p.userId),
+        ...extraSlots.filter(s => s.userId !== null).map(s => s.userId!),
+      ]);
+      const filtered = results.filter(r => !existingIds.has(r.id));
+      setExtraSlots(prev => prev.map(s => 
+        s.id === slotId ? { ...s, searchResults: filtered, searchLoading: false } : s
+      ));
+    } catch {
+      setExtraSlots(prev => prev.map(s => 
+        s.id === slotId ? { ...s, searchResults: [], searchLoading: false } : s
+      ));
+    }
+  };
+
+  // Select a player for an extra slot
+  const handleExtraSlotSelect = (slotId: string, player: { id: string; name: string }) => {
+    setExtraSlots(prev => prev.map(s => 
+      s.id === slotId ? { ...s, userId: player.id, name: player.name, searchQuery: '', searchResults: [] } : s
+    ));
+  };
+
+  // Clear an extra slot selection
+  const handleExtraSlotClear = (slotId: string) => {
+    setExtraSlots(prev => prev.map(s => 
+      s.id === slotId ? { ...s, userId: null, name: '', searchQuery: '', searchResults: [], position: null, knockouts: 0 } : s
+    ));
+  };
+
+  // Update extra slot position
+  const updateExtraPosition = (slotId: string, position: number | null) => {
+    setExtraSlots(prev => prev.map(s => 
+      s.id === slotId ? { ...s, position } : s
+    ));
+  };
+
+  // Update extra slot knockouts
+  const updateExtraKnockouts = (slotId: string, knockouts: number) => {
+    setExtraSlots(prev => prev.map(s => 
+      s.id === slotId ? { ...s, knockouts: Math.max(0, knockouts) } : s
+    ));
+  };
+
   const handleSaveResults = async (finalize: boolean = false) => {
     const attendedPlayers = playerResults.filter(p => p.attended);
+    // Include extra slots that have a user assigned
+    const filledExtraSlots = extraSlots.filter(s => s.userId !== null);
     
-    // Validate positions for attended players
-    const playersWithPositions = attendedPlayers.filter(p => p.position !== null);
+    // Combine all players (registered attended + extra slots)
+    const allPlayers = [
+      ...attendedPlayers.map(p => ({ userId: p.userId, position: p.position, knockouts: p.knockouts })),
+      ...filledExtraSlots.map(s => ({ userId: s.userId!, position: s.position, knockouts: s.knockouts })),
+    ];
+    
+    // Validate positions for all players
+    const playersWithPositions = allPlayers.filter(p => p.position !== null);
     
     if (finalize) {
-      // For finalization, all attended players must have positions
-      if (playersWithPositions.length !== attendedPlayers.length) {
+      // For finalization, all players must have positions
+      if (playersWithPositions.length !== allPlayers.length) {
         setResultMessage({ type: 'error', text: 'All attended players must have a position to finalize' });
         return;
       }
@@ -356,7 +499,7 @@ export default function EventDetailPage() {
   const getStatusBadge = (status: string) => {
     const badges: Record<string, { bg: string; text: string }> = {
       SCHEDULED: { bg: 'bg-blue-500', text: 'Scheduled' },
-      REGISTRATION_OPEN: { bg: 'bg-green-500', text: 'Registration Open' },
+      REGISTRATION_OPEN: { bg: 'bg-blue-500', text: 'Registration Open' },
       IN_PROGRESS: { bg: 'bg-yellow-500', text: 'In Progress' },
       COMPLETED: { bg: 'bg-gray-500', text: 'Completed' },
       CANCELLED: { bg: 'bg-red-500', text: 'Cancelled' },
@@ -366,10 +509,10 @@ export default function EventDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-black flex items-center justify-center">
+      <div className="min-h-screen  flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-400 mx-auto"></div>
-          <p className="text-green-200 mt-4">Loading event...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto"></div>
+          <p className="text-blue-100 mt-4">Loading event...</p>
         </div>
       </div>
     );
@@ -377,10 +520,10 @@ export default function EventDetailPage() {
 
   if (error || !event) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-black flex items-center justify-center">
+      <div className="min-h-screen  flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-400 text-xl">{error || 'Event not found'}</p>
-          <Link href="/events" className="text-green-400 mt-4 inline-block hover:underline">
+          <Link href="/events" className="text-blue-300 mt-4 inline-block hover:underline">
             ← Back to Events
           </Link>
         </div>
@@ -405,9 +548,9 @@ export default function EventDetailPage() {
   const playerRegBlocked = isRegistrationClosed && !isAdmin;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-black">
+    <div className="min-h-screen ">
       {/* Header */}
-      <header className="bg-black/30 backdrop-blur-sm border-b border-green-700/50">
+      <header className="bg-black/30 backdrop-blur-sm border-b border-blue-700/50">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="text-xl md:text-2xl font-bold text-white">
             🃏 RBBP
@@ -416,11 +559,11 @@ export default function EventDetailPage() {
             <Link href="/events" className="text-white/80 hover:text-white text-sm md:text-base">Events</Link>
             <Link href="/leaderboard" className="text-white/80 hover:text-white text-sm md:text-base hidden sm:inline">Leaderboard</Link>
             {isAuthenticated ? (
-              <Link href="/dashboard" className="bg-green-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg hover:bg-green-700 text-sm md:text-base">
+              <Link href="/dashboard" className="bg-blue-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg hover:bg-blue-700 text-sm md:text-base">
                 Dashboard
               </Link>
             ) : (
-              <Link href="/login" className="bg-green-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg hover:bg-green-700 text-sm md:text-base">
+              <Link href="/login" className="bg-blue-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg hover:bg-blue-700 text-sm md:text-base">
                 Sign In
               </Link>
             )}
@@ -430,23 +573,23 @@ export default function EventDetailPage() {
 
       <main className="max-w-4xl mx-auto px-4 py-6 md:py-8">
         {/* Back Link */}
-        <Link href="/events" className="text-green-400 hover:text-green-300 mb-4 md:mb-6 inline-block text-sm md:text-base">
+        <Link href="/events" className="text-blue-300 hover:text-blue-200 mb-4 md:mb-6 inline-block text-sm md:text-base">
           ← Back to Events
         </Link>
 
         {/* Event Header */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 p-6 mb-6">
+        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 p-6 mb-6">
           <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
             <div>
               <span className={`${statusInfo.bg} text-white px-3 py-1 rounded-full text-sm font-medium`}>
                 {statusInfo.text}
               </span>
               <h1 className="text-3xl font-bold text-white mt-3">{event.name}</h1>
-              <p className="text-green-200 mt-1">{event.season.name}</p>
+              <p className="text-blue-100 mt-1">{event.season.name}</p>
             </div>
             {event.buyIn && (
               <div className="text-right">
-                <p className="text-green-300 text-sm">Buy-in</p>
+                <p className="text-blue-200 text-sm">Buy-in</p>
                 <p className="text-3xl font-bold text-yellow-400">${event.buyIn}</p>
               </div>
             )}
@@ -454,14 +597,14 @@ export default function EventDetailPage() {
 
           <div className="grid md:grid-cols-2 gap-6 mt-6">
             <div className="space-y-3">
-              <div className="flex items-center gap-3 text-green-200">
+              <div className="flex items-center gap-3 text-blue-100">
                 <span className="text-2xl">📅</span>
                 <div>
                   <p className="font-medium text-white">Date & Time</p>
                   <p>{formatDate(event.dateTime)}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 text-green-200">
+              <div className="flex items-center gap-3 text-blue-100">
                 <span className="text-2xl">📍</span>
                 <div>
                   <p className="font-medium text-white">{event.venue.name}</p>
@@ -469,7 +612,7 @@ export default function EventDetailPage() {
                 </div>
               </div>
               {event.director && (
-                <div className="flex items-center gap-3 text-green-200">
+                <div className="flex items-center gap-3 text-blue-100">
                   <span className="text-2xl">👤</span>
                   <div>
                     <p className="font-medium text-white">Tournament Director</p>
@@ -480,7 +623,7 @@ export default function EventDetailPage() {
             </div>
 
             <div className="space-y-3">
-              <div className="flex items-center gap-3 text-green-200">
+              <div className="flex items-center gap-3 text-blue-100">
                 <span className="text-2xl">👥</span>
                 <div>
                   <p className="font-medium text-white">Players</p>
@@ -545,7 +688,7 @@ export default function EventDetailPage() {
                       className={`w-full py-3 rounded-lg font-semibold transition ${
                         isFull 
                           ? 'bg-yellow-600 hover:bg-yellow-700 text-white' 
-                          : 'bg-green-600 hover:bg-green-700 text-white'
+                          : 'bg-blue-600 hover:bg-blue-700 text-white'
                       }`}
                     >
                       {!isAuthenticated 
@@ -561,9 +704,9 @@ export default function EventDetailPage() {
           </div>
 
           {event.description && (
-            <div className="mt-6 pt-6 border-t border-green-600/30">
+            <div className="mt-6 pt-6 border-t border-blue-600/30">
               <h3 className="text-white font-medium mb-2">About this Event</h3>
-              <p className="text-green-200">{event.description}</p>
+              <p className="text-blue-100">{event.description}</p>
             </div>
           )}
         </div>
@@ -594,7 +737,7 @@ export default function EventDetailPage() {
                         disabled={event.status === status}
                         className={`px-4 py-2 rounded-lg font-medium transition ${
                           event.status === status 
-                            ? 'bg-green-600 text-white cursor-default' 
+                            ? 'bg-blue-600 text-white cursor-default' 
                             : 'bg-white/10 text-white hover:bg-white/20'
                         }`}
                       >
@@ -728,26 +871,26 @@ export default function EventDetailPage() {
 
                 {/* Points Preview */}
                 {pointsPreview && (
-                  <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
-                    <h3 className="text-green-400 font-medium mb-2">💰 Points Pool Preview</h3>
-                    <p className="text-green-200/70 text-sm mb-3">
+                  <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                    <h3 className="text-blue-300 font-medium mb-2">💰 Points Pool Preview</h3>
+                    <p className="text-blue-100/70 text-sm mb-3">
                       Based on {pointsPreview.playerCount} checked-in players
                     </p>
                     <div className="grid grid-cols-3 gap-4 text-center">
                       <div>
                         <p className="text-yellow-400 text-2xl font-bold">🥇 {pointsPreview.first}</p>
-                        <p className="text-green-200/60 text-xs">1st Place</p>
+                        <p className="text-blue-100/60 text-xs">1st Place</p>
                       </div>
                       <div>
                         <p className="text-gray-300 text-2xl font-bold">🥈 {pointsPreview.second}</p>
-                        <p className="text-green-200/60 text-xs">2nd Place</p>
+                        <p className="text-blue-100/60 text-xs">2nd Place</p>
                       </div>
                       <div>
                         <p className="text-orange-400 text-2xl font-bold">🥉 {pointsPreview.third}</p>
-                        <p className="text-green-200/60 text-xs">3rd Place</p>
+                        <p className="text-blue-100/60 text-xs">3rd Place</p>
                       </div>
                     </div>
-                    <p className="text-green-200/50 text-xs mt-3 text-center">
+                    <p className="text-blue-100/50 text-xs mt-3 text-center">
                       Total Pool: {pointsPreview.totalPool} pts (60%/30%/10% split, rounded up)
                     </p>
                   </div>
@@ -776,7 +919,7 @@ export default function EventDetailPage() {
                         <div 
                           key={player.userId}
                           className={`p-3 rounded-lg min-h-[72px] ${
-                            player.attended ? 'bg-green-500/20' : 'bg-white/5'
+                            player.attended ? 'bg-blue-500/20' : 'bg-white/5'
                           }`}
                         >
                           {/* Mobile Layout */}
@@ -787,7 +930,7 @@ export default function EventDetailPage() {
                                   type="checkbox"
                                   checked={player.attended}
                                   onChange={() => toggleAttendance(player.userId)}
-                                  className="w-5 h-5 rounded border-green-600 bg-white/10 text-green-600 focus:ring-green-500"
+                                  className="w-5 h-5 rounded border-blue-600 bg-white/10 text-blue-500 focus:ring-blue-500"
                                 />
                                 <span className={`font-medium ${player.attended ? 'text-white' : 'text-gray-400'}`}>
                                   {player.name}
@@ -805,7 +948,7 @@ export default function EventDetailPage() {
                                   onChange={(e) => updatePosition(player.userId, e.target.value ? parseInt(e.target.value) : null)}
                                   placeholder="#"
                                   disabled={!player.attended}
-                                  className="w-full p-2 bg-white/10 border border-green-600/50 rounded text-white text-center disabled:opacity-50"
+                                  className="w-full p-2 bg-white/10 border border-blue-600/50 rounded text-white text-center disabled:opacity-50"
                                 />
                               </div>
                               <div>
@@ -838,7 +981,7 @@ export default function EventDetailPage() {
                                 type="checkbox"
                                 checked={player.attended}
                                 onChange={() => toggleAttendance(player.userId)}
-                                className="w-5 h-5 rounded border-green-600 bg-white/10 text-green-600 focus:ring-green-500"
+                                className="w-5 h-5 rounded border-blue-600 bg-white/10 text-blue-500 focus:ring-blue-500"
                               />
                             </div>
                             <div className="col-span-5">
@@ -855,7 +998,7 @@ export default function EventDetailPage() {
                                 onChange={(e) => updatePosition(player.userId, e.target.value ? parseInt(e.target.value) : null)}
                                 placeholder="#"
                                 disabled={!player.attended}
-                                className={`w-full p-2 bg-white/10 border border-green-600/50 rounded text-white text-center disabled:opacity-30 ${!player.attended ? 'invisible' : ''}`}
+                                className={`w-full p-2 bg-white/10 border border-blue-600/50 rounded text-white text-center disabled:opacity-30 ${!player.attended ? 'invisible' : ''}`}
                               />
                             </div>
                             <div className="col-span-3">
@@ -883,9 +1026,83 @@ export default function EventDetailPage() {
                     </div>
                   )}
 
+                  {/* Extra Player Slots (from totalEntrants override) */}
+                  {extraSlots.length > 0 && (
+                    <div className="mt-4">
+                      <h4 className="text-orange-300 font-medium mb-2 text-sm">
+                        ➕ Additional Players ({extraSlots.filter(s => s.userId !== null).length} assigned / {extraSlots.length} slots)
+                      </h4>
+                      <div className="space-y-2">
+                        {extraSlots.map((slot) => (
+                          <div key={slot.id} className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                            {slot.userId ? (
+                              <div className="md:grid grid-cols-12 gap-2 items-center">
+                                <div className="col-span-1">
+                                  <span className="text-blue-300">✓</span>
+                                </div>
+                                <div className="col-span-5 flex items-center gap-2">
+                                  <span className="text-white font-medium">{slot.name}</span>
+                                  <button onClick={() => handleExtraSlotClear(slot.id)} className="text-red-400 hover:text-red-300 text-xs">✕</button>
+                                </div>
+                                <div className="col-span-3">
+                                  <input
+                                    type="number" min="1"
+                                    value={slot.position || ''}
+                                    onChange={(e) => updateExtraPosition(slot.id, e.target.value ? parseInt(e.target.value) : null)}
+                                    placeholder="#"
+                                    className="w-full p-2 bg-white/10 border border-orange-500/50 rounded text-white text-center"
+                                  />
+                                </div>
+                                <div className="col-span-3">
+                                  <div className="flex items-center gap-1">
+                                    <button onClick={() => updateExtraKnockouts(slot.id, slot.knockouts - 1)} className="w-8 h-8 bg-white/10 rounded text-white hover:bg-white/20">-</button>
+                                    <span className="w-8 text-center text-white">{slot.knockouts}</span>
+                                    <button onClick={() => updateExtraKnockouts(slot.id, slot.knockouts + 1)} className="w-8 h-8 bg-white/10 rounded text-white hover:bg-white/20">+</button>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  value={slot.searchQuery}
+                                  onChange={(e) => handleExtraSlotSearch(slot.id, e.target.value)}
+                                  placeholder="Search player by name..."
+                                  className="w-full p-2 bg-white/10 border border-orange-500/50 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-orange-400"
+                                />
+                                {slot.searchLoading && (
+                                  <div className="absolute right-3 top-2.5">
+                                    <div className="animate-spin h-4 w-4 border-2 border-orange-400 border-t-transparent rounded-full"></div>
+                                  </div>
+                                )}
+                                {slot.searchResults.length > 0 && (
+                                  <div className="absolute z-10 mt-1 w-full bg-black/90 border border-orange-500/30 rounded-lg overflow-hidden max-h-40 overflow-y-auto">
+                                    {slot.searchResults.map(u => (
+                                      <button
+                                        key={u.id}
+                                        onClick={() => handleExtraSlotSelect(slot.id, { id: u.id, name: u.name })}
+                                        className="w-full flex items-center gap-2 p-2 hover:bg-orange-500/20 transition text-left"
+                                      >
+                                        <div className="w-6 h-6 bg-orange-600 rounded-full flex items-center justify-center text-white font-bold text-xs">
+                                          {u.name.charAt(0).toUpperCase()}
+                                        </div>
+                                        <span className="text-white text-sm">{u.name}</span>
+                                        <span className="text-white/40 text-xs">{u.isGuest ? 'Guest' : u.email || ''}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {resultMessage && (
                     <div className={`mt-4 p-3 rounded-lg ${
-                      resultMessage.type === 'success' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                      resultMessage.type === 'success' ? 'bg-blue-500/20 text-blue-300' : 'bg-red-500/20 text-red-400'
                     }`}>
                       {resultMessage.text}
                     </div>
@@ -903,7 +1120,7 @@ export default function EventDetailPage() {
                       <button
                         onClick={() => handleSaveResults(true)}
                         disabled={savingResults}
-                        className="bg-green-600 hover:bg-green-700 disabled:bg-green-800 text-white px-6 py-2 rounded-lg font-medium transition"
+                        className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white px-6 py-2 rounded-lg font-medium transition"
                       >
                         {savingResults ? 'Finalizing...' : '✅ Finalize Results'}
                       </button>
@@ -917,8 +1134,8 @@ export default function EventDetailPage() {
 
         {/* Results (if completed) */}
         {event.results.length > 0 && (
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 p-6 mb-6">
-            <h2 className="text-xl font-bold text-white mb-4">🏆 Results {isFinalized && <span className="text-green-400 text-sm font-normal">(Final)</span>}</h2>
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 p-6 mb-6">
+            <h2 className="text-xl font-bold text-white mb-4">🏆 Results {isFinalized && <span className="text-blue-300 text-sm font-normal">(Final)</span>}</h2>
             <div className="space-y-2">
               {event.results.map((result, index) => (
                 <div
@@ -937,9 +1154,9 @@ export default function EventDetailPage() {
                     <span className="text-white font-medium">{result.user.name}</span>
                   </div>
                   <div className="text-right">
-                    <p className="text-green-400 font-bold">{result.pointsEarned} pts</p>
+                    <p className="text-blue-300 font-bold">{result.pointsEarned} pts</p>
                     {result.knockouts > 0 && (
-                      <p className="text-xs text-green-300">{result.knockouts} KOs</p>
+                      <p className="text-xs text-blue-200">{result.knockouts} KOs</p>
                     )}
                   </div>
                 </div>
@@ -949,7 +1166,7 @@ export default function EventDetailPage() {
         )}
 
         {/* Registered Players */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 p-6">
+        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 p-6">
           <h2 className="text-xl font-bold text-white mb-4">
             👥 Registered Players ({registeredCount})
             {waitlistedCount > 0 && (
@@ -957,7 +1174,7 @@ export default function EventDetailPage() {
             )}
           </h2>
           {event.signups.length === 0 ? (
-            <p className="text-green-300/60">No players registered yet</p>
+            <p className="text-blue-200/60">No players registered yet</p>
           ) : (
             <div className="space-y-4">
               {/* Registered players */}
@@ -968,15 +1185,15 @@ export default function EventDetailPage() {
                     <div
                       key={signup.id}
                       className={`flex items-center gap-2 p-2 rounded-lg ${
-                        signup.status === 'CHECKED_IN' ? 'bg-green-500/20 border border-green-500/30' : 'bg-white/5'
+                        signup.status === 'CHECKED_IN' ? 'bg-blue-500/20 border border-blue-500/30' : 'bg-white/5'
                       }`}
                     >
-                      <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0">
+                      <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0">
                         {signup.user.name.charAt(0).toUpperCase()}
                       </div>
                       <span className="text-white text-sm truncate flex-1">{signup.user.name}</span>
                       {signup.status === 'CHECKED_IN' && (
-                        <span className="text-green-400 text-xs flex-shrink-0">✓</span>
+                        <span className="text-blue-300 text-xs flex-shrink-0">✓</span>
                       )}
                       {/* Admin/TD controls */}
                       {canManageEvent && !isFinalized && (
@@ -992,7 +1209,7 @@ export default function EventDetailPage() {
                                   setResultMessage({ type: 'error', text: err.message || 'Failed to check in' });
                                 }
                               }}
-                              className="px-2 py-1 bg-green-600/50 hover:bg-green-600 text-green-200 hover:text-white rounded text-xs font-medium transition"
+                              className="px-2 py-1 bg-blue-600/50 hover:bg-blue-600 text-blue-100 hover:text-white rounded text-xs font-medium transition"
                               title="Check in"
                             >
                               ✓ Check In

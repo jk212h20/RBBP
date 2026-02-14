@@ -584,7 +584,7 @@ export default function AdminPage() {
     return (
       <div className="min-h-screen bg-gray-900 text-white p-8">
         <div className="max-w-md mx-auto">
-          <Link href="/dashboard" className="text-green-400 hover:text-green-300 mb-8 inline-block">
+          <Link href="/dashboard" className="text-blue-300 hover:text-blue-200 mb-8 inline-block">
             ← Back to Dashboard
           </Link>
           
@@ -595,7 +595,7 @@ export default function AdminPage() {
             </p>
             <Link 
               href="/dashboard"
-              className="inline-block bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded font-semibold"
+              className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded font-semibold"
             >
               Return to Dashboard
             </Link>
@@ -611,7 +611,7 @@ export default function AdminPage() {
       <header className="bg-gray-800 border-b border-gray-700 p-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <h1 className="text-2xl font-bold">🃏 Admin Dashboard</h1>
-          <Link href="/dashboard" className="text-green-400 hover:text-green-300">
+          <Link href="/dashboard" className="text-blue-300 hover:text-blue-200">
             ← Back to Dashboard
           </Link>
         </div>
@@ -635,7 +635,7 @@ export default function AdminPage() {
                 }}
                 className={`px-4 py-2 rounded-t font-semibold capitalize whitespace-nowrap ${
                   activeTab === tab 
-                    ? 'bg-green-600 text-white' 
+                    ? 'bg-blue-600 text-white' 
                     : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
               >
@@ -652,7 +652,7 @@ export default function AdminPage() {
           </div>
         )}
         {message && (
-          <div className="bg-green-500/20 border border-green-500 text-green-400 p-3 rounded mb-4">
+          <div className="bg-blue-500/20 border border-blue-500 text-blue-300 p-3 rounded mb-4">
             {message}
           </div>
         )}
@@ -662,7 +662,7 @@ export default function AdminPage() {
           <>
             {statsLoading ? (
               <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-400 mx-auto"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto"></div>
                 <p className="text-gray-400 mt-2">Loading stats...</p>
               </div>
             ) : statsError ? (
@@ -682,12 +682,12 @@ export default function AdminPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <button
                     onClick={() => { setActiveTab('users'); if (users.length === 0) fetchUsers(); }}
-                    className="bg-gray-800 rounded-lg p-6 text-left hover:bg-gray-700 transition group border border-transparent hover:border-green-500/50"
+                    className="bg-gray-800 rounded-lg p-6 text-left hover:bg-gray-700 transition group border border-transparent hover:border-blue-500/50"
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="text-gray-400 text-sm group-hover:text-green-400 transition">Total Users</h3>
-                        <p className="text-3xl font-bold text-green-400">{stats.users}</p>
+                        <h3 className="text-gray-400 text-sm group-hover:text-blue-300 transition">Total Users</h3>
+                        <p className="text-3xl font-bold text-blue-300">{stats.users}</p>
                       </div>
                       <span className="text-3xl opacity-50 group-hover:opacity-100 transition">👥</span>
                     </div>
@@ -790,7 +790,7 @@ export default function AdminPage() {
                       </div>
                       <div className="bg-gray-700/50 rounded p-3">
                         <p className="text-gray-400 text-xs">Completed Events</p>
-                        <p className="text-xl font-bold text-green-400">
+                        <p className="text-xl font-bold text-blue-300">
                           {events.filter((e: Event) => e.status === 'COMPLETED').length}
                         </p>
                       </div>
@@ -808,7 +808,7 @@ export default function AdminPage() {
                       <p className="text-gray-400">No upcoming events</p>
                       <button
                         onClick={() => { setActiveTab('events'); if (events.length === 0) fetchEvents(); }}
-                        className="text-green-400 hover:text-green-300 text-sm mt-2"
+                        className="text-blue-300 hover:text-blue-200 text-sm mt-2"
                       >
                         Create an event →
                       </button>
@@ -898,7 +898,7 @@ export default function AdminPage() {
                 <button
                   type="submit"
                   disabled={!venueForm.name.trim() || !venueForm.address.trim()}
-                  className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-3 rounded font-semibold"
+                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-3 rounded font-semibold"
                 >
                   Create Venue
                 </button>
@@ -956,7 +956,7 @@ export default function AdminPage() {
                               ))}
                             </select>
                             {venue.manager && (
-                              <span className="text-green-400 text-xs">
+                              <span className="text-blue-300 text-xs">
                                 ✓ {venue.manager.name}
                               </span>
                             )}
@@ -1034,7 +1034,7 @@ export default function AdminPage() {
                 </div>
                 <button
                   type="submit"
-                  className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded font-semibold"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded font-semibold"
                 >
                   Create Season
                 </button>
@@ -1062,14 +1062,14 @@ export default function AdminPage() {
                             <p className="text-gray-500 text-xs mt-1">{season._count.events} events</p>
                           )}
                           {season.isActive && (
-                            <span className="inline-block bg-green-600 text-xs px-2 py-1 rounded mt-1">Active</span>
+                            <span className="inline-block bg-blue-600 text-xs px-2 py-1 rounded mt-1">Active</span>
                           )}
                         </div>
                         <div className="flex flex-col gap-1">
                           {!season.isActive && (
                             <button
                               onClick={() => handleActivateSeason(season.id)}
-                              className="text-green-400 hover:text-green-300 text-sm"
+                              className="text-blue-300 hover:text-blue-200 text-sm"
                             >
                               ✅ Activate
                             </button>
@@ -1103,7 +1103,7 @@ export default function AdminPage() {
             
             {loadingUsers ? (
               <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-400 mx-auto"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto"></div>
                 <p className="text-gray-400 mt-2">Loading users...</p>
               </div>
             ) : users.length === 0 ? (
@@ -1111,7 +1111,7 @@ export default function AdminPage() {
                 <p className="text-gray-400 mb-4">No users found.</p>
                 <button 
                   onClick={fetchUsers}
-                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
                 >
                   Reload Users
                 </button>
@@ -1136,7 +1136,7 @@ export default function AdminPage() {
                         <td className="py-3 px-4">
                           <span className="font-medium">{u.name}</span>
                           {u.id === user?.id && (
-                            <span className="ml-2 text-xs bg-green-600 px-2 py-0.5 rounded">You</span>
+                            <span className="ml-2 text-xs bg-blue-600 px-2 py-0.5 rounded">You</span>
                           )}
                         </td>
                         <td className="py-3 px-4 text-gray-400">
@@ -1200,7 +1200,7 @@ export default function AdminPage() {
                                 className={`text-xs px-2 py-1 rounded ${
                                   u.isActive 
                                     ? 'bg-red-600/20 text-red-400 hover:bg-red-600/30' 
-                                    : 'bg-green-600/20 text-green-400 hover:bg-green-600/30'
+                                    : 'bg-blue-600/20 text-blue-300 hover:bg-blue-600/30'
                                 }`}
                               >
                                 {u.isActive ? '🚫 Deactivate' : '✅ Activate'}
@@ -1269,7 +1269,7 @@ export default function AdminPage() {
                   
                   {loadingGuests ? (
                     <div className="text-center py-4">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-400 mx-auto"></div>
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400 mx-auto"></div>
                     </div>
                   ) : guestUsers.length === 0 ? (
                     <p className="text-gray-500 text-center py-4">No guest accounts found.</p>
@@ -1377,7 +1377,7 @@ export default function AdminPage() {
                                   navigator.clipboard.writeText(claimLinkUrl);
                                   setMessage('Claim link copied to clipboard!');
                                 }}
-                                className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-xs font-semibold whitespace-nowrap"
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-xs font-semibold whitespace-nowrap"
                               >
                                 📋 Copy
                               </button>
@@ -1441,14 +1441,14 @@ export default function AdminPage() {
             <div className="bg-gray-800 rounded-lg p-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold">📅 All Events ({events.length})</h2>
-                <button onClick={fetchEvents} className="text-green-400 hover:text-green-300 text-sm">
+                <button onClick={fetchEvents} className="text-blue-300 hover:text-blue-200 text-sm">
                   🔄 Refresh
                 </button>
               </div>
               
               {loadingEvents ? (
                 <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-400 mx-auto"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto"></div>
                 </div>
               ) : events.length === 0 ? (
                 <p className="text-gray-400">No events yet. Create one below!</p>
@@ -1473,7 +1473,7 @@ export default function AdminPage() {
                             value={event.status}
                             onChange={(e) => handleStatusChange(event.id, e.target.value)}
                             className={`text-xs px-2 py-1 rounded border-0 ${
-                              event.status === 'COMPLETED' ? 'bg-green-600/30 text-green-400' :
+                              event.status === 'COMPLETED' ? 'bg-blue-600/30 text-blue-300' :
                               event.status === 'IN_PROGRESS' ? 'bg-yellow-600/30 text-yellow-400' :
                               event.status === 'REGISTRATION_OPEN' ? 'bg-blue-600/30 text-blue-400' :
                               event.status === 'CANCELLED' ? 'bg-red-600/30 text-red-400' :
@@ -1800,7 +1800,7 @@ export default function AdminPage() {
                 <div className="md:col-span-2">
                   <button
                     type="submit"
-                    className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded font-semibold"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded font-semibold"
                   >
                     Create Event
                   </button>
@@ -1835,13 +1835,13 @@ export default function AdminPage() {
             <div className="flex gap-2 mb-4">
               <button
                 onClick={() => setResultsMode(false)}
-                className={`px-4 py-2 rounded ${!resultsMode ? 'bg-green-600' : 'bg-gray-700'}`}
+                className={`px-4 py-2 rounded ${!resultsMode ? 'bg-blue-600' : 'bg-gray-700'}`}
               >
                 👥 Check-in ({eventSignups.length})
               </button>
               <button
                 onClick={() => setResultsMode(true)}
-                className={`px-4 py-2 rounded ${resultsMode ? 'bg-green-600' : 'bg-gray-700'}`}
+                className={`px-4 py-2 rounded ${resultsMode ? 'bg-blue-600' : 'bg-gray-700'}`}
               >
                 🏆 Enter Results
               </button>
@@ -1849,7 +1849,7 @@ export default function AdminPage() {
 
             {loadingSignups ? (
               <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-400 mx-auto"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto"></div>
               </div>
             ) : !resultsMode ? (
               /* Check-in Mode */
@@ -1867,7 +1867,7 @@ export default function AdminPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         {signup.status === 'CHECKED_IN' ? (
-                          <span className="text-green-400 text-sm">✅ Checked In</span>
+                          <span className="text-blue-300 text-sm">✅ Checked In</span>
                         ) : (
                           <button
                             onClick={() => handleCheckIn(signup.user.id)}
@@ -1928,7 +1928,7 @@ export default function AdminPage() {
                 <button
                   onClick={handleSubmitResults}
                   disabled={resultEntries.length === 0}
-                  className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white py-3 rounded font-semibold"
+                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white py-3 rounded font-semibold"
                 >
                   💾 Save Results & Update Standings
                 </button>
@@ -1984,7 +1984,7 @@ export default function AdminPage() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded"
                 >
                   Save Changes
                 </button>
@@ -2044,7 +2044,7 @@ export default function AdminPage() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded"
                 >
                   Save Changes
                 </button>

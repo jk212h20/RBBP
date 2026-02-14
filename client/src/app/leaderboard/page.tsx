@@ -105,14 +105,14 @@ export default function LeaderboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-black">
+    <div className="min-h-screen ">
       <MobileNav currentPage="leaderboard" />
 
       <main className="max-w-4xl mx-auto px-4 py-8">
         {/* Page Title */}
         <div className="mb-8 text-center">
           <h1 className="text-4xl font-bold text-white mb-2">🏆 Leaderboard</h1>
-          <p className="text-green-200">Season standings and player rankings</p>
+          <p className="text-blue-100">Season standings and player rankings</p>
         </div>
 
         {/* Season Selector */}
@@ -120,7 +120,7 @@ export default function LeaderboardPage() {
           <select
             value={selectedSeason}
             onChange={(e) => setSelectedSeason(e.target.value)}
-            className="bg-white/10 text-white border border-green-600/50 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="bg-white/10 text-white border border-blue-600/50 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             {seasons.map((season) => (
               <option key={season.id} value={season.id} className="text-black">
@@ -132,22 +132,22 @@ export default function LeaderboardPage() {
 
         {/* Season Info */}
         {currentSeason && (
-          <div className="mb-6 bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 p-4">
+          <div className="mb-6 bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 p-4">
             <div className="flex flex-wrap justify-between items-center gap-4">
               <div>
                 <h2 className="text-xl font-bold text-white">{currentSeason.name}</h2>
-                <p className="text-green-200 text-sm">
+                <p className="text-blue-100 text-sm">
                   {new Date(currentSeason.startDate).toLocaleDateString()} - {new Date(currentSeason.endDate).toLocaleDateString()}
                 </p>
               </div>
               <div className="flex gap-6 text-center">
                 <div>
-                  <p className="text-2xl font-bold text-green-400">{currentSeason._count.events}</p>
-                  <p className="text-xs text-green-200">Events</p>
+                  <p className="text-2xl font-bold text-blue-300">{currentSeason._count.events}</p>
+                  <p className="text-xs text-blue-100">Events</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-green-400">{currentSeason._count.standings}</p>
-                  <p className="text-xs text-green-200">Players</p>
+                  <p className="text-2xl font-bold text-blue-300">{currentSeason._count.standings}</p>
+                  <p className="text-xs text-blue-100">Players</p>
                 </div>
               </div>
             </div>
@@ -157,8 +157,8 @@ export default function LeaderboardPage() {
         {/* Standings Table */}
         {loading ? (
           <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-400 mx-auto"></div>
-            <p className="text-green-200 mt-4">Loading standings...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto"></div>
+            <p className="text-blue-100 mt-4">Loading standings...</p>
           </div>
         ) : error ? (
           <div className="text-center py-12">
@@ -166,15 +166,15 @@ export default function LeaderboardPage() {
           </div>
         ) : standings.length === 0 ? (
           <div className="text-center py-12 bg-white/5 rounded-xl">
-            <p className="text-green-200 text-lg">No standings yet</p>
-            <p className="text-green-300/60 mt-2">Play in events to appear on the leaderboard!</p>
+            <p className="text-blue-100 text-lg">No standings yet</p>
+            <p className="text-blue-200/60 mt-2">Play in events to appear on the leaderboard!</p>
           </div>
         ) : (
           <>
             {/* Desktop Table View */}
-            <div className="hidden md:block bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 overflow-hidden">
+            <div className="hidden md:block bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 overflow-hidden">
               {/* Table Header */}
-              <div className="grid grid-cols-10 gap-4 p-4 bg-black/20 text-green-300 text-sm font-medium">
+              <div className="grid grid-cols-10 gap-4 p-4 bg-black/20 text-blue-200 text-sm font-medium">
                 <div className="col-span-1">Rank</div>
                 <div className="col-span-4">Player</div>
                 <div className="col-span-2 text-center">Points</div>
@@ -184,7 +184,7 @@ export default function LeaderboardPage() {
               </div>
 
               {/* Table Body */}
-              <div className="divide-y divide-green-600/20">
+              <div className="divide-y divide-blue-600/20">
                 {standings.map((standing, index) => {
                   const rankInfo = getRankDisplay(index);
                   return (
@@ -201,7 +201,7 @@ export default function LeaderboardPage() {
 
                       {/* Player */}
                       <div className="col-span-4 flex items-center gap-3">
-                        <div className={`w-10 h-10 ${standing.user.isGuest ? 'bg-gray-500' : 'bg-green-600'} rounded-full flex items-center justify-center text-white font-bold`}>
+                        <div className={`w-10 h-10 ${standing.user.isGuest ? 'bg-gray-500' : 'bg-blue-600'} rounded-full flex items-center justify-center text-white font-bold`}>
                           {standing.user.name.charAt(0).toUpperCase()}
                         </div>
                         <div className="flex items-center gap-2 min-w-0">
@@ -214,8 +214,8 @@ export default function LeaderboardPage() {
 
                       {/* Points */}
                       <div className="col-span-2 text-center">
-                        <span className="text-xl font-bold text-green-400">{standing.totalPoints}</span>
-                        <span className="text-green-300 text-sm ml-1">pts</span>
+                        <span className="text-xl font-bold text-blue-300">{standing.totalPoints}</span>
+                        <span className="text-blue-200 text-sm ml-1">pts</span>
                       </div>
 
                       {/* Events */}
@@ -256,7 +256,7 @@ export default function LeaderboardPage() {
                         <span className="text-2xl font-bold">
                           {index < 3 ? rankInfo.emoji : `#${index + 1}`}
                         </span>
-                        <div className={`w-10 h-10 ${standing.user.isGuest ? 'bg-gray-500' : 'bg-green-600'} rounded-full flex items-center justify-center text-white font-bold`}>
+                        <div className={`w-10 h-10 ${standing.user.isGuest ? 'bg-gray-500' : 'bg-blue-600'} rounded-full flex items-center justify-center text-white font-bold`}>
                           {standing.user.name.charAt(0).toUpperCase()}
                         </div>
                         <div className="flex items-center gap-1.5">
@@ -267,22 +267,22 @@ export default function LeaderboardPage() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-xl font-bold text-green-400">{standing.totalPoints}</p>
-                        <p className="text-xs text-green-300">points</p>
+                        <p className="text-xl font-bold text-blue-300">{standing.totalPoints}</p>
+                        <p className="text-xs text-blue-200">points</p>
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-center text-sm">
                       <div>
                         <p className="text-white font-medium">{standing.eventsPlayed}</p>
-                        <p className="text-green-300/60 text-xs">Events</p>
+                        <p className="text-blue-200/60 text-xs">Events</p>
                       </div>
                       <div>
                         <p className="text-yellow-400 font-medium">{standing.wins}</p>
-                        <p className="text-green-300/60 text-xs">{standing.wins === 1 ? 'Win' : 'Wins'}</p>
+                        <p className="text-blue-200/60 text-xs">{standing.wins === 1 ? 'Win' : 'Wins'}</p>
                       </div>
                       <div>
                         <p className="text-white font-medium">{standing.topThrees}</p>
-                        <p className="text-green-300/60 text-xs">Top 3</p>
+                        <p className="text-blue-200/60 text-xs">Top 3</p>
                       </div>
                     </div>
                   </div>
