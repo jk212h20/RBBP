@@ -9,3 +9,4 @@ cmds = ["npm run build"]
 
 [start]
 cmd = "npx prisma migrate deploy && npm start"
+# Trigger redeploy Sat Feb 14 16:42:18 EST 2026
