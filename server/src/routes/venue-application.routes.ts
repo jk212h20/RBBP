@@ -24,7 +24,7 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
       contactName,
       contactEmail,
       contactPhone,
-      submittedById: req.user!.id,
+      submittedById: req.user!.userId,
     });
 
     res.status(201).json(application);
@@ -37,7 +37,7 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
 // GET /api/venue-applications/mine - Get my applications (authenticated users)
 router.get('/mine', authenticate, async (req: Request, res: Response) => {
   try {
-    const applications = await venueAppService.getMyApplications(req.user!.id);
+    const applications = await venueAppService.getMyApplications(req.user!.userId);
     res.json(applications);
   } catch (error) {
     console.error('Error fetching my applications:', error);
@@ -86,7 +86,7 @@ router.get('/:id', authenticate, requireAdmin, async (req: Request, res: Respons
 // POST /api/venue-applications/:id/approve - Approve application (admin)
 router.post('/:id/approve', authenticate, requireAdmin, async (req: Request, res: Response) => {
   try {
-    const result = await venueAppService.approveApplication(req.params.id, req.user!.id);
+    const result = await venueAppService.approveApplication(req.params.id, req.user!.userId);
     res.json(result);
   } catch (error: any) {
     console.error('Error approving application:', error);
@@ -106,7 +106,7 @@ router.post('/:id/approve', authenticate, requireAdmin, async (req: Request, res
 router.post('/:id/reject', authenticate, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { rejectionReason } = req.body;
-    const application = await venueAppService.rejectApplication(req.params.id, req.user!.id, rejectionReason);
+    const application = await venueAppService.rejectApplication(req.params.id, req.user!.userId, rejectionReason);
     res.json(application);
   } catch (error: any) {
     console.error('Error rejecting application:', error);
