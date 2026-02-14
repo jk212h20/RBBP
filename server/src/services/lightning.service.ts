@@ -99,7 +99,7 @@ export async function verifyChallenge(
 
 /**
  * Check if a challenge is verified and get the pubkey.
- * Once consumed (token minted), the challenge is deleted to prevent replay.
+ * Consumed challenges are cleaned up by the periodic cleanup job.
  */
 export async function getChallengeStatus(k1: string): Promise<{
   verified: boolean;
@@ -117,11 +117,9 @@ export async function getChallengeStatus(k1: string): Promise<{
   const expired = challenge.expiresAt < new Date();
 
   if (challenge.used && challenge.userId) {
-    // Delete the challenge after consuming it to prevent replay
-    await prisma.lightningChallenge.delete({
-      where: { k1 },
-    }).catch(() => {}); // Ignore if already deleted by concurrent request
-
+    // Don't delete here — the client polls every 2s and if the HTTP response
+    // is lost, the next poll would see "expired" instead of "verified".
+    // The 10-minute cleanup job handles deletion of consumed challenges.
     return {
       verified: true,
       pubkey: challenge.userId,
@@ -199,14 +197,15 @@ async function verifySignature(
     compactSig.set(r, 0);
     compactSig.set(s, 32);
     
-    // LNURL-auth: The k1 (32 bytes) IS the message hash
-    // The wallet signs sha256(k1), so we hash it for verification
+    // LNURL-auth spec (LUD-04): wallet signs sha256(k1).
+    // noble/secp256k1 v1.x verify() expects the pre-hashed 32-byte message,
+    // so we pass sha256(k1) — which is what the wallet signed.
     const msgHash = sha256(message);
     
-    // Try both: with hash and without (different wallets may behave differently)
+    // Primary: spec-compliant wallets that sign sha256(k1)
     let result = secp256k1.verify(compactSig, msgHash, publicKey);
     if (!result) {
-      // Some wallets sign the k1 directly without hashing
+      // Fallback: some wallets sign k1 directly (already 32 bytes)
       result = secp256k1.verify(compactSig, message, publicKey);
     }
     
