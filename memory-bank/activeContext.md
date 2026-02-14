@@ -158,6 +158,7 @@ server/src/
 ├── index.ts                # Express app setup, route mounting, CORS
 ├── config/passport.ts      # Passport strategies (Google, Lightning)
 ├── middleware/auth.middleware.ts  # JWT verification, role checks
+├── middleware/rateLimiter.ts     # Rate limiters (auth routes) — extracted to avoid circular deps
 ├── routes/                 # 11 route files (auth, venue, venue-application, season, event, standings, admin, withdrawal, lnurl, balance, faq)
 ├── services/               # 11 service files (business logic layer)
 ├── validators/             # 4 Zod validation schemas
