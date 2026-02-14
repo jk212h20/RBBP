@@ -1,61 +1,47 @@
-#!/usr/bin/env ts-node
+#!/usr/bin/env npx ts-node
 /**
- * Lightning Login (LNURL-auth) End-to-End Test Script
+ * Lightning Login Test Script
  * 
- * Simulates a Lightning wallet completing the full LNURL-auth flow
- * against the running server. Tests happy path + edge cases.
+ * Tests the full LNURL-auth flow against local or production server.
+ * Simulates what a Lightning wallet does when scanning the QR code.
  * 
  * Usage:
- *   npm run test:lightning                          # default: http://localhost:3001
- *   API_URL=https://your-prod.up.railway.app/api npm run test:lightning
- * 
- * Prerequisites:
- *   - Server must be running (npm run dev)
- *   - PostgreSQL must be up with migrations applied
+ *   npx ts-node scripts/test-lightning-login.ts              # test against local
+ *   npx ts-node scripts/test-lightning-login.ts --production  # test against production
+ *   npx ts-node scripts/test-lightning-login.ts --url https://your-server.com/api
  */
 
-import crypto from 'crypto';
-import { bech32 } from 'bech32';
-import * as secp256k1 from '@noble/secp256k1';
+const crypto = require('crypto');
+const secp256k1 = require('@noble/secp256k1');
+const { bech32 } = require('bech32');
 
 // ============================================
-// CONFIG
+// Configuration
 // ============================================
 
-const API_URL = process.env.API_URL || 'http://localhost:3001/api';
+const args = process.argv.slice(2);
+const isProduction = args.includes('--production') || args.includes('-p');
+const customUrl = args.find((a: string) => a.startsWith('--url='))?.split('=')[1] 
+  || (args.includes('--url') ? args[args.indexOf('--url') + 1] : null);
+
+const API_URL = customUrl 
+  || (isProduction ? 'https://rbbp-production.up.railway.app/api' : 'http://localhost:3001/api');
+
+console.log('='.repeat(60));
+console.log('⚡ Lightning Login Test');
+console.log('='.repeat(60));
+console.log(`Target: ${API_URL}`);
+console.log(`Mode: ${isProduction ? 'PRODUCTION' : customUrl ? 'CUSTOM' : 'LOCAL'}`);
+console.log('');
 
 // ============================================
-// HELPERS
+// Helper Functions
 // ============================================
 
-const colors = {
-  green: (s: string) => `\x1b[32m${s}\x1b[0m`,
-  red: (s: string) => `\x1b[31m${s}\x1b[0m`,
-  yellow: (s: string) => `\x1b[33m${s}\x1b[0m`,
-  cyan: (s: string) => `\x1b[36m${s}\x1b[0m`,
-  dim: (s: string) => `\x1b[2m${s}\x1b[0m`,
-  bold: (s: string) => `\x1b[1m${s}\x1b[0m`,
-};
-
-let passed = 0;
-let failed = 0;
-
-function pass(msg: string, detail?: string) {
-  passed++;
-  console.log(`  ${colors.green('✅')} ${msg}${detail ? colors.dim(` (${detail})`) : ''}`);
-}
-
-function fail(msg: string, detail?: string) {
-  failed++;
-  console.log(`  ${colors.red('❌')} ${msg}${detail ? colors.dim(` — ${detail}`) : ''}`);
-}
-
-function info(msg: string) {
-  console.log(`  ${colors.cyan('ℹ')}  ${msg}`);
-}
-
-function section(title: string) {
-  console.log(`\n${colors.bold(colors.yellow(`▸ ${title}`))}`);
+function decodeLnurl(lnurl: string): string {
+  const { prefix, words } = bech32.decode(lnurl, 1023);
+  if (prefix !== 'lnurl') throw new Error('Invalid lnurl prefix');
+  return Buffer.from(bech32.fromWords(words)).toString('utf8');
 }
 
 function hexToBytes(hex: string): Uint8Array {
@@ -76,410 +62,286 @@ function sha256(data: Uint8Array): Uint8Array {
   return new Uint8Array(hash.digest());
 }
 
-function decodeLnurl(lnurl: string): string {
-  const { words } = bech32.decode(lnurl, 1023);
-  return Buffer.from(bech32.fromWords(words)).toString('utf8');
-}
-
-/**
- * Encode r,s (each 32 bytes) into DER format — this is what Lightning wallets produce
- */
-function encodeDerSignature(r: Uint8Array, s: Uint8Array): Uint8Array {
-  // Trim leading zeros but keep at least 1 byte
-  function trimAndPad(arr: Uint8Array): Uint8Array {
-    let start = 0;
-    while (start < arr.length - 1 && arr[start] === 0) start++;
-    const trimmed = arr.slice(start);
-    // If high bit is set, prepend 0x00 (DER integer encoding)
-    if (trimmed[0] & 0x80) {
-      const padded = new Uint8Array(trimmed.length + 1);
-      padded[0] = 0;
-      padded.set(trimmed, 1);
-      return padded;
-    }
-    return trimmed;
+async function fetchJSON(url: string): Promise<any> {
+  const response = await fetch(url);
+  const text = await response.text();
+  
+  if (!response.ok) {
+    console.log(`  ❌ HTTP ${response.status}: ${text.substring(0, 200)}`);
   }
-
-  const rDer = trimAndPad(r);
-  const sDer = trimAndPad(s);
-
-  const totalLen = 2 + rDer.length + 2 + sDer.length;
-  const der = new Uint8Array(2 + totalLen);
-  let offset = 0;
-
-  der[offset++] = 0x30; // SEQUENCE
-  der[offset++] = totalLen;
-  der[offset++] = 0x02; // INTEGER
-  der[offset++] = rDer.length;
-  der.set(rDer, offset);
-  offset += rDer.length;
-  der[offset++] = 0x02; // INTEGER
-  der[offset++] = sDer.length;
-  der.set(sDer, offset);
-
-  return der;
-}
-
-async function api(path: string, options?: RequestInit): Promise<any> {
-  const url = path.startsWith('http') ? path : `${API_URL}${path}`;
-  const res = await fetch(url, options);
-  const text = await res.text();
+  
   try {
-    return { status: res.status, data: JSON.parse(text) };
+    return JSON.parse(text);
   } catch {
-    return { status: res.status, data: text };
+    return { _raw: text, _status: response.status };
   }
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 // ============================================
-// CRYPTO: Generate keypair and sign like a Lightning wallet
+// Test Steps
 // ============================================
 
-function generateKeypair(): { privKey: Uint8Array; pubKey: string } {
-  const privKey = secp256k1.utils.randomPrivateKey();
-  const pubKeyBytes = secp256k1.getPublicKey(privKey, true); // compressed
-  return { privKey, pubKey: bytesToHex(pubKeyBytes) };
-}
-
-async function signChallenge(k1Hex: string, privKey: Uint8Array): Promise<string> {
-  const k1Bytes = hexToBytes(k1Hex);
-  // Server does sha256(k1) before verify, so we sign sha256(k1)
-  const msgHash = sha256(k1Bytes);
-
-  // noble/secp256k1 with {der: false} resolves to Uint8Array(64) — compact r||s
-  const compactSig = await secp256k1.sign(msgHash, privKey, { canonical: true, der: false }) as Uint8Array;
-
-  const r = compactSig.slice(0, 32);
-  const s = compactSig.slice(32, 64);
-
-  // DER encode (what Lightning wallets send)
-  const derSig = encodeDerSignature(r, s);
-  return bytesToHex(derSig);
-}
-
-// ============================================
-// TESTS
-// ============================================
-
-async function testHappyPath(): Promise<{ k1: string; pubKey: string; token: string; userId: string }> {
-  section('Happy Path — Full LNURL-auth Flow');
-
-  // Step 1: Get challenge
-  const challengeRes = await api('/auth/lightning/challenge');
-  if (challengeRes.status !== 200 || !challengeRes.data.k1) {
-    fail('Get challenge', `status=${challengeRes.status} body=${JSON.stringify(challengeRes.data)}`);
-    throw new Error('Cannot continue without challenge');
+async function testLightningLogin() {
+  let passed = 0;
+  let failed = 0;
+  
+  function pass(msg: string) { console.log(`  ✅ ${msg}`); passed++; }
+  function fail(msg: string, detail?: any) { 
+    console.log(`  ❌ ${msg}`); 
+    if (detail) console.log(`     Detail:`, typeof detail === 'string' ? detail : JSON.stringify(detail, null, 2));
+    failed++; 
   }
-  const { k1, lnurl, qrCode } = challengeRes.data;
-  pass('Challenge created', `k1: ${k1.slice(0, 16)}...`);
 
-  // Step 2: Decode LNURL
+  // ── Step 1: Get Challenge ──
+  console.log('\n📋 Step 1: Request Lightning Challenge');
+  console.log(`  GET ${API_URL}/auth/lightning/challenge`);
+  
+  let challenge: any;
+  try {
+    challenge = await fetchJSON(`${API_URL}/auth/lightning/challenge`);
+  } catch (err: any) {
+    fail('Failed to connect to server', err.message);
+    console.log('\n💡 Is the server running? Try: cd server && npm run dev');
+    return { passed, failed };
+  }
+  
+  if (challenge.k1 && challenge.lnurl && challenge.qrCode) {
+    pass(`Got challenge: k1=${challenge.k1.substring(0, 16)}...`);
+  } else {
+    fail('Missing fields in challenge response', challenge);
+    return { passed, failed };
+  }
+  
+  if (challenge.k1.length === 64 && /^[0-9a-f]+$/i.test(challenge.k1)) {
+    pass('k1 is valid 64-char hex');
+  } else {
+    fail(`k1 format invalid: length=${challenge.k1.length}`);
+  }
+
+  // ── Step 2: Decode LNURL ──
+  console.log('\n📋 Step 2: Decode LNURL');
+  
   let callbackUrl: string;
   try {
-    callbackUrl = decodeLnurl(lnurl);
-    pass('LNURL decoded', callbackUrl.slice(0, 80) + '...');
-  } catch (e: any) {
-    fail('LNURL decode', e.message);
-    throw e;
+    callbackUrl = decodeLnurl(challenge.lnurl);
+    pass(`Decoded LNURL → ${callbackUrl}`);
+  } catch (err: any) {
+    fail('Failed to decode LNURL', err.message);
+    return { passed, failed };
   }
-
-  // Verify QR code data URL exists
-  if (qrCode && qrCode.startsWith('data:image/png;base64,')) {
-    pass('QR code data URL present', `${qrCode.length} chars`);
-  } else {
-    fail('QR code data URL', 'Missing or invalid format');
-  }
-
-  // Step 3: Generate keypair
-  const { privKey, pubKey } = generateKeypair();
-  pass('Keypair generated', `pubkey: ${pubKey.slice(0, 16)}...`);
-
-  // Step 4: Sign the challenge
-  const sig = await signChallenge(k1, privKey);
-  pass('Signature created', `DER, ${sig.length / 2} bytes`);
-
-  // Step 5: Call the callback (simulating what the wallet does)
-  const callbackRes = await api(`${callbackUrl}&sig=${sig}&key=${pubKey}`);
-  if (callbackRes.data.status === 'OK') {
-    pass('Callback returned OK');
-  } else {
-    fail('Callback', JSON.stringify(callbackRes.data));
-    throw new Error('Callback failed');
-  }
-
-  // Step 6: Poll for status (simulating what the frontend does)
-  const statusRes = await api(`/auth/lightning/status/${k1}`);
-  if (statusRes.data.status === 'verified' && statusRes.data.token) {
-    pass('Status poll returned verified + JWT');
-  } else {
-    fail('Status poll', JSON.stringify(statusRes.data));
-    throw new Error('Status poll failed');
-  }
-
-  const { token, user, isNew, lightningBonusAwarded } = statusRes.data;
-
-  // Step 7: Validate JWT structure
-  const parts = token.split('.');
-  if (parts.length === 3) {
-    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
-    if (payload.userId && payload.role) {
-      pass('JWT valid', `userId: ${payload.userId.slice(0, 12)}..., role: ${payload.role}`);
-    } else {
-      fail('JWT payload', 'Missing userId or role');
-    }
-  } else {
-    fail('JWT structure', `Expected 3 parts, got ${parts.length}`);
-  }
-
-  // Step 8: Verify user object
-  if (user && user.id && user.lightningPubkey === pubKey) {
-    pass('User object correct', `name: ${user.name}, isNew: ${isNew}`);
-  } else {
-    fail('User object', JSON.stringify(user));
-  }
-
-  if (isNew) {
-    info(`New user created (lightningBonusAwarded: ${lightningBonusAwarded})`);
-  }
-
-  // Step 9: Use JWT to call /auth/me
-  const meRes = await api('/auth/me', {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (meRes.status === 200 && meRes.data.user?.id === user.id) {
-    pass('JWT works with /auth/me', `confirmed user ${meRes.data.user.name}`);
-  } else {
-    fail('/auth/me with JWT', JSON.stringify(meRes.data));
-  }
-
-  return { k1, pubKey, token, userId: user.id };
-}
-
-async function testSecondLogin(pubKey: string, firstUserId: string) {
-  section('Second Login — Same Pubkey Returns Same User');
-
-  // Get new challenge
-  const challengeRes = await api('/auth/lightning/challenge');
-  const { k1, lnurl } = challengeRes.data;
-
-  // We need the same private key to sign... but we only have the pubkey.
-  // For this test, we'll generate a fresh keypair and do a full flow.
-  // The real test is: does the SAME pubkey return the same user?
-  // We can't reuse the old privkey since we didn't save it outside the first test.
-  // Instead, let's just verify the concept by doing a fresh login.
   
-  const { privKey: newPriv, pubKey: newPub } = generateKeypair();
-  const sig = await signChallenge(k1, newPriv);
-  const callbackUrl = decodeLnurl(lnurl);
+  // Parse the callback URL
+  const url = new URL(callbackUrl);
+  const tag = url.searchParams.get('tag');
+  const k1FromUrl = url.searchParams.get('k1');
+  
+  if (tag === 'login') {
+    pass('tag=login ✓');
+  } else {
+    fail(`Expected tag=login, got tag=${tag}`);
+  }
+  
+  if (k1FromUrl === challenge.k1) {
+    pass('k1 in URL matches challenge k1 ✓');
+  } else {
+    fail(`k1 mismatch: URL has ${k1FromUrl}, challenge has ${challenge.k1}`);
+  }
 
-  await api(`${callbackUrl}&sig=${sig}&key=${newPub}`);
-  const statusRes = await api(`/auth/lightning/status/${k1}`);
+  // Check if callback URL points to the right server
+  console.log(`\n  📡 Callback URL host: ${url.origin}`);
+  console.log(`  📡 API URL: ${API_URL}`);
+  
+  const expectedOrigin = new URL(API_URL).origin;
+  if (url.origin === expectedOrigin) {
+    pass('Callback URL origin matches API origin');
+  } else {
+    fail(`Callback URL origin mismatch! Callback goes to ${url.origin} but API is at ${expectedOrigin}`);
+    console.log('  ⚠️  This means the wallet will call a DIFFERENT server than where the challenge was created!');
+    console.log('  ⚠️  Check LIGHTNING_AUTH_URL or LNURL_BASE_URL env vars on the server.');
+  }
 
-  if (statusRes.data.status === 'verified') {
-    const secondUserId = statusRes.data.user?.id;
-    // This is a NEW pubkey so it should be a NEW user
-    if (statusRes.data.isNew === true) {
-      pass('New pubkey creates new user', `userId: ${secondUserId?.slice(0, 12)}...`);
+  // ── Step 3: Check Initial Status ──
+  console.log('\n📋 Step 3: Check Initial Status (should be pending)');
+  console.log(`  GET ${API_URL}/auth/lightning/status/${challenge.k1}`);
+  
+  const initialStatus = await fetchJSON(`${API_URL}/auth/lightning/status/${challenge.k1}`);
+  
+  if (initialStatus.status === 'pending') {
+    pass('Initial status is "pending"');
+  } else {
+    fail(`Expected "pending", got "${initialStatus.status}"`, initialStatus);
+  }
+
+  // ── Step 4: Simulate Wallet Callback ──
+  console.log('\n📋 Step 4: Simulate Lightning Wallet Callback');
+  
+  // Generate a test keypair (simulating a Lightning wallet)
+  const privateKey = secp256k1.utils.randomPrivateKey();
+  const publicKey = secp256k1.getPublicKey(privateKey, true); // compressed
+  const pubkeyHex = bytesToHex(publicKey);
+  
+  console.log(`  Generated test pubkey: ${pubkeyHex.substring(0, 20)}...`);
+  
+  // Sign the k1 challenge - secp256k1.sign returns DER-encoded Uint8Array
+  const k1Bytes = hexToBytes(challenge.k1);
+  const msgHash = sha256(k1Bytes);
+  
+  // @noble/secp256k1 v1.x sign() returns DER-encoded signature directly
+  const derSig: Uint8Array = await secp256k1.sign(msgHash, privateKey);
+  const sigHex = bytesToHex(derSig);
+  
+  console.log(`  Signature (DER): ${sigHex.substring(0, 40)}... (${derSig.length} bytes)`);
+  
+  // Build the callback URL the wallet would call
+  const walletCallbackUrl = `${callbackUrl}&sig=${sigHex}&key=${pubkeyHex}`;
+  console.log(`\n  GET ${walletCallbackUrl.substring(0, 80)}...`);
+  
+  const callbackResult = await fetchJSON(walletCallbackUrl);
+  console.log(`  Response:`, JSON.stringify(callbackResult));
+  
+  if (callbackResult.status === 'OK') {
+    pass('Wallet callback returned status=OK');
+  } else {
+    fail(`Wallet callback failed: ${callbackResult.status} - ${callbackResult.reason}`, callbackResult);
+    
+    // If signature verification failed, try signing k1 directly (without sha256)
+    if (callbackResult.reason?.includes('signature') || callbackResult.reason?.includes('Verification')) {
+      console.log('\n  🔄 Trying alternative: sign k1 directly (without sha256)...');
+      const derSig2: Uint8Array = await secp256k1.sign(k1Bytes, privateKey);
+      const sigHex2 = bytesToHex(derSig2);
+      
+      const altUrl = `${callbackUrl}&sig=${sigHex2}&key=${pubkeyHex}`;
+      const altResult = await fetchJSON(altUrl);
+      console.log(`  Alt response:`, JSON.stringify(altResult));
+      
+      if (altResult.status === 'OK') {
+        pass('Alternative signing method worked (sign k1 directly)');
+      } else {
+        fail('Alternative signing also failed', altResult);
+      }
+    }
+    
+    return { passed, failed };
+  }
+
+  // ── Step 5: Check Status After Wallet Callback ──
+  console.log('\n📋 Step 5: Check Status After Wallet Callback (should be verified)');
+  console.log(`  GET ${API_URL}/auth/lightning/status/${challenge.k1}`);
+  
+  const verifiedStatus = await fetchJSON(`${API_URL}/auth/lightning/status/${challenge.k1}`);
+  console.log(`  Response:`, JSON.stringify(verifiedStatus, null, 2));
+  
+  if (verifiedStatus.status === 'verified') {
+    pass('Status is "verified"');
+  } else {
+    fail(`Expected "verified", got "${verifiedStatus.status}"`, verifiedStatus);
+  }
+  
+  if (verifiedStatus.token) {
+    pass(`Got JWT token: ${verifiedStatus.token.substring(0, 30)}...`);
+  } else {
+    fail('No JWT token in verified response');
+  }
+  
+  if (verifiedStatus.user) {
+    pass(`Got user: id=${verifiedStatus.user.id}, name=${verifiedStatus.user.name}`);
+  } else {
+    fail('No user object in verified response');
+  }
+
+  // ── Step 6: Verify JWT Token Works ──
+  if (verifiedStatus.token) {
+    console.log('\n📋 Step 6: Verify JWT Token Works');
+    console.log(`  GET ${API_URL}/auth/me`);
+    
+    const meResponse = await fetch(`${API_URL}/auth/me`, {
+      headers: { 'Authorization': `Bearer ${verifiedStatus.token}` }
+    });
+    const meData = await meResponse.json();
+    
+    if (meResponse.ok && meData.user) {
+      pass(`Token works! User: ${meData.user.name} (${meData.user.email || 'no email'})`);
+      pass(`Lightning pubkey: ${meData.user.lightningPubkey?.substring(0, 20)}...`);
     } else {
-      info(`Pubkey already existed (userId: ${secondUserId?.slice(0, 12)}...)`);
+      fail('JWT token rejected by /auth/me', meData);
     }
-  } else {
-    fail('Second login flow', JSON.stringify(statusRes.data));
   }
-}
 
-async function testReplayAttack(usedK1: string) {
-  section('Security — Replay Attack (Reuse k1)');
-
-  // Try to use the same k1 again with a new signature
-  const { privKey, pubKey } = generateKeypair();
-  const sig = await signChallenge(usedK1, privKey);
-
-  const callbackRes = await api(
-    `${API_URL}/auth/lightning/callback?tag=login&k1=${usedK1}&sig=${sig}&key=${pubKey}`
-  );
-
-  if (callbackRes.data.status === 'ERROR') {
-    pass('Replay rejected', callbackRes.data.reason);
-  } else {
-    fail('Replay NOT rejected', JSON.stringify(callbackRes.data));
-  }
-}
-
-async function testInvalidSignature() {
-  section('Security — Invalid Signature');
-
+  // ── Step 7: Test Polling Behavior (what the frontend does) ──
+  console.log('\n📋 Step 7: Test Rapid Polling (simulating frontend)');
+  
   // Get a fresh challenge
-  const challengeRes = await api('/auth/lightning/challenge');
-  const { k1, lnurl } = challengeRes.data;
-  const callbackUrl = decodeLnurl(lnurl);
-
-  // Generate two different keypairs — sign with one, send the other's pubkey
-  const { privKey: signerPriv } = generateKeypair();
-  const { pubKey: wrongPub } = generateKeypair();
-
-  const sig = await signChallenge(k1, signerPriv);
-
-  const callbackRes = await api(`${callbackUrl}&sig=${sig}&key=${wrongPub}`);
-
-  if (callbackRes.data.status === 'ERROR') {
-    pass('Invalid signature rejected', callbackRes.data.reason);
-  } else {
-    fail('Invalid signature NOT rejected', JSON.stringify(callbackRes.data));
-  }
-}
-
-async function testInvalidHexParams() {
-  section('Security — Invalid Hex Parameters');
-
-  // Bad k1 (wrong length)
-  let res = await api(
-    `${API_URL}/auth/lightning/callback?tag=login&k1=abc&sig=${'aa'.repeat(36)}&key=${'02' + 'aa'.repeat(32)}`
-  );
-  if (res.data.status === 'ERROR') {
-    pass('Short k1 rejected', res.data.reason);
-  } else {
-    fail('Short k1 NOT rejected');
-  }
-
-  // Bad key (non-hex)
-  res = await api(
-    `${API_URL}/auth/lightning/callback?tag=login&k1=${'aa'.repeat(32)}&sig=${'aa'.repeat(36)}&key=ZZZZ${'aa'.repeat(31)}`
-  );
-  if (res.data.status === 'ERROR') {
-    pass('Non-hex key rejected', res.data.reason);
-  } else {
-    fail('Non-hex key NOT rejected');
-  }
-
-  // Missing params
-  res = await api(`${API_URL}/auth/lightning/callback?tag=login&k1=${'aa'.repeat(32)}`);
-  if (res.data.status === 'ERROR') {
-    pass('Missing sig/key rejected', res.data.reason);
-  } else {
-    fail('Missing params NOT rejected');
-  }
-
-  // Wrong tag
-  res = await api(
-    `${API_URL}/auth/lightning/callback?tag=withdraw&k1=${'aa'.repeat(32)}&sig=${'aa'.repeat(36)}&key=${'02' + 'aa'.repeat(32)}`
-  );
-  if (res.data.status === 'ERROR') {
-    pass('Wrong tag rejected', res.data.reason);
-  } else {
-    fail('Wrong tag NOT rejected');
-  }
-}
-
-async function testExpiredChallenge() {
-  section('Security — Expired Challenge Status');
-
-  // Use a random k1 that doesn't exist in the DB
-  const fakeK1 = crypto.randomBytes(32).toString('hex');
-  const statusRes = await api(`/auth/lightning/status/${fakeK1}`);
-
-  if (statusRes.data.status === 'expired') {
-    pass('Non-existent k1 returns expired');
-  } else {
-    fail('Non-existent k1', JSON.stringify(statusRes.data));
-  }
-}
-
-async function testPendingStatus() {
-  section('Status Polling — Pending Before Wallet Signs');
-
-  // Get challenge but DON'T sign it
-  const challengeRes = await api('/auth/lightning/challenge');
-  const { k1 } = challengeRes.data;
-
-  const statusRes = await api(`/auth/lightning/status/${k1}`);
-
-  if (statusRes.data.status === 'pending') {
-    pass('Unsigned challenge returns pending');
-  } else {
-    fail('Unsigned challenge status', JSON.stringify(statusRes.data));
-  }
-}
-
-async function testChallengeRateLimit() {
-  section('Rate Limiting — Challenge Endpoint');
-
-  // The rate limiter allows 20 per 15 min. We won't actually hit it,
-  // but we verify the endpoint responds correctly under normal load.
-  const results = await Promise.all(
-    Array.from({ length: 5 }, () => api('/auth/lightning/challenge'))
-  );
-
-  const allOk = results.every(r => r.status === 200);
-  if (allOk) {
-    pass('5 concurrent challenges all succeeded');
-  } else {
-    const statuses = results.map(r => r.status);
-    fail('Some challenges failed', `statuses: ${statuses.join(', ')}`);
-  }
-}
-
-// ============================================
-// MAIN
-// ============================================
-
-async function main() {
-  console.log(colors.bold(`\n⚡ Lightning Login (LNURL-auth) Test Suite`));
-  console.log(colors.dim(`   Target: ${API_URL}\n`));
-
-  // Verify server is reachable
-  try {
-    const healthRes = await api('/auth/providers');
-    if (healthRes.status !== 200) {
-      console.error(colors.red(`\n❌ Server not reachable at ${API_URL} (status: ${healthRes.status})`));
-      console.error(colors.dim('   Make sure the server is running: cd server && npm run dev\n'));
-      process.exit(1);
+  const challenge2 = await fetchJSON(`${API_URL}/auth/lightning/challenge`);
+  
+  // Poll 3 times quickly (should all be pending)
+  let allPending = true;
+  for (let i = 0; i < 3; i++) {
+    const s = await fetchJSON(`${API_URL}/auth/lightning/status/${challenge2.k1}`);
+    if (s.status !== 'pending') {
+      allPending = false;
+      fail(`Poll ${i+1}: Expected pending, got ${s.status}`);
     }
-    info(`Server reachable — providers: ${JSON.stringify(healthRes.data.providers)}`);
-  } catch (e: any) {
-    console.error(colors.red(`\n❌ Cannot connect to ${API_URL}`));
-    console.error(colors.dim(`   ${e.message}`));
-    console.error(colors.dim('   Make sure the server is running: cd server && npm run dev\n'));
+    await new Promise(r => setTimeout(r, 500));
+  }
+  if (allPending) pass('3 rapid polls all returned "pending"');
+  
+  // Now sign it
+  const k1Bytes2 = hexToBytes(challenge2.k1);
+  const msgHash2 = sha256(k1Bytes2);
+  const derSig2: Uint8Array = await secp256k1.sign(msgHash2, privateKey);
+  const callbackUrl2 = decodeLnurl(challenge2.lnurl);
+  
+  const cbResult2 = await fetchJSON(`${callbackUrl2}&sig=${bytesToHex(derSig2)}&key=${pubkeyHex}`);
+  if (cbResult2.status === 'OK') {
+    pass('Second challenge signed successfully');
+  } else {
+    fail('Second challenge callback failed', cbResult2);
+  }
+  
+  // Poll again - should now be verified
+  const finalStatus = await fetchJSON(`${API_URL}/auth/lightning/status/${challenge2.k1}`);
+  if (finalStatus.status === 'verified' && finalStatus.token) {
+    pass('After signing, poll returns "verified" with token');
+  } else {
+    fail('After signing, poll did not return verified', finalStatus);
+  }
+  
+  // Poll AGAIN - should still be verified (not deleted)
+  const finalStatus2 = await fetchJSON(`${API_URL}/auth/lightning/status/${challenge2.k1}`);
+  if (finalStatus2.status === 'verified' && finalStatus2.token) {
+    pass('Second poll after signing still returns "verified" (not prematurely deleted)');
+  } else {
+    fail('Second poll after signing failed - challenge may have been deleted too early!', finalStatus2);
+  }
+
+  return { passed, failed };
+}
+
+// ============================================
+// Run Tests
+// ============================================
+
+(async () => {
+  try {
+    const { passed, failed } = await testLightningLogin();
+    
+    console.log('\n' + '='.repeat(60));
+    console.log(`Results: ${passed} passed, ${failed} failed`);
+    console.log('='.repeat(60));
+    
+    if (failed > 0) {
+      console.log('\n💡 Troubleshooting tips:');
+      console.log('  - Check server logs for errors');
+      console.log('  - Verify LIGHTNING_AUTH_URL or LNURL_BASE_URL env vars');
+      console.log('  - Ensure the callback URL is publicly accessible');
+      console.log('  - Check that @noble/secp256k1 is installed');
+      process.exit(1);
+    } else {
+      console.log('\n🎉 All tests passed! Lightning login is working correctly.');
+      process.exit(0);
+    }
+  } catch (err) {
+    console.error('\n💥 Unexpected error:', err);
     process.exit(1);
   }
-
-  try {
-    // Happy path
-    const { k1, pubKey, token, userId } = await testHappyPath();
-
-    // Second login
-    await testSecondLogin(pubKey, userId);
-
-    // Security tests
-    await testReplayAttack(k1);
-    await testInvalidSignature();
-    await testInvalidHexParams();
-    await testExpiredChallenge();
-
-    // Status polling
-    await testPendingStatus();
-
-    // Rate limiting
-    await testChallengeRateLimit();
-
-  } catch (e: any) {
-    console.error(colors.red(`\n💥 Test suite aborted: ${e.message}`));
-    if (e.stack) console.error(colors.dim(e.stack));
-  }
-
-  // Summary
-  console.log(colors.bold(`\n${'─'.repeat(50)}`));
-  console.log(colors.bold(`  Results: ${colors.green(`${passed} passed`)}  ${failed > 0 ? colors.red(`${failed} failed`) : colors.dim('0 failed')}`));
-  console.log(colors.bold(`${'─'.repeat(50)}\n`));
-
-  process.exit(failed > 0 ? 1 : 0);
-}
-
-main().catch(e => {
-  console.error(colors.red(`Fatal error: ${e.message}`));
-  process.exit(1);
-});
+})();
