@@ -3,7 +3,18 @@ import { bech32 } from 'bech32';
 import * as secp256k1 from '@noble/secp256k1';
 import prisma from '../lib/prisma';
 
-const LIGHTNING_AUTH_URL = process.env.LIGHTNING_AUTH_URL || 'http://localhost:3001/api/auth/lightning';
+// Derive the Lightning auth callback URL from available env vars.
+// LNURL_BASE_URL is the public API URL (required for withdrawals too),
+// so we can derive the auth callback from it to avoid a separate env var.
+const LIGHTNING_AUTH_URL = process.env.LIGHTNING_AUTH_URL 
+  || (process.env.LNURL_BASE_URL ? `${process.env.LNURL_BASE_URL}/auth/lightning` : null)
+  || 'http://localhost:3001/api/auth/lightning';
+
+// Log the resolved URL at startup so misconfiguration is immediately visible
+console.log(`[Lightning Auth] Callback URL base: ${LIGHTNING_AUTH_URL}`);
+if (!process.env.LIGHTNING_AUTH_URL && !process.env.LNURL_BASE_URL) {
+  console.warn('[Lightning Auth] WARNING: Neither LIGHTNING_AUTH_URL nor LNURL_BASE_URL is set. Using localhost fallback — Lightning login will NOT work in production!');
+}
 
 // ============================================
 // LNURL-AUTH Implementation
@@ -136,11 +147,26 @@ export async function getChallengeStatus(k1: string): Promise<{
 
 /**
  * Clean up expired challenges (run periodically)
+ * 
+ * Only deletes challenges that are:
+ * - Expired AND not used (nobody signed them — safe to remove)
+ * - Used AND expired for more than 10 minutes (client had plenty of time to poll)
+ * 
+ * This prevents a race condition where the cleanup deletes a verified challenge
+ * before the client has polled for the status and received its JWT.
  */
 export async function cleanupExpiredChallenges(): Promise<number> {
+  const now = new Date();
+  const tenMinutesAgo = new Date(now.getTime() - 10 * 60 * 1000);
+
   const result = await prisma.lightningChallenge.deleteMany({
     where: {
-      expiresAt: { lt: new Date() },
+      OR: [
+        // Expired and never used — nobody signed, safe to delete
+        { expiresAt: { lt: now }, used: false },
+        // Used but expired more than 10 minutes ago — client had time to poll
+        { expiresAt: { lt: tenMinutesAgo }, used: true },
+      ],
     },
   });
   return result.count;
@@ -202,11 +228,16 @@ async function verifySignature(
     // so we pass sha256(k1) — which is what the wallet signed.
     const msgHash = sha256(message);
     
+    // noble/secp256k1 v1.x defaults to strict: true which rejects high-S
+    // signatures. Some Lightning wallets produce high-S sigs, so we must
+    // accept them by passing strict: false.
+    const opts = { strict: false };
+    
     // Primary: spec-compliant wallets that sign sha256(k1)
-    let result = secp256k1.verify(compactSig, msgHash, publicKey);
+    let result = secp256k1.verify(compactSig, msgHash, publicKey, opts);
     if (!result) {
       // Fallback: some wallets sign k1 directly (already 32 bytes)
-      result = secp256k1.verify(compactSig, message, publicKey);
+      result = secp256k1.verify(compactSig, message, publicKey, opts);
     }
     
     return result;

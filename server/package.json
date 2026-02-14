@@ -9,7 +9,8 @@
     "start": "node dist/index.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "test:lightning": "ts-node-dev --transpile-only scripts/test-lightning-login.ts"
   },
   "keywords": [
     "poker",
