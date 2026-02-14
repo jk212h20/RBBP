@@ -8,10 +8,12 @@ The application is **live and deployed on Railway** with all core features funct
 ## Recent Work (Feb 2026)
 
 ### Feb 14 — Lightning Login Security Audit, Total Entrants Dynamic Slots, Logo Fix, Blue Background Site-wide, Venue Applications, Profile Image & Bio, Registration Close Cutoff, Enhanced Event Panels & CSV Exports
-- **Lightning Login Security Audit**: Audited and hardened the LNURL-auth flow across 3 files:
+- **Lightning Login Security Audit**: Audited and hardened the LNURL-auth flow across 5 files:
   - `auth.service.ts`: Added `isActive` check in `findOrCreateLightningUser` — deactivated users now get 403 instead of a valid JWT
-  - `lightning.service.ts`: Added `consume` parameter to `getChallengeStatus()` — verified challenges are deleted after token issuance, preventing replay attacks. Removed verbose debug logging from `verifySignature()`.
-  - `auth.routes.ts`: Both `/lightning/status/:k1` and `/link-lightning/status/:k1` now pass `consume: true`. Removed 8 verbose `console.log` statements from link-lightning status route that were leaking k1 values and pubkeys to logs.
+  - `lightning.service.ts`: Added `consume` parameter to `getChallengeStatus()` — verified challenges are deleted after token issuance, preventing replay attacks. Removed verbose debug logging from `verifySignature()`. Added `cleanupExpiredChallenges()` function to purge stale challenges.
+  - `auth.routes.ts`: Both `/lightning/status/:k1` and `/link-lightning/status/:k1` now pass `consume: true`. Added hex format validation on callback params (k1: 64 hex, key: 66/130 hex, sig: 8-144 hex). Added `lightningStatusLimiter` to both status polling endpoints. Removed 8 verbose `console.log` statements from link-lightning status route that were leaking k1 values and pubkeys to logs.
+  - `rateLimiter.ts`: Added `lightningStatusLimiter` (200 req / 5 min) to prevent brute-force k1 guessing on status endpoints.
+  - `index.ts`: Wired up `cleanupExpiredChallenges()` on a 10-minute interval to prevent unbounded in-DB challenge accumulation.
 - **Total Entrants → Dynamic Extra Player Slots**: When admin/TD sets total entrants higher than attended registered players, blank search-by-typing dropdown slots appear automatically in the TD panel. These slots let the TD assign unregistered players (walk-ins) to the extra positions. Key behaviors:
   - Setting total entrants immediately recalculates the points preview locally (60/30/10 split)
   - Extra slots needed = totalEntrants - attendedRegisteredCount (filled extra slots count toward this total, remaining are blank search fields)

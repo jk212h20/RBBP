@@ -13,6 +13,7 @@ import standingsRoutes from './routes/standings.routes';
 import adminRoutes from './routes/admin.routes';
 import withdrawalRoutes from './routes/withdrawal.routes';
 import lnurlRoutes from './routes/lnurl.routes';
+import { cleanupExpiredChallenges } from './services/lightning.service';
 import balanceRoutes from './routes/balance.routes';
 import faqRoutes from './routes/faq.routes';
 import venueApplicationRoutes from './routes/venue-application.routes';
@@ -218,6 +219,17 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
   });
 });
+
+// ============================================
+// BACKGROUND JOBS
+// ============================================
+
+// Clean up expired lightning challenges every 10 minutes
+setInterval(() => {
+  cleanupExpiredChallenges().catch(err => 
+    console.error('Lightning challenge cleanup error:', err)
+  );
+}, 10 * 60 * 1000);
 
 // ============================================
 // START SERVER

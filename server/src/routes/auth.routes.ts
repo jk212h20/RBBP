@@ -22,7 +22,7 @@ import {
 import { authenticate } from '../middleware/auth.middleware';
 import { registerSchema, loginSchema, updateProfileSchema } from '../validators/auth.validator';
 import { isGoogleConfigured } from '../config/passport';
-import { loginLimiter, lightningChallengeLimiter } from '../middleware/rateLimiter';
+import { loginLimiter, lightningChallengeLimiter, lightningStatusLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
@@ -184,6 +184,17 @@ router.get('/lightning/callback', async (req: Request, res: Response) => {
       return;
     }
 
+    // Validate hex format: k1 must be 64 hex chars, key must be 66 hex chars (compressed pubkey), sig is variable-length DER
+    const hexRegex = /^[0-9a-f]+$/i;
+    if (
+      typeof k1 !== 'string' || k1.length !== 64 || !hexRegex.test(k1) ||
+      typeof key !== 'string' || (key.length !== 66 && key.length !== 130) || !hexRegex.test(key) ||
+      typeof sig !== 'string' || sig.length < 8 || sig.length > 144 || !hexRegex.test(sig)
+    ) {
+      res.json({ status: 'ERROR', reason: 'Invalid parameter format' });
+      return;
+    }
+
     // Verify the signature
     const result = await verifyChallenge(
       k1 as string,
@@ -208,7 +219,7 @@ router.get('/lightning/callback', async (req: Request, res: Response) => {
  * GET /api/auth/lightning/status/:k1
  * Check if a challenge has been verified (poll from frontend)
  */
-router.get('/lightning/status/:k1', async (req: Request, res: Response) => {
+router.get('/lightning/status/:k1', lightningStatusLimiter, async (req: Request, res: Response) => {
   try {
     const { k1 } = req.params;
     const status = await getChallengeStatus(k1);
@@ -393,7 +404,7 @@ router.get('/link-lightning/challenge', authenticate, lightningChallengeLimiter,
  * GET /api/auth/link-lightning/status/:k1
  * Check if challenge is verified and link to current account
  */
-router.get('/link-lightning/status/:k1', authenticate, async (req: Request, res: Response) => {
+router.get('/link-lightning/status/:k1', authenticate, lightningStatusLimiter, async (req: Request, res: Response) => {
   try {
     const { k1 } = req.params;
     const status = await getChallengeStatus(k1);
