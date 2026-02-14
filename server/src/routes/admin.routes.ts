@@ -908,6 +908,105 @@ router.get('/export/points-history', authenticate, requireAdmin, async (_req: Re
   }
 });
 
+// POST /api/admin/apply-pending-migrations - Apply all pending schema changes directly
+router.post('/apply-pending-migrations', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const results: string[] = [];
+
+    // Migration 1: registrationCloseMinutes on events
+    try {
+      await prisma.$executeRaw`ALTER TABLE "events" ADD COLUMN IF NOT EXISTS "registrationCloseMinutes" INTEGER NOT NULL DEFAULT 30`;
+      results.push('✅ events.registrationCloseMinutes added');
+    } catch (e: any) {
+      results.push(`⚠️ events.registrationCloseMinutes: ${e.message}`);
+    }
+
+    // Migration 2: profileImage on profiles
+    try {
+      await prisma.$executeRaw`ALTER TABLE "profiles" ADD COLUMN IF NOT EXISTS "profileImage" TEXT`;
+      results.push('✅ profiles.profileImage added');
+    } catch (e: any) {
+      results.push(`⚠️ profiles.profileImage: ${e.message}`);
+    }
+
+    // Migration 3: venue_applications table + enum
+    try {
+      await prisma.$executeRaw`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'VenueApplicationStatus') THEN CREATE TYPE "VenueApplicationStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED'); END IF; END $$`;
+      results.push('✅ VenueApplicationStatus enum created');
+    } catch (e: any) {
+      results.push(`⚠️ VenueApplicationStatus enum: ${e.message}`);
+    }
+
+    try {
+      await prisma.$executeRaw`
+        CREATE TABLE IF NOT EXISTS "venue_applications" (
+          "id" TEXT NOT NULL,
+          "name" TEXT NOT NULL,
+          "address" TEXT NOT NULL,
+          "description" TEXT,
+          "imageUrl" TEXT,
+          "phone" TEXT,
+          "email" TEXT,
+          "contactName" TEXT NOT NULL,
+          "contactEmail" TEXT,
+          "contactPhone" TEXT,
+          "status" "VenueApplicationStatus" NOT NULL DEFAULT 'PENDING',
+          "submittedById" TEXT NOT NULL,
+          "reviewedById" TEXT,
+          "reviewedAt" TIMESTAMP(3),
+          "rejectionReason" TEXT,
+          "venueId" TEXT,
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" TIMESTAMP(3) NOT NULL,
+          CONSTRAINT "venue_applications_pkey" PRIMARY KEY ("id")
+        )
+      `;
+      results.push('✅ venue_applications table created');
+    } catch (e: any) {
+      results.push(`⚠️ venue_applications table: ${e.message}`);
+    }
+
+    // Add foreign keys (ignore if already exist)
+    try {
+      await prisma.$executeRaw`ALTER TABLE "venue_applications" ADD CONSTRAINT "venue_applications_submittedById_fkey" FOREIGN KEY ("submittedById") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE`;
+      results.push('✅ venue_applications FK submittedById added');
+    } catch (e: any) {
+      if (e.message?.includes('already exists')) {
+        results.push('⚠️ venue_applications FK submittedById already exists');
+      } else {
+        results.push(`⚠️ venue_applications FK submittedById: ${e.message}`);
+      }
+    }
+
+    try {
+      await prisma.$executeRaw`ALTER TABLE "venue_applications" ADD CONSTRAINT "venue_applications_reviewedById_fkey" FOREIGN KEY ("reviewedById") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE`;
+      results.push('✅ venue_applications FK reviewedById added');
+    } catch (e: any) {
+      if (e.message?.includes('already exists')) {
+        results.push('⚠️ venue_applications FK reviewedById already exists');
+      } else {
+        results.push(`⚠️ venue_applications FK reviewedById: ${e.message}`);
+      }
+    }
+
+    try {
+      await prisma.$executeRaw`ALTER TABLE "venue_applications" ADD CONSTRAINT "venue_applications_venueId_fkey" FOREIGN KEY ("venueId") REFERENCES "venues"("id") ON DELETE SET NULL ON UPDATE CASCADE`;
+      results.push('✅ venue_applications FK venueId added');
+    } catch (e: any) {
+      if (e.message?.includes('already exists')) {
+        results.push('⚠️ venue_applications FK venueId already exists');
+      } else {
+        results.push(`⚠️ venue_applications FK venueId: ${e.message}`);
+      }
+    }
+
+    res.json({ message: 'Pending migrations applied', results });
+  } catch (error: any) {
+    console.error('Error applying migrations:', error);
+    res.status(500).json({ error: `Migration failed: ${error.message}` });
+  }
+});
+
 // GET /api/admin/migration-status - Check if points migration has been applied
 router.get('/migration-status', authenticate, requireAdmin, async (req: Request, res: Response) => {
   try {
