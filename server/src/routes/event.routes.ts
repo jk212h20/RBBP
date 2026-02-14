@@ -207,11 +207,26 @@ router.delete('/:id', authenticate, requireAdmin, async (req: Request, res: Resp
 /**
  * POST /api/events/:id/signup
  * Sign up for an event (authenticated users)
+ * Non-admin users are blocked if registration has closed (registrationCloseMinutes before event)
  */
 router.post('/:id/signup', authenticate, async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    // Check registration close time for non-admin users
+    if (req.user.role !== 'ADMIN') {
+      const event = await prisma.event.findUnique({
+        where: { id: req.params.id },
+        select: { dateTime: true, registrationCloseMinutes: true },
+      });
+      if (event) {
+        const closeTime = new Date(event.dateTime.getTime() - (event.registrationCloseMinutes ?? 30) * 60 * 1000);
+        if (new Date() >= closeTime) {
+          return res.status(400).json({ error: 'Registration has closed for this event' });
+        }
+      }
     }
     
     const signup = await eventService.signupForEvent(req.params.id, req.user.userId);
@@ -225,11 +240,26 @@ router.post('/:id/signup', authenticate, async (req: Request, res: Response) => 
 /**
  * DELETE /api/events/:id/signup
  * Cancel signup for an event (authenticated users)
+ * Non-admin users are blocked if registration has closed (registrationCloseMinutes before event)
  */
 router.delete('/:id/signup', authenticate, async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    // Check registration close time for non-admin users
+    if (req.user.role !== 'ADMIN') {
+      const event = await prisma.event.findUnique({
+        where: { id: req.params.id },
+        select: { dateTime: true, registrationCloseMinutes: true },
+      });
+      if (event) {
+        const closeTime = new Date(event.dateTime.getTime() - (event.registrationCloseMinutes ?? 30) * 60 * 1000);
+        if (new Date() >= closeTime) {
+          return res.status(400).json({ error: 'Registration has closed for this event. You can no longer unregister.' });
+        }
+      }
     }
     
     await eventService.cancelSignup(req.params.id, req.user.userId);

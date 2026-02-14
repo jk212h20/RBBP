@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import MobileNav from '@/components/MobileNav';
 import { useAuth } from '@/context/AuthContext';
@@ -11,12 +11,14 @@ interface Event {
   name: string;
   description?: string;
   dateTime: string;
+  imageUrl?: string;
   maxPlayers: number;
   buyIn?: number;
   status: string;
   venue: {
     id: string;
     name: string;
+    address?: string;
   };
   season: {
     id: string;
@@ -36,12 +38,35 @@ interface Season {
   isActive: boolean;
 }
 
+/** Calculate possible points pool based on signup count (same formula as server) */
+function calculatePossiblePoints(signupCount: number): number {
+  const extraPlayers = Math.max(0, signupCount - 10);
+  return 10 + extraPlayers * 2;
+}
+
+/** Format a countdown string from now until the target date */
+function formatCountdown(targetDate: Date): string {
+  const now = new Date();
+  const diff = targetDate.getTime() - now.getTime();
+
+  if (diff <= 0) return 'Starting now';
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
+
 export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [selectedSeason, setSelectedSeason] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [, setTick] = useState(0); // for countdown re-renders
   const { isAuthenticated, user } = useAuth();
 
   useEffect(() => {
@@ -51,6 +76,12 @@ export default function EventsPage() {
   useEffect(() => {
     loadEvents();
   }, [selectedSeason]);
+
+  // Tick every 60s to update countdowns
+  useEffect(() => {
+    const interval = setInterval(() => setTick((t) => t + 1), 60_000);
+    return () => clearInterval(interval);
+  }, []);
 
   const loadSeasons = async () => {
     try {
@@ -158,6 +189,8 @@ export default function EventsPage() {
     return badges[status] || 'bg-gray-100 text-gray-800';
   };
 
+  const isUpcoming = (event: Event) => new Date(event.dateTime) > new Date();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-black">
       <MobileNav currentPage="events" />
@@ -202,69 +235,114 @@ export default function EventsPage() {
           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {events.map((event) => (
-              <div
-                key={event.id}
-                className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 overflow-hidden hover:border-green-500/50 transition"
-              >
-                <div className="p-6">
-                  <div className="flex justify-between items-start mb-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(event.status)}`}>
-                      {event.status.replace('_', ' ')}
-                    </span>
-                    {event.buyIn && (
-                      <span className="text-yellow-400 font-bold">${event.buyIn}</span>
-                    )}
-                  </div>
-                  
-                  <h3 className="text-xl font-bold text-white mb-2">{event.name}</h3>
-                  
-                  <div className="space-y-2 text-sm text-green-200">
-                    <p className="flex items-center gap-2">
-                      📅 {formatDate(event.dateTime)}
-                    </p>
-                    <p className="flex items-center gap-2">
-                      📍 {event.venue.name}
-                    </p>
-                    <p className="flex items-center gap-2">
-                      👥 {event._count.signups} / {event.maxPlayers} players
-                    </p>
-                  </div>
+            {events.map((event) => {
+              const signupCount = event._count.signups;
+              const possiblePoints = calculatePossiblePoints(signupCount);
+              const eventDate = new Date(event.dateTime);
+              const upcoming = isUpcoming(event);
 
-                  {event.description && (
-                    <p className="mt-3 text-green-300/70 text-sm line-clamp-2">
-                      {event.description}
-                    </p>
+              return (
+                <div
+                  key={event.id}
+                  className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 overflow-hidden hover:border-green-500/50 transition"
+                >
+                  {/* Thumbnail image */}
+                  {event.imageUrl && (
+                    <div className="w-full h-40 overflow-hidden">
+                      <img
+                        src={event.imageUrl}
+                        alt={event.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
                   )}
 
-                  <div className="mt-4 flex gap-2">
-                    <Link
-                      href={`/events/${event.id}`}
-                      className="flex-1 text-center bg-green-600/20 text-green-400 py-2 rounded-lg hover:bg-green-600/30 transition"
-                    >
-                      View Details
-                    </Link>
-                    {(event.status === 'SCHEDULED' || event.status === 'REGISTRATION_OPEN') && (
-                      isUserSignedUp(event) ? (
-                        <button
-                          onClick={() => handleCancelSignup(event.id)}
-                          className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition"
-                        >
-                          Unregister
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleSignup(event.id)}
-                          className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition"
-                        >
-                          Sign Up
-                        </button>
-                      )
+                  <div className="p-6">
+                    {/* Status badge + buy-in row */}
+                    <div className="flex justify-between items-start mb-3">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(event.status)}`}>
+                        {event.status.replace('_', ' ')}
+                      </span>
+                      {event.buyIn && (
+                        <span className="text-yellow-400 font-bold">${event.buyIn}</span>
+                      )}
+                    </div>
+                    
+                    {/* Event name */}
+                    <h3 className="text-xl font-bold text-white mb-2">{event.name}</h3>
+                    
+                    {/* Event info */}
+                    <div className="space-y-2 text-sm text-green-200">
+                      <p className="flex items-center gap-2">
+                        📅 {formatDate(event.dateTime)}
+                      </p>
+                      <p className="flex items-center gap-2">
+                        📍 {event.venue.name}
+                        {event.venue.address && (
+                          <span className="text-green-300/60">— {event.venue.address}</span>
+                        )}
+                      </p>
+
+                      {/* Countdown */}
+                      {upcoming && (
+                        <p className="flex items-center gap-2 text-yellow-300">
+                          ⏱️ {formatCountdown(eventDate)}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Player count (large) + Points row */}
+                    <div className="mt-4 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">👥</span>
+                        <span className="text-2xl font-bold text-white">
+                          {signupCount} / {event.maxPlayers}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-yellow-500/20 px-3 py-1.5 rounded-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-yellow-300">
+                          <path d="M3 13h18v7a1 1 0 01-1 1H4a1 1 0 01-1-1v-7zm0-2V8a3 3 0 013-3h2V3h2v2h4V3h2v2h2a3 3 0 013 3v3H3zm9 4a1 1 0 00-1 1v2h2v-2a1 1 0 00-1-1z"/>
+                        </svg>
+                        <span className="text-yellow-300 font-bold text-sm">{possiblePoints} pts</span>
+                      </div>
+                    </div>
+
+                    {event.description && (
+                      <p className="mt-3 text-green-300/70 text-sm line-clamp-2">
+                        {event.description}
+                      </p>
                     )}
+
+                    {/* Action buttons */}
+                    <div className="mt-4 flex gap-2">
+                      <Link
+                        href={`/events/${event.id}`}
+                        className="flex-1 text-center bg-green-600/20 text-green-400 py-2 rounded-lg hover:bg-green-600/30 transition"
+                      >
+                        View Details
+                      </Link>
+                      {(event.status === 'SCHEDULED' || event.status === 'REGISTRATION_OPEN') && (
+                        isUserSignedUp(event) ? (
+                          <button
+                            onClick={() => handleCancelSignup(event.id)}
+                            className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition"
+                          >
+                            Unregister
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleSignup(event.id)}
+                            className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition"
+                          >
+                            Sign Up
+                          </button>
+                        )
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import MobileNav from '@/components/MobileNav';
@@ -11,7 +11,8 @@ interface UpcomingEvent {
   id: string;
   name: string;
   dateTime: string;
-  venue: { name: string };
+  imageUrl?: string | null;
+  venue: { name: string; address?: string };
   _count: { signups: number };
   maxPlayers: number;
 }
@@ -22,11 +23,41 @@ interface TopPlayer {
   wins: number;
 }
 
+// Calculate possible points for an event (same formula as server)
+function calculatePossiblePoints(maxPlayers: number) {
+  const extraPlayers = Math.max(0, maxPlayers - 10);
+  return 10 + (extraPlayers * 2);
+}
+
+// Format countdown string from now until event time
+function formatCountdown(dateString: string): string {
+  const now = new Date().getTime();
+  const eventTime = new Date(dateString).getTime();
+  const diff = eventTime - now;
+
+  if (diff <= 0) return 'Starting now!';
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
+
 export default function HomePage() {
   const { isAuthenticated, loading } = useAuth();
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
   const [topPlayers, setTopPlayers] = useState<TopPlayer[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [, setTick] = useState(0);
+
+  // Tick every 60s to update countdowns
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     loadHomeData();
@@ -83,7 +114,7 @@ export default function HomePage() {
           />
           <div className="text-center md:text-left">
             <h1 className="text-5xl md:text-7xl font-bold text-white mb-4">
-              Welcome to RBBP
+              Welcome to Roatan Bitcoin Bar Poker
             </h1>
             <p className="text-xl md:text-2xl text-white/80 max-w-2xl">
               Play in free tournaments, win real bitcoin
@@ -108,21 +139,62 @@ export default function HomePage() {
             ) : upcomingEvents.length === 0 ? (
               <p className="text-white/60 text-center py-8">No upcoming events</p>
             ) : (
-              <div className="space-y-3">
-                {upcomingEvents.map((event) => (
-                  <Link
-                    key={event.id}
-                    href={`/events/${event.id}`}
-                    className="block p-4 bg-white/5 rounded-xl hover:bg-white/10 transition"
-                  >
-                    <h3 className="text-white font-semibold">{event.name}</h3>
-                    <div className="flex justify-between text-sm text-white/60 mt-1">
-                      <span>📍 {event.venue.name}</span>
-                      <span>👥 {event._count.signups}/{event.maxPlayers}</span>
-                    </div>
-                    <p className="text-green-400 text-sm mt-1">{formatDate(event.dateTime)}</p>
-                  </Link>
-                ))}
+              <div className="space-y-4">
+                {upcomingEvents.map((event) => {
+                  const possiblePoints = calculatePossiblePoints(event.maxPlayers);
+                  return (
+                    <Link
+                      key={event.id}
+                      href={`/events/${event.id}`}
+                      className="block bg-white/5 rounded-xl hover:bg-white/10 transition overflow-hidden"
+                    >
+                      {/* Thumbnail image if exists */}
+                      {event.imageUrl && (
+                        <div className="w-full h-32 relative">
+                          <Image
+                            src={event.imageUrl}
+                            alt={event.name}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                      )}
+                      <div className="p-4">
+                        <div className="flex justify-between items-start">
+                          <h3 className="text-white font-semibold text-lg">{event.name}</h3>
+                          {/* Countdown badge */}
+                          <span className="bg-green-600/30 text-green-300 text-xs font-bold px-2 py-1 rounded-lg whitespace-nowrap ml-2">
+                            ⏱ {formatCountdown(event.dateTime)}
+                          </span>
+                        </div>
+
+                        {/* Venue name & address */}
+                        <p className="text-white/60 text-sm mt-1">📍 {event.venue.name}</p>
+                        {event.venue.address && (
+                          <p className="text-white/40 text-xs ml-5">{event.venue.address}</p>
+                        )}
+
+                        {/* Date */}
+                        <p className="text-green-400 text-sm mt-2">{formatDate(event.dateTime)}</p>
+
+                        {/* Players & Points row */}
+                        <div className="flex justify-between items-center mt-3">
+                          {/* Player count - larger font */}
+                          <span className="text-white font-bold text-xl">
+                            👥 {event._count.signups}/{event.maxPlayers}
+                          </span>
+                          {/* Treasure chest with possible points */}
+                          <span className="flex items-center gap-1 bg-yellow-600/20 text-yellow-300 font-bold text-sm px-3 py-1 rounded-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                              <path d="M3 13h18v7a1 1 0 01-1 1H4a1 1 0 01-1-1v-7zm0-2V8a3 3 0 013-3h2V3h2v2h4V3h2v2h2a3 3 0 013 3v3H3zm9 4a1 1 0 00-1 1v2h2v-2a1 1 0 00-1-1z"/>
+                            </svg>
+                            {possiblePoints} pts
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </div>

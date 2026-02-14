@@ -92,6 +92,16 @@ export const authAPI = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  // Profile details (bio, profileImage)
+  getProfileDetails: () =>
+    fetchAPI<{ profile: { bio: string; profileImage: string | null } }>('/auth/profile/details'),
+
+  updateProfileDetails: (data: { bio?: string; profileImage?: string | null }) =>
+    fetchAPI<{ message: string; profile: { bio: string; profileImage: string | null } }>('/auth/profile/details', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
 };
 
 // Google OAuth URL
@@ -524,6 +534,51 @@ export const faqAPI = {
 
   delete: (id: string) =>
     fetchAPI<{ message: string }>(`/faq/${id}`, { method: 'DELETE' }),
+};
+
+// ============================================
+// VENUE APPLICATIONS API
+// ============================================
+export const venueApplicationsAPI = {
+  submit: (data: {
+    name: string;
+    address: string;
+    description?: string;
+    imageUrl?: string | null;
+    phone?: string;
+    email?: string;
+    contactName: string;
+    contactEmail?: string;
+    contactPhone?: string;
+  }) =>
+    fetchAPI<any>('/venue-applications', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getMine: () => fetchAPI<any[]>('/venue-applications/mine'),
+
+  // Admin
+  getAll: (status?: string) => {
+    const query = status ? `?status=${status}` : '';
+    return fetchAPI<any[]>(`/venue-applications${query}`);
+  },
+
+  getById: (id: string) => fetchAPI<any>(`/venue-applications/${id}`),
+
+  getPendingCount: () => fetchAPI<{ count: number }>('/venue-applications/pending-count'),
+
+  approve: (id: string) =>
+    fetchAPI<any>(`/venue-applications/${id}/approve`, { method: 'POST' }),
+
+  reject: (id: string, rejectionReason?: string) =>
+    fetchAPI<any>(`/venue-applications/${id}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ rejectionReason }),
+    }),
+
+  delete: (id: string) =>
+    fetchAPI<{ message: string }>(`/venue-applications/${id}`, { method: 'DELETE' }),
 };
 
 // Default export for simple usage

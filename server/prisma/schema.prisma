@@ -70,16 +70,19 @@ model User {
   comments          Comment[]
   withdrawals       Withdrawal[]
   pointsHistory     PointsHistory[]
+  venueApplicationsSubmitted VenueApplication[] @relation("VenueApplicationSubmitter")
+  venueApplicationsReviewed  VenueApplication[] @relation("VenueApplicationReviewer")
 
   @@map("users")
 }
 
 model Profile {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  bio         String?
-  phone       String?
-  socialLinks Json?    // { facebook, twitter, instagram }
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  bio           String?
+  profileImage  String?  // Base64 encoded profile photo
+  phone         String?
+  socialLinks   Json?    // { facebook, twitter, instagram }
   
   // Stats (denormalized for quick access)
   totalEvents     Int @default(0)
@@ -116,8 +119,9 @@ model Venue {
   updatedAt   DateTime @updatedAt
 
   // Relations
-  manager User?   @relation("VenueManager", fields: [managerId], references: [id])
-  events  Event[]
+  manager            User?               @relation("VenueManager", fields: [managerId], references: [id])
+  events             Event[]
+  venueApplications  VenueApplication[]
 
   @@map("venues")
 }
@@ -169,6 +173,7 @@ model Event {
   imageUrl              String?     // Base64 encoded image or URL
   dateTime              DateTime
   registrationOpenDays  Int         @default(10)  // Days before event when registration opens
+  registrationCloseMinutes Int      @default(30)  // Minutes before event when registration closes (0 = never closes)
   maxPlayers            Int         @default(20)
   buyIn                 Float?      // Optional buy-in amount
   totalEntrants         Int?        // Manual override for total player count (for points calc)
@@ -399,6 +404,44 @@ model Faq {
   updatedAt DateTime @updatedAt
 
   @@map("faqs")
+}
+
+// ============================================
+// VENUE APPLICATIONS
+// ============================================
+
+enum VenueApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model VenueApplication {
+  id              String                 @id @default(cuid())
+  name            String                 // Proposed venue name
+  address         String
+  description     String?
+  imageUrl        String?
+  phone           String?
+  email           String?
+  contactName     String                 // Applicant contact name
+  contactEmail    String?                // Applicant contact email
+  contactPhone    String?                // Applicant contact phone
+  status          VenueApplicationStatus @default(PENDING)
+  submittedById   String                 // User who submitted
+  reviewedById    String?                // Admin who reviewed
+  reviewedAt      DateTime?
+  rejectionReason String?
+  venueId         String?                // Created venue ID (set on approval)
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  // Relations
+  submittedBy User  @relation("VenueApplicationSubmitter", fields: [submittedById], references: [id], onDelete: Cascade)
+  reviewedBy  User? @relation("VenueApplicationReviewer", fields: [reviewedById], references: [id])
+  venue       Venue? @relation(fields: [venueId], references: [id])
+
+  @@map("venue_applications")
 }
 
 // ============================================

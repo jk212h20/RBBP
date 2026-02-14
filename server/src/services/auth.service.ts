@@ -326,6 +326,43 @@ export async function addEmailToAccount(userId: string, email: string, password:
   };
 }
 
+/**
+ * Get profile details (bio, profileImage) for a user
+ */
+export async function getProfileDetails(userId: string) {
+  const profile = await prisma.profile.findUnique({
+    where: { userId },
+  });
+
+  return {
+    bio: profile?.bio || '',
+    profileImage: profile?.profileImage || null,
+  };
+}
+
+/**
+ * Update profile details (bio, profileImage) for a user
+ */
+export async function updateProfileDetails(userId: string, input: { bio?: string; profileImage?: string | null }) {
+  const profile = await prisma.profile.upsert({
+    where: { userId },
+    update: {
+      ...(input.bio !== undefined && { bio: input.bio }),
+      ...(input.profileImage !== undefined && { profileImage: input.profileImage }),
+    },
+    create: {
+      userId,
+      bio: input.bio || '',
+      profileImage: input.profileImage || null,
+    },
+  });
+
+  return {
+    bio: profile.bio,
+    profileImage: profile.profileImage,
+  };
+}
+
 // ============================================
 // GUEST CLAIM TOKEN
 // ============================================

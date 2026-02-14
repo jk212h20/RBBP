@@ -7,6 +7,8 @@ import {
   getUserById, 
   findOrCreateLightningUser,
   updateProfile,
+  updateProfileDetails,
+  getProfileDetails,
   linkLightningToAccount,
   addEmailToAccount,
   validateClaimToken,
@@ -295,6 +297,48 @@ router.put('/profile', authenticate, async (req: Request, res: Response) => {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to update profile';
+    res.status(400).json({ error: message });
+  }
+});
+
+/**
+ * GET /api/auth/profile/details
+ * Get profile details (bio, profileImage)
+ */
+router.get('/profile/details', authenticate, async (req: Request, res: Response) => {
+  try {
+    const profile = await getProfileDetails(req.user!.userId);
+    res.json({ profile });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to get profile details';
+    res.status(400).json({ error: message });
+  }
+});
+
+/**
+ * PUT /api/auth/profile/details
+ * Update profile details (bio, profileImage)
+ */
+router.put('/profile/details', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { bio, profileImage } = req.body;
+
+    // Validate profileImage size (max ~500KB base64 string)
+    if (profileImage && profileImage.length > 700000) {
+      res.status(400).json({ error: 'Profile image is too large. Please use an image under 500KB.' });
+      return;
+    }
+
+    // Validate bio length
+    if (bio && bio.length > 500) {
+      res.status(400).json({ error: 'Bio must be 500 characters or less.' });
+      return;
+    }
+
+    const profile = await updateProfileDetails(req.user!.userId, { bio, profileImage });
+    res.json({ message: 'Profile details updated', profile });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to update profile details';
     res.status(400).json({ error: message });
   }
 });

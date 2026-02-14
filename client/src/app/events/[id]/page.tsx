@@ -13,6 +13,7 @@ interface EventDetail {
   dateTime: string;
   maxPlayers: number;
   buyIn?: number;
+  registrationCloseMinutes?: number;
   status: string;
   venue: {
     id: string;
@@ -396,6 +397,13 @@ export default function EventDetailPage() {
   const canEnterResults = canManageEvent && (event.status === 'IN_PROGRESS' || event.status === 'REGISTRATION_OPEN' || event.status === 'SCHEDULED');
   const isFinalized = event.status === 'COMPLETED';
 
+  // Registration close check: non-admin users can't register/unregister after close time
+  const regCloseMinutes = event.registrationCloseMinutes ?? 30;
+  const regCloseTime = new Date(new Date(event.dateTime).getTime() - regCloseMinutes * 60 * 1000);
+  const isRegistrationClosed = new Date() >= regCloseTime;
+  const isAdmin = user?.role === 'ADMIN';
+  const playerRegBlocked = isRegistrationClosed && !isAdmin;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-black">
       {/* Header */}
@@ -498,8 +506,20 @@ export default function EventDetailPage() {
                 </div>
               )}
               
+              {/* Registration Closed Banner */}
+              {canSignup && playerRegBlocked && (
+                <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-3">
+                  <p className="text-red-400 font-medium">
+                    🔒 Registration closed
+                  </p>
+                  <p className="text-red-300/70 text-sm">
+                    Registration closed {regCloseMinutes} minutes before the event
+                  </p>
+                </div>
+              )}
+
               {/* Signup Button */}
-              {canSignup && (
+              {canSignup && !playerRegBlocked && (
                 <div className="pt-4">
                   {isSignedUp ? (
                     <div className="space-y-2">

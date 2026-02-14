@@ -10,6 +10,7 @@ import WithdrawalsTab from '@/components/WithdrawalsTab';
 import BalanceTab from '@/components/BalanceTab';
 import PointsTab from '@/components/PointsTab';
 import FaqTab from '@/components/FaqTab';
+import VenueApplicationsTab from '@/components/VenueApplicationsTab';
 
 interface Stats {
   users: number;
@@ -61,6 +62,7 @@ interface EventForm {
   seasonId: string;
   maxPlayers: number;
   buyIn: number;
+  registrationCloseMinutes: number;
 }
 
 interface BulkEventForm {
@@ -127,7 +129,7 @@ interface GuestUser {
 export default function AdminPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'overview' | 'venues' | 'seasons' | 'events' | 'users' | 'points' | 'balances' | 'withdrawals' | 'setup' | 'faq'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'venues' | 'seasons' | 'events' | 'users' | 'points' | 'balances' | 'withdrawals' | 'setup' | 'faq' | 'applications'>('overview');
   const [stats, setStats] = useState<Stats | null>(null);
   const [venues, setVenues] = useState<any[]>([]);
   const [seasons, setSeasons] = useState<any[]>([]);
@@ -153,7 +155,8 @@ export default function AdminPage() {
     venueId: '', 
     seasonId: '', 
     maxPlayers: 50, 
-    buyIn: 0 
+    buyIn: 0,
+    registrationCloseMinutes: 30
   });
   // Recurring event options (integrated into single form)
   const [isRecurring, setIsRecurring] = useState(false);
@@ -350,7 +353,7 @@ export default function AdminPage() {
       setMessage('');
       await eventsAPI.create(eventForm);
       setMessage('Event created successfully!');
-      setEventForm({ name: '', description: '', dateTime: '', venueId: '', seasonId: '', maxPlayers: 50, buyIn: 0 });
+      setEventForm({ name: '', description: '', dateTime: '', venueId: '', seasonId: '', maxPlayers: 50, buyIn: 0, registrationCloseMinutes: 30 });
       fetchStats();
     } catch (err: any) {
       setError(err.message || 'Failed to create event');
@@ -617,7 +620,7 @@ export default function AdminPage() {
         {/* Tabs - Scrollable on mobile */}
         <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
           <div className="flex gap-2 mb-6 border-b border-gray-700 pb-4 min-w-max">
-            {['overview', 'users', 'points', 'venues', 'seasons', 'events', 'balances', 'withdrawals', 'faq'].map((tab) => (
+            {['overview', 'users', 'points', 'venues', 'applications', 'seasons', 'events', 'balances', 'withdrawals', 'faq'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => {
@@ -635,7 +638,7 @@ export default function AdminPage() {
                     : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
               >
-                {tab === 'points' ? '🎯 Points' : tab === 'faq' ? '❓ FAQ' : tab}
+                {tab === 'points' ? '🎯 Points' : tab === 'faq' ? '❓ FAQ' : tab === 'applications' ? '🏢 Applications' : tab}
               </button>
             ))}
           </div>
@@ -1420,6 +1423,11 @@ export default function AdminPage() {
           <PointsTab setMessage={setMessage} setError={setError} />
         )}
 
+        {/* Venue Applications Tab */}
+        {activeTab === 'applications' && (
+          <VenueApplicationsTab setMessage={setMessage} setError={setError} />
+        )}
+
         {/* Events Tab */}
         {activeTab === 'events' && (
           <div className="space-y-6">
@@ -1761,6 +1769,17 @@ export default function AdminPage() {
                     onChange={(e) => setEventForm({ ...eventForm, buyIn: parseFloat(e.target.value) })}
                     className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
                   />
+                </div>
+                <div>
+                  <label className="block text-gray-400 mb-1">Reg Closes (min before)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={eventForm.registrationCloseMinutes}
+                    onChange={(e) => setEventForm({ ...eventForm, registrationCloseMinutes: parseInt(e.target.value) || 0 })}
+                    className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
+                  />
+                  <p className="text-gray-500 text-xs mt-1">0 = no cutoff. Default 30 min.</p>
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-gray-400 mb-1">Description</label>

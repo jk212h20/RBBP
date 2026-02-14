@@ -15,6 +15,7 @@ import withdrawalRoutes from './routes/withdrawal.routes';
 import lnurlRoutes from './routes/lnurl.routes';
 import balanceRoutes from './routes/balance.routes';
 import faqRoutes from './routes/faq.routes';
+import venueApplicationRoutes from './routes/venue-application.routes';
 
 // Load environment variables
 dotenv.config();
@@ -192,6 +193,9 @@ app.use('/api/balance', balanceRoutes);
 
 // FAQ routes (public + admin CRUD)
 app.use('/api/faq', faqRoutes);
+
+// Venue Application routes (submit + admin review)
+app.use('/api/venue-applications', venueApplicationRoutes);
 
 // ============================================
 // ERROR HANDLING

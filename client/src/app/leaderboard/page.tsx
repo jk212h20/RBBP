@@ -174,14 +174,13 @@ export default function LeaderboardPage() {
             {/* Desktop Table View */}
             <div className="hidden md:block bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 overflow-hidden">
               {/* Table Header */}
-              <div className="grid grid-cols-12 gap-4 p-4 bg-black/20 text-green-300 text-sm font-medium">
+              <div className="grid grid-cols-10 gap-4 p-4 bg-black/20 text-green-300 text-sm font-medium">
                 <div className="col-span-1">Rank</div>
                 <div className="col-span-4">Player</div>
                 <div className="col-span-2 text-center">Points</div>
                 <div className="col-span-1 text-center">Events</div>
                 <div className="col-span-1 text-center">Wins</div>
                 <div className="col-span-1 text-center">Top 3</div>
-                <div className="col-span-2 text-center">Knockouts</div>
               </div>
 
               {/* Table Body */}
@@ -191,7 +190,7 @@ export default function LeaderboardPage() {
                   return (
                     <div
                       key={standing.id}
-                      className={`grid grid-cols-12 gap-4 p-4 items-center hover:bg-white/5 transition ${rankInfo.bg} border-l-4`}
+                      className={`grid grid-cols-10 gap-4 p-4 items-center hover:bg-white/5 transition ${rankInfo.bg} border-l-4`}
                     >
                       {/* Rank */}
                       <div className="col-span-1">
@@ -237,11 +236,6 @@ export default function LeaderboardPage() {
                       <div className="col-span-1 text-center text-white">
                         {standing.topThrees}
                       </div>
-
-                      {/* Knockouts */}
-                      <div className="col-span-2 text-center text-white">
-                        {standing.knockouts}
-                      </div>
                     </div>
                   );
                 })}
@@ -277,7 +271,7 @@ export default function LeaderboardPage() {
                         <p className="text-xs text-green-300">points</p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-4 gap-2 text-center text-sm">
+                    <div className="grid grid-cols-3 gap-2 text-center text-sm">
                       <div>
                         <p className="text-white font-medium">{standing.eventsPlayed}</p>
                         <p className="text-green-300/60 text-xs">Events</p>
@@ -289,10 +283,6 @@ export default function LeaderboardPage() {
                       <div>
                         <p className="text-white font-medium">{standing.topThrees}</p>
                         <p className="text-green-300/60 text-xs">Top 3</p>
-                      </div>
-                      <div>
-                        <p className="text-white font-medium">{standing.knockouts}</p>
-                        <p className="text-green-300/60 text-xs">KOs</p>
                       </div>
                     </div>
                   </div>

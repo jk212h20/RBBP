@@ -82,6 +82,15 @@ export default function ProfilePage() {
   const [addEmailData, setAddEmailData] = useState({ email: '', password: '', confirmPassword: '' });
   const [addingEmail, setAddingEmail] = useState(false);
 
+  // Profile details state (bio + profile image)
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [bio, setBio] = useState('');
+  const [editingDetails, setEditingDetails] = useState(false);
+  const [editBio, setEditBio] = useState('');
+  const [editProfileImage, setEditProfileImage] = useState<string | null>(null);
+  const [savingDetails, setSavingDetails] = useState(false);
+  const [loadingDetails, setLoadingDetails] = useState(true);
+
   // Check if name has been set (locked)
   const nameIsLocked = user?.nameSetAt != null;
   // Check if user needs to set their real name (Lightning users with auto-generated names)
@@ -99,6 +108,7 @@ export default function ProfilePage() {
       loadSeasonStanding();
       loadBalance();
       loadWithdrawals();
+      loadProfileDetails();
     }
   }, [isAuthenticated]);
 
@@ -247,6 +257,35 @@ export default function ProfilePage() {
       console.error('Failed to load season standing:', err);
     } finally {
       setLoadingStanding(false);
+    }
+  };
+
+  const loadProfileDetails = async () => {
+    setLoadingDetails(true);
+    try {
+      const data = await authAPI.getProfileDetails();
+      setBio(data.profile?.bio || '');
+      setProfileImage(data.profile?.profileImage || null);
+    } catch (err) {
+      console.error('Failed to load profile details:', err);
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
+  const handleSaveDetails = async () => {
+    setSavingDetails(true);
+    setSaveMessage(null);
+    try {
+      const data = await authAPI.updateProfileDetails({ bio: editBio, profileImage: editProfileImage });
+      setBio(data.profile?.bio || '');
+      setProfileImage(data.profile?.profileImage || null);
+      setEditingDetails(false);
+      setSaveMessage({ type: 'success', text: 'Profile details updated!' });
+    } catch (err: any) {
+      setSaveMessage({ type: 'error', text: err.message || 'Failed to save profile details' });
+    } finally {
+      setSavingDetails(false);
     }
   };
 
@@ -548,6 +587,146 @@ export default function ProfilePage() {
                     </button>
                   )}
                 </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* About Me Card - Profile Image & Bio */}
+        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-green-600/30 p-4 md:p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg md:text-xl font-bold text-white">📝 About Me</h2>
+            {!editingDetails && (
+              <button
+                onClick={() => {
+                  setEditBio(bio);
+                  setEditProfileImage(profileImage);
+                  setEditingDetails(true);
+                  setSaveMessage(null);
+                }}
+                className="text-green-400 hover:text-green-300 text-sm font-medium"
+              >
+                ✏️ Edit
+              </button>
+            )}
+          </div>
+
+          {loadingDetails ? (
+            <div className="flex items-center justify-center py-6">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-400"></div>
+            </div>
+          ) : editingDetails ? (
+            <div className="space-y-4">
+              {/* Profile Image Upload */}
+              <div>
+                <label className="block text-green-200 text-sm mb-2">Profile Photo</label>
+                <div className="flex items-center gap-4">
+                  {editProfileImage ? (
+                    <div className="relative">
+                      <img
+                        src={editProfileImage}
+                        alt="Profile"
+                        className="w-24 h-24 rounded-full object-cover border-2 border-green-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setEditProfileImage(null)}
+                        className="absolute -top-1 -right-1 bg-red-600 hover:bg-red-700 text-white w-6 h-6 rounded-full text-xs flex items-center justify-center"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="w-24 h-24 rounded-full border-2 border-dashed border-gray-500 flex flex-col items-center justify-center cursor-pointer hover:border-green-500 hover:bg-white/5 transition">
+                      <span className="text-2xl">📷</span>
+                      <span className="text-gray-400 text-[10px]">Upload</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          if (!file.type.startsWith('image/')) return;
+                          // Compress to small circular avatar
+                          const reader = new FileReader();
+                          reader.onload = (ev) => {
+                            const img = new Image();
+                            img.onload = () => {
+                              const canvas = document.createElement('canvas');
+                              const size = Math.min(img.width, img.height, 300);
+                              canvas.width = size;
+                              canvas.height = size;
+                              const ctx = canvas.getContext('2d');
+                              if (!ctx) return;
+                              // Center crop
+                              const sx = (img.width - size) / 2;
+                              const sy = (img.height - size) / 2;
+                              ctx.drawImage(img, sx, sy, size, size, 0, 0, size, size);
+                              const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                              setEditProfileImage(dataUrl);
+                            };
+                            img.src = ev.target?.result as string;
+                          };
+                          reader.readAsDataURL(file);
+                        }}
+                      />
+                    </label>
+                  )}
+                  <p className="text-gray-400 text-xs">Square photo recommended.<br/>Max 500KB after compression.</p>
+                </div>
+              </div>
+
+              {/* Bio Text */}
+              <div>
+                <label className="block text-green-200 text-sm mb-1">Bio</label>
+                <textarea
+                  value={editBio}
+                  onChange={(e) => setEditBio(e.target.value)}
+                  maxLength={500}
+                  rows={3}
+                  className="w-full p-3 bg-white/10 border border-green-600/50 rounded-lg text-white placeholder-green-300/50 focus:outline-none focus:border-green-500 resize-none"
+                  placeholder="Tell other players a bit about yourself..."
+                />
+                <p className="text-gray-500 text-xs text-right">{editBio.length}/500</p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={handleSaveDetails}
+                  disabled={savingDetails}
+                  className="bg-green-600 hover:bg-green-700 disabled:bg-green-800 text-white px-5 py-2 rounded-lg font-medium transition text-sm"
+                >
+                  {savingDetails ? 'Saving...' : 'Save'}
+                </button>
+                <button
+                  onClick={() => setEditingDetails(false)}
+                  disabled={savingDetails}
+                  className="bg-white/10 hover:bg-white/20 text-white px-5 py-2 rounded-lg font-medium transition text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-start gap-4">
+              {profileImage ? (
+                <img
+                  src={profileImage}
+                  alt="Profile"
+                  className="w-20 h-20 rounded-full object-cover border-2 border-green-600/50 flex-shrink-0"
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-full bg-white/5 border-2 border-dashed border-gray-600 flex items-center justify-center flex-shrink-0">
+                  <span className="text-gray-500 text-2xl">📷</span>
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                {bio ? (
+                  <p className="text-green-100 text-sm whitespace-pre-wrap">{bio}</p>
+                ) : (
+                  <p className="text-gray-500 text-sm italic">No bio yet. Click Edit to add one!</p>
+                )}
               </div>
             </div>
           )}

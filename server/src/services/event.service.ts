@@ -119,6 +119,7 @@ export class EventService {
           select: {
             id: true,
             name: true,
+            address: true,
           },
         },
         season: {
@@ -211,6 +212,7 @@ export class EventService {
         description: data.description || null,
         dateTime: new Date(data.dateTime),
         registrationOpenDays: data.registrationOpenDays ?? 10,
+        registrationCloseMinutes: data.registrationCloseMinutes ?? 30,
         maxPlayers: data.maxPlayers || 50,
         buyIn: data.buyIn || null,
         venueId: data.venueId,
@@ -246,6 +248,7 @@ export class EventService {
         ...(data.description !== undefined && { description: data.description }),
         ...(data.dateTime && { dateTime: new Date(data.dateTime) }),
         ...(data.registrationOpenDays !== undefined && { registrationOpenDays: data.registrationOpenDays }),
+        ...(data.registrationCloseMinutes !== undefined && { registrationCloseMinutes: data.registrationCloseMinutes }),
         ...(data.maxPlayers && { maxPlayers: data.maxPlayers }),
         ...(data.buyIn !== undefined && { buyIn: data.buyIn }),
         ...(data.venueId && { venueId: data.venueId }),
@@ -997,6 +1000,7 @@ export class EventService {
           description: data.description || null,
           dateTime: eventDate,
           registrationOpenDays: data.registrationOpenDays ?? 10,
+          registrationCloseMinutes: data.registrationCloseMinutes ?? 30,
           maxPlayers: data.maxPlayers || 50,
           buyIn: data.buyIn || null,
           venueId: data.venueId,

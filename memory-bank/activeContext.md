@@ -1,11 +1,49 @@
 # Active Context — Roatan Poker League
 
-## Last Updated: February 11, 2026
+## Last Updated: February 14, 2026
 
 ## Current State
 The application is **live and deployed on Railway** with all core features functional. The system handles the full poker league lifecycle: venue management, season/event creation, player registration, tournament execution, results entry, standings calculation, and Lightning Network payouts.
 
 ## Recent Work (Feb 2026)
+
+### Feb 14 — Venue Applications, Profile Image & Bio, Registration Close Cutoff & Enhanced Event Panels
+- **Venue Application System**: Any logged-in user can apply to add their venue to the platform
+  - `VenueApplication` model: name, address, description, contactName, contactEmail, contactPhone, status (PENDING/APPROVED/REJECTED), adminNotes, applicantId, venueId (set on approval)
+  - Backend: `venue-application.routes.ts` with 4 endpoints:
+    - `POST /venue-applications` — submit application (auth required)
+    - `GET /venue-applications` — admin: list all applications
+    - `PUT /venue-applications/:id/approve` — admin: approve (creates venue automatically)
+    - `PUT /venue-applications/:id/reject` — admin: reject with optional notes
+  - Service: `venue-application.service.ts` with create, getAll, approve (creates venue + links), reject
+  - Client API: `venueApplicationsAPI.submit()`, `.getAll()`, `.approve()`, `.reject()`
+  - Frontend: `/venues/apply` — application form page with all fields
+  - Frontend: "Apply to Add Your Venue" button on venues page
+  - Admin: `VenueApplicationsTab` component in admin panel (🏢 Applications tab)
+  - Migration: `20260214170000_add_venue_applications`
+- **Profile Image & Bio**: Users can upload a profile photo and write a personal bio on their profile page
+  - `profileImage` (Text, nullable) and `bio` (String, 500 char max) fields added to Profile model
+  - Backend: `GET /auth/profile/details` and `PUT /auth/profile/details` routes
+  - Service: `getProfileDetails()` and `updateProfileDetails()` in auth.service.ts
+  - Client API: `authAPI.getProfileDetails()` and `authAPI.updateProfileDetails()`
+  - Frontend: "About Me" card on profile page with inline edit mode, circular avatar upload with center-crop compression, textarea for bio with character counter
+  - Migration: `20260214160000_add_profile_image`
+- **Enhanced Upcoming Events Panels** (homepage + /events page):
+  - Venue address displayed below venue name
+  - Thumbnail image shown if event has imageUrl
+  - Larger font (text-xl/text-2xl) for player count (e.g., "👥 0/20")
+  - Live countdown timer to event start (updates every 60s)
+  - Treasure chest SVG icon with possible points badge (calculated: 10 + 2 per player over 10)
+  - Server `getUpcomingEvents` now includes `venue.address` in select
+  - `calculateEventPoints` exported from event.service.ts, mirrored client-side as `calculatePossiblePoints`
+- **Registration Close Minutes**: New `registrationCloseMinutes` field on Event model (default 30)
+  - Non-admin players cannot register/unregister after `event.dateTime - registrationCloseMinutes`
+  - Admins can always register/unregister players regardless of cutoff
+  - Server-side enforcement in signup/cancel routes with 403 error
+  - Client: "🔒 Registration closed" banner on event detail page when cutoff passed
+  - Admin: "Reg Closes (min before)" field in single event creation form
+  - Validator: `registrationCloseMinutes` optional int (0-1440) in create/update schemas
+  - Migration: `20260214152400_add_registration_close_minutes`
 
 ### Feb 11 — Homepage Redesign, Logo, TD Panel Fix, Total Entrants Override, FAQ & Deployment Fix
 - **Homepage Logo & Blue Theme**: Processed `Logo.png` (4096x4096) → `client/public/logo.png` (512x512, clean 8x downscale via LANCZOS) with transparent background (flood-fill from edges). Displayed at 300x300 in hero section to the left of "Welcome to RBBP" title. Small 28x28 logo in MobileNav header. Changed homepage background from green gradient to blue gradient (`#3d7a94` → `#5595b0` → `#2a5f78`) matching the sky blue inside the logo's ship wheel.
@@ -23,7 +61,7 @@ The application is **live and deployed on Railway** with all core features funct
   - Client API: `faqAPI.getAll()`, `faqAPI.getAllAdmin()`, `faqAPI.create()`, `faqAPI.update()`, `faqAPI.delete()`
   - MobileNav: FAQ link added to navigation
   - Migration: `20260211200000_add_faq`
-- **Deployment Resilience**: Added `timeout 60` + `|| echo` fallback to `prisma migrate deploy` in both `railway.toml` and `nixpacks.toml` start commands, so server starts even if migration hangs/fails
+- **Deployment Resilience**: Moved `prisma migrate deploy` from start command to build phase in both `railway.toml` and `nixpacks.toml`. Start command is now just `npm start` for instant server startup. Migrations run during build where there's no health check timeout pressure. This prevents failed health checks from blocking deployments.
 
 ### Feb 10 — Withdrawal History UI, Quick Add Players, Guest Merge & Claim Links
 - **Withdrawal History**: Added user-facing withdrawal history section to profile page
@@ -87,7 +125,7 @@ client/src/
 │   ├── profile/            # User profile management
 │   ├── admin/              # Multi-tab admin panel (incl. FAQ tab)
 │   ├── faq/                # Public FAQ page
-│   ├── venues/             # Venue list + detail pages
+│   ├── venues/             # Venue list + detail + apply pages
 │   └── auth/callback/      # Google OAuth callback handler
 ├── components/
 │   ├── MobileNav.tsx       # Mobile hamburger navigation
@@ -95,7 +133,8 @@ client/src/
 │   ├── BalanceTab.tsx      # Admin: Lightning balance management
 │   ├── WithdrawalsTab.tsx  # Admin: Withdrawal management
 │   ├── PointsTab.tsx       # Admin: Points adjustment UI
-│   └── FaqTab.tsx          # Admin: FAQ management UI
+│   ├── FaqTab.tsx          # Admin: FAQ management UI
+│   └── VenueApplicationsTab.tsx  # Admin: Venue application review
 ├── context/
 │   └── AuthContext.tsx      # React Context for auth state + JWT
 └── lib/
@@ -108,15 +147,15 @@ server/src/
 ├── index.ts                # Express app setup, route mounting, CORS
 ├── config/passport.ts      # Passport strategies (Google, Lightning)
 ├── middleware/auth.middleware.ts  # JWT verification, role checks
-├── routes/                 # 10 route files (auth, venue, season, event, standings, admin, withdrawal, lnurl, balance, faq)
-├── services/               # 10 service files (business logic layer)
+├── routes/                 # 11 route files (auth, venue, venue-application, season, event, standings, admin, withdrawal, lnurl, balance, faq)
+├── services/               # 11 service files (business logic layer)
 ├── validators/             # 4 Zod validation schemas
 ├── types/express.d.ts      # Express type augmentation
 └── lib/prisma.ts           # Prisma client singleton
 ```
 
 ### Database (Prisma / PostgreSQL)
-16 models: User, Profile, Venue, Season, Event, EventSignup, Result, Standing, Achievement, UserAchievement, LightningChallenge, Comment, DeletedUser, Withdrawal, PointsHistory, Faq
+17 models: User, Profile, Venue, Season, Event, EventSignup, Result, Standing, Achievement, UserAchievement, LightningChallenge, Comment, DeletedUser, Withdrawal, PointsHistory, Faq, VenueApplication
 
 ## Key Patterns & Decisions
 
