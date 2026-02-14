@@ -127,39 +127,43 @@ export default function EventDetailPage() {
   const canManageEvent = user && (user.role === 'ADMIN' || user.role === 'TOURNAMENT_DIRECTOR' || user.role === 'VENUE_MANAGER');
 
   // Calculate extra slots needed when totalEntrants or attendance changes
+  // Formula: totalEntrants - attendedRegisteredCount = total extra slots needed
+  // Of those, some may already be filled (have a userId), the rest are blank search fields
   useEffect(() => {
     if (totalEntrantsValue === null || !canManageEvent) {
       setExtraSlots([]);
       return;
     }
     const attendedCount = playerResults.filter(p => p.attended).length;
-    const filledExtraCount = extraSlots.filter(s => s.userId !== null).length;
-    const neededTotal = Math.max(0, totalEntrantsValue - attendedCount - filledExtraCount);
+    // Total extra slots = how many players beyond the registered-attended ones
+    const totalExtraNeeded = Math.max(0, totalEntrantsValue - attendedCount);
     
-    // Keep existing filled slots, adjust blank slots
-    const filledSlots = extraSlots.filter(s => s.userId !== null);
-    const currentBlanks = extraSlots.filter(s => s.userId === null);
-    
-    if (neededTotal > currentBlanks.length) {
-      // Add more blank slots
-      const newBlanks = Array.from({ length: neededTotal - currentBlanks.length }, (_, i) => ({
+    setExtraSlots(prev => {
+      const filledSlots = prev.filter(s => s.userId !== null);
+      // If we have more filled slots than needed, keep only what fits
+      const keptFilled = filledSlots.slice(0, totalExtraNeeded);
+      const blanksNeeded = Math.max(0, totalExtraNeeded - keptFilled.length);
+      
+      // Reuse existing blanks where possible, create new ones if needed
+      const existingBlanks = prev.filter(s => s.userId === null);
+      const keptBlanks = existingBlanks.slice(0, blanksNeeded);
+      const newBlanksCount = blanksNeeded - keptBlanks.length;
+      const newBlanks = Array.from({ length: newBlanksCount }, (_, i) => ({
         id: `extra-${Date.now()}-${i}`,
-        userId: null,
+        userId: null as string | null,
         name: '',
         attended: true,
-        position: null,
+        position: null as number | null,
         knockouts: 0,
         searchQuery: '',
-        searchResults: [],
+        searchResults: [] as { id: string; name: string; email: string | null; isGuest: boolean }[],
         searchLoading: false,
       }));
-      setExtraSlots([...filledSlots, ...currentBlanks, ...newBlanks]);
-    } else if (neededTotal < currentBlanks.length) {
-      // Remove excess blank slots from the end
-      setExtraSlots([...filledSlots, ...currentBlanks.slice(0, neededTotal)]);
-    }
-    // If equal, no change needed
-  }, [totalEntrantsValue, playerResults.filter(p => p.attended).length]);
+      
+      return [...keptFilled, ...keptBlanks, ...newBlanks];
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalEntrantsValue, playerResults, canManageEvent]);
 
   // Calculate local points preview based on totalEntrants
   useEffect(() => {
