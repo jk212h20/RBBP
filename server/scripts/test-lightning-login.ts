@@ -1,4 +1,5 @@
 #!/usr/bin/env npx ts-node
+// @ts-nocheck
 /**
  * Lightning Login Test Script
  * 
@@ -11,7 +12,7 @@
  *   npx ts-node scripts/test-lightning-login.ts --url https://your-server.com/api
  */
 
-const crypto = require('crypto');
+const nodeCrypto = require('crypto');
 const secp256k1 = require('@noble/secp256k1');
 const { bech32 } = require('bech32');
 
@@ -57,7 +58,7 @@ function bytesToHex(bytes: Uint8Array): string {
 }
 
 function sha256(data: Uint8Array): Uint8Array {
-  const hash = crypto.createHash('sha256');
+  const hash = nodeCrypto.createHash('sha256');
   hash.update(data);
   return new Uint8Array(hash.digest());
 }

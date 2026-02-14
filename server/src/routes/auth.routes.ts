@@ -236,7 +236,15 @@ router.get('/lightning/status/:k1', lightningStatusLimiter, async (req: Request,
 
     // Challenge is verified, create/find user and return token
     try {
-      const result = await findOrCreateLightningUser(status.pubkey!);
+      const pubkey = status.pubkey;
+      if (!pubkey) {
+        console.error('Lightning status - verified but no pubkey! status:', JSON.stringify(status));
+        res.status(500).json({ error: 'Verified but no pubkey found' });
+        return;
+      }
+      console.log(`Lightning status - verified, finding/creating user for pubkey: ${pubkey.substring(0, 16)}...`);
+      const result = await findOrCreateLightningUser(pubkey);
+      console.log(`Lightning status - user found/created: ${result.user.id}, isNew: ${result.isNew}`);
 
       res.json({
         status: 'verified',
@@ -245,10 +253,11 @@ router.get('/lightning/status/:k1', lightningStatusLimiter, async (req: Request,
         isNew: result.isNew,
         lightningBonusAwarded: result.lightningBonusAwarded,
       });
-    } catch (userError) {
-      console.error('Lightning status - findOrCreateLightningUser error:', userError);
+    } catch (userError: any) {
+      console.error('Lightning status - findOrCreateLightningUser error:', userError?.message || userError);
+      console.error('Lightning status - full error:', JSON.stringify(userError, Object.getOwnPropertyNames(userError)));
       console.error('Lightning status - pubkey was:', status.pubkey);
-      res.status(500).json({ error: 'Failed to create/find user after verification' });
+      res.status(500).json({ error: 'Failed to create/find user after verification', detail: userError?.message });
     }
   } catch (error) {
     console.error('Lightning status error:', error);
