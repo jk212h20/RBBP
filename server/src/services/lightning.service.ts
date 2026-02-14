@@ -99,9 +99,9 @@ export async function verifyChallenge(
 
 /**
  * Check if a challenge is verified and get the pubkey.
- * If consume is true and the challenge is verified, delete it to prevent replay.
+ * Challenges are cleaned up by the periodic cleanup job, not on read.
  */
-export async function getChallengeStatus(k1: string, consume: boolean = false): Promise<{
+export async function getChallengeStatus(k1: string): Promise<{
   verified: boolean;
   pubkey?: string;
   expired: boolean;
@@ -115,11 +115,6 @@ export async function getChallengeStatus(k1: string, consume: boolean = false): 
   }
 
   const expired = challenge.expiresAt < new Date();
-  
-  // If verified and consume flag is set, delete the challenge to prevent token replay
-  if (challenge.used && consume) {
-    await prisma.lightningChallenge.delete({ where: { k1 } }).catch(() => {});
-  }
 
   return {
     verified: challenge.used,

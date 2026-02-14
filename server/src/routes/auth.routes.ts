@@ -211,8 +211,7 @@ router.get('/lightning/callback', async (req: Request, res: Response) => {
 router.get('/lightning/status/:k1', async (req: Request, res: Response) => {
   try {
     const { k1 } = req.params;
-    // consume: true deletes the challenge after reading, preventing token replay
-    const status = await getChallengeStatus(k1, true);
+    const status = await getChallengeStatus(k1);
 
     if (status.expired && !status.verified) {
       res.json({ status: 'expired' });
@@ -397,8 +396,7 @@ router.get('/link-lightning/challenge', authenticate, lightningChallengeLimiter,
 router.get('/link-lightning/status/:k1', authenticate, async (req: Request, res: Response) => {
   try {
     const { k1 } = req.params;
-    // consume: true deletes the challenge after reading, preventing replay
-    const status = await getChallengeStatus(k1, true);
+    const status = await getChallengeStatus(k1);
 
     if (status.expired && !status.verified) {
       res.json({ status: 'expired' });
