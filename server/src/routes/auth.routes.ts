@@ -22,7 +22,7 @@ import {
 import { authenticate } from '../middleware/auth.middleware';
 import { registerSchema, loginSchema, updateProfileSchema } from '../validators/auth.validator';
 import { isGoogleConfigured } from '../config/passport';
-import { loginLimiter, lightningChallengeLimiter } from '../index';
+import { loginLimiter, lightningChallengeLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 

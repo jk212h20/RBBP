@@ -10,7 +10,7 @@ The application is **live and deployed on Railway** with all core features funct
 ### Feb 14 — Total Entrants Dynamic Slots, Logo Fix, Blue Background Site-wide, Venue Applications, Profile Image & Bio, Registration Close Cutoff, Enhanced Event Panels & CSV Exports
 - **Total Entrants → Dynamic Extra Player Slots**: When admin/TD sets total entrants higher than attended registered players, blank search-by-typing dropdown slots appear automatically in the TD panel. These slots let the TD assign unregistered players (walk-ins) to the extra positions. Key behaviors:
   - Setting total entrants immediately recalculates the points preview locally (60/30/10 split)
-  - Extra blank slots = totalEntrants - attendedRegisteredCount - alreadyFilledExtraSlots
+  - Extra slots needed = totalEntrants - attendedRegisteredCount (filled extra slots count toward this total, remaining are blank search fields)
   - Unchecking a registered player's attendance checkbox also creates an extra blank slot (since the total stays the same but attended count drops)
   - Each extra slot has a typeahead search dropdown (reuses `searchPlayers` API) that filters out already-assigned players
   - Filled extra slots show position input + knockout counter, same as registered players
