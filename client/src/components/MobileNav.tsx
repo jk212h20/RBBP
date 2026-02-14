@@ -21,6 +21,12 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
     { href: '/faq', label: 'FAQ', key: 'faq' },
   ];
 
+  const externalLinks = [
+    { href: 'https://btcpokerchamp.com/why-bitcoin', label: 'Why Bitcoin' },
+    { href: 'https://btcpokerchamp.com/rules', label: "Hold'em Rules" },
+    { href: 'https://btcpokerchamp.com', label: 'BTC Poker Champ' },
+  ];
+
   return (
     <header className="bg-black/30 backdrop-blur-sm border-b border-green-700/50">
       <div className="max-w-7xl mx-auto px-4 py-4">
@@ -45,6 +51,17 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
               >
                 {link.label}
               </Link>
+            ))}
+            {externalLinks.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white/80 hover:text-white transition"
+              >
+                {link.label}
+              </a>
             ))}
             {isAuthenticated ? (
               <Link
@@ -99,6 +116,22 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
                   {link.label}
                 </Link>
               ))}
+
+              {/* External Links */}
+              <div className="border-t border-green-700/50 pt-3 mt-2">
+                {externalLinks.map((link) => (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setIsOpen(false)}
+                    className="block py-2 text-lg text-white/80"
+                  >
+                    {link.label} ↗
+                  </a>
+                ))}
+              </div>
               
               <div className="border-t border-green-700/50 pt-3 mt-2">
                 {isAuthenticated ? (

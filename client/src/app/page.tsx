@@ -6,6 +6,7 @@ import Image from 'next/image';
 import MobileNav from '@/components/MobileNav';
 import { useAuth } from '@/context/AuthContext';
 import { eventsAPI, seasonsAPI } from '@/lib/api';
+import { calculatePossiblePoints } from '@/lib/points';
 
 interface UpcomingEvent {
   id: string;
@@ -21,12 +22,6 @@ interface TopPlayer {
   user: { id: string; name: string };
   totalPoints: number;
   wins: number;
-}
-
-// Calculate possible points for an event (same formula as server)
-function calculatePossiblePoints(maxPlayers: number) {
-  const extraPlayers = Math.max(0, maxPlayers - 10);
-  return 10 + (extraPlayers * 2);
 }
 
 // Format countdown string from now until event time
@@ -141,7 +136,7 @@ export default function HomePage() {
             ) : (
               <div className="space-y-4">
                 {upcomingEvents.map((event) => {
-                  const possiblePoints = calculatePossiblePoints(event.maxPlayers);
+                  const possiblePoints = calculatePossiblePoints(event._count.signups);
                   return (
                     <Link
                       key={event.id}

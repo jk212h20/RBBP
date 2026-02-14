@@ -650,6 +650,264 @@ router.post('/generate-claim-link', authenticate, requireAdmin, async (req: Requ
   }
 });
 
+// ============================================
+// CSV EXPORT ENDPOINTS
+// ============================================
+
+function escapeCsv(value: any): string {
+  if (value === null || value === undefined) return '';
+  const str = String(value);
+  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+function toCsv(headers: string[], rows: any[][]): string {
+  const headerLine = headers.map(escapeCsv).join(',');
+  const dataLines = rows.map(row => row.map(escapeCsv).join(','));
+  return [headerLine, ...dataLines].join('\n');
+}
+
+// GET /api/admin/export/users - Export all users as CSV
+router.get('/export/users', authenticate, requireAdmin, async (_req: Request, res: Response) => {
+  try {
+    const activeSeason = await prisma.season.findFirst({ where: { isActive: true } });
+    const users = await prisma.user.findMany({
+      include: {
+        standings: activeSeason ? { where: { seasonId: activeSeason.id } } : false,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const headers = ['Name', 'Email', 'Role', 'Auth Provider', 'Active', 'Guest', 'Season Points', 'Season Rank', 'Events Played', 'Joined'];
+    const rows = users.map(u => [
+      u.name,
+      u.email || '',
+      u.role,
+      u.authProvider,
+      u.isActive ? 'Yes' : 'No',
+      u.isGuest ? 'Yes' : 'No',
+      u.standings?.[0]?.totalPoints ?? 0,
+      u.standings?.[0]?.rank ?? '',
+      u.standings?.[0]?.eventsPlayed ?? 0,
+      new Date(u.createdAt).toISOString().split('T')[0],
+    ]);
+
+    const csv = toCsv(headers, rows);
+    const date = new Date().toISOString().split('T')[0];
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="users-${date}.csv"`);
+    res.send(csv);
+  } catch (error) {
+    console.error('Error exporting users:', error);
+    res.status(500).json({ error: 'Failed to export users' });
+  }
+});
+
+// GET /api/admin/export/events - Export all events as CSV
+router.get('/export/events', authenticate, requireAdmin, async (_req: Request, res: Response) => {
+  try {
+    const events = await prisma.event.findMany({
+      include: {
+        venue: { select: { name: true } },
+        season: { select: { name: true } },
+        _count: { select: { signups: true, results: true } },
+      },
+      orderBy: { dateTime: 'desc' },
+    });
+
+    const headers = ['Name', 'Date', 'Venue', 'Season', 'Status', 'Signups', 'Results', 'Max Players', 'Buy-In'];
+    const rows = events.map(e => [
+      e.name,
+      new Date(e.dateTime).toISOString().replace('T', ' ').substring(0, 16),
+      e.venue.name,
+      e.season.name,
+      e.status,
+      e._count.signups,
+      e._count.results,
+      e.maxPlayers,
+      e.buyIn ?? 0,
+    ]);
+
+    const csv = toCsv(headers, rows);
+    const date = new Date().toISOString().split('T')[0];
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="events-${date}.csv"`);
+    res.send(csv);
+  } catch (error) {
+    console.error('Error exporting events:', error);
+    res.status(500).json({ error: 'Failed to export events' });
+  }
+});
+
+// GET /api/admin/export/standings - Export current season standings as CSV
+router.get('/export/standings', authenticate, requireAdmin, async (_req: Request, res: Response) => {
+  try {
+    const activeSeason = await prisma.season.findFirst({ where: { isActive: true } });
+    if (!activeSeason) {
+      return res.status(404).json({ error: 'No active season' });
+    }
+
+    const standings = await prisma.standing.findMany({
+      where: { seasonId: activeSeason.id },
+      include: { user: { select: { name: true, email: true } } },
+      orderBy: { rank: 'asc' },
+    });
+
+    const headers = ['Rank', 'Name', 'Email', 'Total Points', 'Events Played', 'Wins', 'Top 3s', 'Knockouts'];
+    const rows = standings.map(s => [
+      s.rank,
+      s.user.name,
+      s.user.email || '',
+      s.totalPoints,
+      s.eventsPlayed,
+      s.wins,
+      s.topThrees,
+      s.knockouts,
+    ]);
+
+    const csv = toCsv(headers, rows);
+    const date = new Date().toISOString().split('T')[0];
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="standings-${activeSeason.name.replace(/\s+/g, '-')}-${date}.csv"`);
+    res.send(csv);
+  } catch (error) {
+    console.error('Error exporting standings:', error);
+    res.status(500).json({ error: 'Failed to export standings' });
+  }
+});
+
+// GET /api/admin/export/results - Export all event results as CSV
+router.get('/export/results', authenticate, requireAdmin, async (_req: Request, res: Response) => {
+  try {
+    const results = await prisma.result.findMany({
+      include: {
+        user: { select: { name: true, email: true } },
+        event: { select: { name: true, dateTime: true } },
+      },
+      orderBy: [{ event: { dateTime: 'desc' } }, { position: 'asc' }],
+    });
+
+    const headers = ['Event', 'Event Date', 'Player', 'Email', 'Position', 'Knockouts', 'Points Earned'];
+    const rows = results.map(r => [
+      r.event.name,
+      new Date(r.event.dateTime).toISOString().split('T')[0],
+      r.user.name,
+      r.user.email || '',
+      r.position,
+      r.knockouts,
+      r.pointsEarned,
+    ]);
+
+    const csv = toCsv(headers, rows);
+    const date = new Date().toISOString().split('T')[0];
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="results-${date}.csv"`);
+    res.send(csv);
+  } catch (error) {
+    console.error('Error exporting results:', error);
+    res.status(500).json({ error: 'Failed to export results' });
+  }
+});
+
+// GET /api/admin/export/signups - Export all event signups as CSV
+router.get('/export/signups', authenticate, requireAdmin, async (_req: Request, res: Response) => {
+  try {
+    const signups = await prisma.eventSignup.findMany({
+      include: {
+        user: { select: { name: true, email: true } },
+        event: { select: { name: true, dateTime: true } },
+      },
+      orderBy: [{ event: { dateTime: 'desc' } }, { registeredAt: 'asc' }],
+    });
+
+    const headers = ['Event', 'Event Date', 'Player', 'Email', 'Status', 'Registered At', 'Checked In At'];
+    const rows = signups.map(s => [
+      s.event.name,
+      new Date(s.event.dateTime).toISOString().split('T')[0],
+      s.user.name,
+      s.user.email || '',
+      s.status,
+      new Date(s.registeredAt).toISOString().replace('T', ' ').substring(0, 16),
+      s.checkedInAt ? new Date(s.checkedInAt).toISOString().replace('T', ' ').substring(0, 16) : '',
+    ]);
+
+    const csv = toCsv(headers, rows);
+    const date = new Date().toISOString().split('T')[0];
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="signups-${date}.csv"`);
+    res.send(csv);
+  } catch (error) {
+    console.error('Error exporting signups:', error);
+    res.status(500).json({ error: 'Failed to export signups' });
+  }
+});
+
+// GET /api/admin/export/withdrawals - Export all withdrawals as CSV
+router.get('/export/withdrawals', authenticate, requireAdmin, async (_req: Request, res: Response) => {
+  try {
+    const withdrawals = await prisma.withdrawal.findMany({
+      include: {
+        user: { select: { name: true, email: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const headers = ['User', 'Email', 'Amount (sats)', 'Status', 'Created', 'Paid At', 'Expires At'];
+    const rows = withdrawals.map(w => [
+      w.user.name,
+      w.user.email || '',
+      w.amountSats,
+      w.status,
+      new Date(w.createdAt).toISOString().replace('T', ' ').substring(0, 16),
+      w.paidAt ? new Date(w.paidAt).toISOString().replace('T', ' ').substring(0, 16) : '',
+      w.expiresAt ? new Date(w.expiresAt).toISOString().replace('T', ' ').substring(0, 16) : '',
+    ]);
+
+    const csv = toCsv(headers, rows);
+    const date = new Date().toISOString().split('T')[0];
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="withdrawals-${date}.csv"`);
+    res.send(csv);
+  } catch (error) {
+    console.error('Error exporting withdrawals:', error);
+    res.status(500).json({ error: 'Failed to export withdrawals' });
+  }
+});
+
+// GET /api/admin/export/points-history - Export points history as CSV
+router.get('/export/points-history', authenticate, requireAdmin, async (_req: Request, res: Response) => {
+  try {
+    const history = await prisma.pointsHistory.findMany({
+      include: {
+        user: { select: { name: true, email: true } },
+        season: { select: { name: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const headers = ['Player', 'Email', 'Season', 'Points', 'Reason', 'Date'];
+    const rows = history.map(h => [
+      h.user.name,
+      h.user.email || '',
+      h.season.name,
+      h.points,
+      h.reason,
+      new Date(h.createdAt).toISOString().replace('T', ' ').substring(0, 16),
+    ]);
+
+    const csv = toCsv(headers, rows);
+    const date = new Date().toISOString().split('T')[0];
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="points-history-${date}.csv"`);
+    res.send(csv);
+  } catch (error) {
+    console.error('Error exporting points history:', error);
+    res.status(500).json({ error: 'Failed to export points history' });
+  }
+});
+
 // GET /api/admin/migration-status - Check if points migration has been applied
 router.get('/migration-status', authenticate, requireAdmin, async (req: Request, res: Response) => {
   try {

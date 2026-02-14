@@ -5,6 +5,7 @@ import Link from 'next/link';
 import MobileNav from '@/components/MobileNav';
 import { useAuth } from '@/context/AuthContext';
 import { eventsAPI, seasonsAPI } from '@/lib/api';
+import { calculatePossiblePoints } from '@/lib/points';
 
 interface Event {
   id: string;
@@ -36,12 +37,6 @@ interface Season {
   id: string;
   name: string;
   isActive: boolean;
-}
-
-/** Calculate possible points pool based on signup count (same formula as server) */
-function calculatePossiblePoints(signupCount: number): number {
-  const extraPlayers = Math.max(0, signupCount - 10);
-  return 10 + extraPlayers * 2;
 }
 
 /** Format a countdown string from now until the target date */

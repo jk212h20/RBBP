@@ -7,7 +7,9 @@ The application is **live and deployed on Railway** with all core features funct
 
 ## Recent Work (Feb 2026)
 
-### Feb 14 — Venue Applications, Profile Image & Bio, Registration Close Cutoff & Enhanced Event Panels
+### Feb 14 — Logo Fix, Blue Background Site-wide, Venue Applications, Profile Image & Bio, Registration Close Cutoff, Enhanced Event Panels & CSV Exports
+- **Logo Transparency Fix**: Reprocessed `client/public/logo.png` with aggressive edge cleanup (flood-fill + 3-pass erosion + post-downscale fringe removal) to eliminate white pixel artifacts around edges. Result: 139K transparent pixels, only 3.4K semi-transparent (vs backup's 7.7K). `logo_backup.png` kept as reference.
+- **Blue Gradient Background Site-wide**: Applied blue gradient (`#3d7a94` → `#5595b0` → `#2a5f78`) to `globals.css` body so ALL pages have the blue background (previously only homepage had it inline). Removed dark mode override. Set white foreground text.
 - **Venue Application System**: Any logged-in user can apply to add their venue to the platform
   - `VenueApplication` model: name, address, description, contactName, contactEmail, contactPhone, status (PENDING/APPROVED/REJECTED), adminNotes, applicantId, venueId (set on approval)
   - Backend: `venue-application.routes.ts` with 4 endpoints:
@@ -134,7 +136,8 @@ client/src/
 │   ├── WithdrawalsTab.tsx  # Admin: Withdrawal management
 │   ├── PointsTab.tsx       # Admin: Points adjustment UI
 │   ├── FaqTab.tsx          # Admin: FAQ management UI
-│   └── VenueApplicationsTab.tsx  # Admin: Venue application review
+│   ├── VenueApplicationsTab.tsx  # Admin: Venue application review
+│   └── ExportsTab.tsx      # Admin: CSV data export (users, events, leaderboard, etc.)
 ├── context/
 │   └── AuthContext.tsx      # React Context for auth state + JWT
 └── lib/
@@ -186,7 +189,7 @@ server/src/
 ### Low Priority / Nice-to-Have
 - **Real-time Updates**: WebSocket for live event updates
 - **Push Notifications**: Mobile push for event reminders
-- **Export/Reports**: CSV export of standings, results
+- ~~**Export/Reports**: CSV export of standings, results~~ ✅ Built (Exports tab in admin panel)
 - **Multi-language Support**: Spanish for local Roatan audience
 
 ## Environment Variables (Server)

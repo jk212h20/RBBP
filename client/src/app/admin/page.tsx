@@ -11,6 +11,7 @@ import BalanceTab from '@/components/BalanceTab';
 import PointsTab from '@/components/PointsTab';
 import FaqTab from '@/components/FaqTab';
 import VenueApplicationsTab from '@/components/VenueApplicationsTab';
+import ExportsTab from '@/components/ExportsTab';
 
 interface Stats {
   users: number;
@@ -129,7 +130,7 @@ interface GuestUser {
 export default function AdminPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'overview' | 'venues' | 'seasons' | 'events' | 'users' | 'points' | 'balances' | 'withdrawals' | 'setup' | 'faq' | 'applications'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'venues' | 'seasons' | 'events' | 'users' | 'points' | 'balances' | 'withdrawals' | 'setup' | 'faq' | 'applications' | 'exports'>('overview');
   const [stats, setStats] = useState<Stats | null>(null);
   const [venues, setVenues] = useState<any[]>([]);
   const [seasons, setSeasons] = useState<any[]>([]);
@@ -620,7 +621,7 @@ export default function AdminPage() {
         {/* Tabs - Scrollable on mobile */}
         <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
           <div className="flex gap-2 mb-6 border-b border-gray-700 pb-4 min-w-max">
-            {['overview', 'users', 'points', 'venues', 'applications', 'seasons', 'events', 'balances', 'withdrawals', 'faq'].map((tab) => (
+            {['overview', 'users', 'points', 'venues', 'applications', 'seasons', 'events', 'balances', 'withdrawals', 'faq', 'exports'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => {
@@ -638,7 +639,7 @@ export default function AdminPage() {
                     : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
               >
-                {tab === 'points' ? '🎯 Points' : tab === 'faq' ? '❓ FAQ' : tab === 'applications' ? '🏢 Applications' : tab}
+                {tab === 'points' ? '🎯 Points' : tab === 'faq' ? '❓ FAQ' : tab === 'applications' ? '🏢 Applications' : tab === 'exports' ? '📥 Exports' : tab}
               </button>
             ))}
           </div>
@@ -1426,6 +1427,11 @@ export default function AdminPage() {
         {/* Venue Applications Tab */}
         {activeTab === 'applications' && (
           <VenueApplicationsTab setMessage={setMessage} setError={setError} />
+        )}
+
+        {/* Exports Tab */}
+        {activeTab === 'exports' && (
+          <ExportsTab setMessage={setMessage} setError={setError} />
         )}
 
         {/* Events Tab */}
