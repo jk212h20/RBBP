@@ -98,9 +98,10 @@ export async function verifyChallenge(
 }
 
 /**
- * Check if a challenge is verified and get the pubkey
+ * Check if a challenge is verified and get the pubkey.
+ * If consume is true and the challenge is verified, delete it to prevent replay.
  */
-export async function getChallengeStatus(k1: string): Promise<{
+export async function getChallengeStatus(k1: string, consume: boolean = false): Promise<{
   verified: boolean;
   pubkey?: string;
   expired: boolean;
@@ -115,6 +116,11 @@ export async function getChallengeStatus(k1: string): Promise<{
 
   const expired = challenge.expiresAt < new Date();
   
+  // If verified and consume flag is set, delete the challenge to prevent token replay
+  if (challenge.used && consume) {
+    await prisma.lightningChallenge.delete({ where: { k1 } }).catch(() => {});
+  }
+
   return {
     verified: challenge.used,
     pubkey: challenge.userId || undefined,
@@ -189,20 +195,13 @@ async function verifySignature(
     // The wallet signs sha256(k1), so we hash it for verification
     const msgHash = sha256(message);
     
-    console.log('Verifying signature...');
-    console.log('Message (k1) length:', message.length);
-    console.log('Signature length:', compactSig.length);
-    console.log('PublicKey length:', publicKey.length);
-    
     // Try both: with hash and without (different wallets may behave differently)
     let result = secp256k1.verify(compactSig, msgHash, publicKey);
     if (!result) {
       // Some wallets sign the k1 directly without hashing
       result = secp256k1.verify(compactSig, message, publicKey);
-      console.log('Tried direct message verification:', result);
     }
     
-    console.log('Signature verification result:', result);
     return result;
   } catch (error) {
     console.error('Signature verification error:', error);

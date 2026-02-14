@@ -211,7 +211,8 @@ router.get('/lightning/callback', async (req: Request, res: Response) => {
 router.get('/lightning/status/:k1', async (req: Request, res: Response) => {
   try {
     const { k1 } = req.params;
-    const status = await getChallengeStatus(k1);
+    // consume: true deletes the challenge after reading, preventing token replay
+    const status = await getChallengeStatus(k1, true);
 
     if (status.expired && !status.verified) {
       res.json({ status: 'expired' });
@@ -396,29 +397,21 @@ router.get('/link-lightning/challenge', authenticate, lightningChallengeLimiter,
 router.get('/link-lightning/status/:k1', authenticate, async (req: Request, res: Response) => {
   try {
     const { k1 } = req.params;
-    console.log('[LinkLightning] Checking status for k1:', k1);
-    
-    const status = await getChallengeStatus(k1);
-    console.log('[LinkLightning] Challenge status:', status);
+    // consume: true deletes the challenge after reading, preventing replay
+    const status = await getChallengeStatus(k1, true);
 
     if (status.expired && !status.verified) {
-      console.log('[LinkLightning] Challenge expired');
       res.json({ status: 'expired' });
       return;
     }
 
     if (!status.verified) {
-      console.log('[LinkLightning] Challenge not yet verified, still pending');
       res.json({ status: 'pending' });
       return;
     }
 
-    console.log('[LinkLightning] Challenge verified! Pubkey:', status.pubkey);
-    console.log('[LinkLightning] Linking to user:', req.user!.userId);
-
     // Challenge is verified, link pubkey to current user
     const result = await linkLightningToAccount(req.user!.userId, status.pubkey!);
-    console.log('[LinkLightning] Successfully linked!');
 
     res.json({
       status: 'linked',
@@ -427,7 +420,7 @@ router.get('/link-lightning/status/:k1', authenticate, async (req: Request, res:
       lightningBonusAwarded: result.lightningBonusAwarded,
     });
   } catch (error) {
-    console.error('[LinkLightning] Error:', error);
+    console.error('Link lightning status error:', error);
     const message = error instanceof Error ? error.message : 'Failed to link Lightning wallet';
     res.status(400).json({ error: message });
   }

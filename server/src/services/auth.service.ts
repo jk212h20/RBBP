@@ -188,14 +188,18 @@ export async function findOrCreateLightningUser(pubkey: string) {
   // Check if user exists by Lightning pubkey
   let user = await prisma.user.findUnique({
     where: { lightningPubkey: pubkey },
+    include: { profile: true },
   });
 
   if (user) {
+    if (!user.isActive) {
+      throw new Error('Account is deactivated');
+    }
     return { user: sanitizeUser(user), token: generateToken(user), isNew: false, lightningBonusAwarded: false };
   }
 
   // Create new user with Lightning
-  user = await prisma.user.create({
+  const newUser = await prisma.user.create({
     data: {
       lightningPubkey: pubkey,
       name: `Lightning_${pubkey.slice(0, 8)}`, // Default name from pubkey
@@ -205,13 +209,13 @@ export async function findOrCreateLightningUser(pubkey: string) {
 
   // Create profile
   await prisma.profile.create({
-    data: { userId: user.id },
+    data: { userId: newUser.id },
   });
 
   // Award 1 bonus point for signing up with Lightning
-  const bonusAwarded = await awardLightningBonusPoint(user.id);
+  const bonusAwarded = await awardLightningBonusPoint(newUser.id);
 
-  return { user: sanitizeUser(user), token: generateToken(user), isNew: true, lightningBonusAwarded: bonusAwarded };
+  return { user: sanitizeUser(newUser), token: generateToken(newUser), isNew: true, lightningBonusAwarded: bonusAwarded };
 }
 
 export async function getUserById(userId: string) {
