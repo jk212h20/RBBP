@@ -441,19 +441,19 @@ export default function EventDetailPage() {
     
     // Validate positions for all players
     const playersWithPositions = allPlayers.filter(p => p.position !== null);
-    
+
+    // Always check for duplicate positions (both save and finalize)
+    const positions = playersWithPositions.map(p => p.position);
+    const uniquePositions = new Set(positions);
+    if (positions.length !== uniquePositions.size) {
+      setResultMessage({ type: 'error', text: 'Each player must have a unique position — no duplicate places allowed' });
+      return;
+    }
+
     if (finalize) {
-      // For finalization, all players must have positions
-      if (playersWithPositions.length !== allPlayers.length) {
-        setResultMessage({ type: 'error', text: 'All attended players must have a position to finalize' });
-        return;
-      }
-      
-      // Check for duplicate positions
-      const positions = playersWithPositions.map(p => p.position);
-      const uniquePositions = new Set(positions);
-      if (positions.length !== uniquePositions.size) {
-        setResultMessage({ type: 'error', text: 'Each player must have a unique position' });
+      // For finalization, positions 1, 2, and 3 must be assigned
+      if (!positions.includes(1) || !positions.includes(2) || !positions.includes(3)) {
+        setResultMessage({ type: 'error', text: 'Places 1st, 2nd, and 3rd must be assigned to finalize results' });
         return;
       }
     }

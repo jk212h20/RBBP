@@ -41,6 +41,12 @@ export const resultEntrySchema = z.object({
 
 export const bulkResultsSchema = z.object({
   results: z.array(resultEntrySchema).min(1, 'At least one result is required'),
+}).refine((data) => {
+  const positions = data.results.map(r => r.position);
+  return new Set(positions).size === positions.length;
+}, {
+  message: 'Duplicate positions are not allowed — each player must have a unique place',
+  path: ['results'],
 });
 
 // Bulk event creation schema for recurring events

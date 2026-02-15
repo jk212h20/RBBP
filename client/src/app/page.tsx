@@ -261,6 +261,9 @@ export default function HomePage() {
             <p className="text-white/70">
               Sign in with your Bitcoin Lightning wallet - no password needed!
             </p>
+            <p className="text-white/50 text-sm mt-2">
+              Need a wallet? Get <a href="https://phoenix.acinq.co" target="_blank" rel="noopener noreferrer" className="text-yellow-400 hover:text-yellow-300 underline">Phoenix</a>
+            </p>
           </div>
         </div>
 

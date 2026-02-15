@@ -143,7 +143,7 @@ export default function LoginPage() {
                   📱 Tap to open wallet (mobile)
                 </a>
                 <p className="text-xs text-gray-500 mb-1">
-                  Phoenix • Wallet of Satoshi • Zeus • Blue Wallet
+                  <a href="https://phoenix.acinq.co" target="_blank" rel="noopener noreferrer" className="text-yellow-600 hover:text-yellow-700 underline">Phoenix</a> • Wallet of Satoshi • Zeus • Blue Wallet
                 </p>
                 {pollingLightning && (
                   <p className="text-sm text-yellow-600 animate-pulse font-medium">

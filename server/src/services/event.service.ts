@@ -627,6 +627,12 @@ export class EventService {
       throw new Error('Event not found');
     }
 
+    // Validate no duplicate positions
+    const positions = results.map(r => r.position);
+    if (new Set(positions).size !== positions.length) {
+      throw new Error('Duplicate positions are not allowed — each player must have a unique place');
+    }
+
     // Get event name for reason strings
     const eventDetails = await prisma.event.findUnique({
       where: { id: eventId },
