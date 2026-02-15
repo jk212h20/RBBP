@@ -106,6 +106,8 @@
 - [x] Withdrawals Tab admin component
 - [x] Withdrawal stats and management
 - [x] Expired challenge/withdrawal cleanup
+- [x] Lightning login E2E test script (`server/scripts/test-lightning-login.ts`) — 17 assertions, tests full LNURL-auth flow with real secp256k1 signing. Run: `npx ts-node scripts/test-lightning-login.ts` (local) or `--production` flag
+- [x] Production DB migration fix (Feb 14): profileImage/bio columns were missing → added admin migration endpoint (`POST /admin/apply-migrations`) secured by `MIGRATION_SECRET` env var
 
 ### User Experience
 - [x] Mobile-responsive design (MobileNav hamburger menu)

@@ -93,20 +93,6 @@ interface Event {
   _count: { signups: number; results: number };
 }
 
-interface Signup {
-  id: string;
-  status: string;
-  registeredAt: string;
-  checkedInAt: string | null;
-  user: { id: string; name: string; email: string | null };
-}
-
-interface ResultEntry {
-  userId: string;
-  position: number;
-  knockouts: number;
-}
-
 interface User {
   id: string;
   email: string | null;
@@ -200,11 +186,6 @@ export default function AdminPage() {
   // Event management state
   const [events, setEvents] = useState<Event[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-  const [eventSignups, setEventSignups] = useState<Signup[]>([]);
-  const [loadingSignups, setLoadingSignups] = useState(false);
-  const [resultsMode, setResultsMode] = useState(false);
-  const [resultEntries, setResultEntries] = useState<ResultEntry[]>([]);
   
   // Guest merge state
   const [guestUsers, setGuestUsers] = useState<GuestUser[]>([]);
@@ -524,52 +505,6 @@ export default function AdminPage() {
     }
   };
 
-  const openEventDetails = async (event: Event) => {
-    setSelectedEvent(event);
-    setResultsMode(false);
-    setLoadingSignups(true);
-    try {
-      const signups = await eventsAPI.getSignups(event.id);
-      setEventSignups(signups);
-      // Initialize result entries from signups
-      setResultEntries(signups.map((s: Signup, i: number) => ({
-        userId: s.user.id,
-        position: i + 1,
-        knockouts: 0
-      })));
-    } catch (err) {
-      console.error('Failed to fetch signups:', err);
-    } finally {
-      setLoadingSignups(false);
-    }
-  };
-
-  const handleCheckIn = async (userId: string) => {
-    if (!selectedEvent) return;
-    try {
-      setError('');
-      await eventsAPI.checkIn(selectedEvent.id, userId);
-      setMessage('Player checked in!');
-      const signups = await eventsAPI.getSignups(selectedEvent.id);
-      setEventSignups(signups);
-    } catch (err: any) {
-      setError(err.message || 'Failed to check in player');
-    }
-  };
-
-  const handleSubmitResults = async () => {
-    if (!selectedEvent) return;
-    try {
-      setError('');
-      setMessage('');
-      await eventsAPI.enterResults(selectedEvent.id, resultEntries);
-      setMessage('Results saved! Standings updated.');
-      setSelectedEvent(null);
-      fetchEvents();
-    } catch (err: any) {
-      setError(err.message || 'Failed to save results');
-    }
-  };
 
   if (loading) {
     return (
@@ -1487,12 +1422,12 @@ export default function AdminPage() {
                             <option value="CANCELLED">❌ Cancelled</option>
                           </select>
                           <div className="flex gap-2">
-                            <button
-                              onClick={() => openEventDetails(event)}
+                            <Link
+                              href={`/events/${event.id}`}
                               className="text-blue-400 hover:text-blue-300 text-xs"
                             >
                               👥 Manage
-                            </button>
+                            </Link>
                             <button
                               onClick={() => handleDeleteEvent(event.id)}
                               className="text-red-400 hover:text-red-300 text-xs"
@@ -1811,132 +1746,6 @@ export default function AdminPage() {
           </div>
         )}
       </div>
-
-      {/* Event Management Modal */}
-      {selectedEvent && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h2 className="text-xl font-bold">{selectedEvent.name}</h2>
-                <p className="text-gray-400 text-sm">
-                  📍 {selectedEvent.venue.name} • 📆 {new Date(selectedEvent.dateTime).toLocaleString()}
-                </p>
-              </div>
-              <button
-                onClick={() => setSelectedEvent(null)}
-                className="text-gray-400 hover:text-white text-2xl"
-              >
-                ×
-              </button>
-            </div>
-
-            {/* Toggle between Check-in and Results */}
-            <div className="flex gap-2 mb-4">
-              <button
-                onClick={() => setResultsMode(false)}
-                className={`px-4 py-2 rounded ${!resultsMode ? 'bg-blue-600' : 'bg-gray-700'}`}
-              >
-                👥 Check-in ({eventSignups.length})
-              </button>
-              <button
-                onClick={() => setResultsMode(true)}
-                className={`px-4 py-2 rounded ${resultsMode ? 'bg-blue-600' : 'bg-gray-700'}`}
-              >
-                🏆 Enter Results
-              </button>
-            </div>
-
-            {loadingSignups ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto"></div>
-              </div>
-            ) : !resultsMode ? (
-              /* Check-in Mode */
-              <div className="space-y-2">
-                {eventSignups.length === 0 ? (
-                  <p className="text-gray-400 text-center py-4">No signups yet</p>
-                ) : (
-                  eventSignups.map((signup) => (
-                    <div key={signup.id} className="flex justify-between items-center bg-gray-700 p-3 rounded">
-                      <div>
-                        <span className="font-medium">{signup.user.name}</span>
-                        {signup.user.email && (
-                          <span className="text-gray-400 text-sm ml-2">{signup.user.email}</span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {signup.status === 'CHECKED_IN' ? (
-                          <span className="text-blue-300 text-sm">✅ Checked In</span>
-                        ) : (
-                          <button
-                            onClick={() => handleCheckIn(signup.user.id)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
-                          >
-                            Check In
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            ) : (
-              /* Results Entry Mode */
-              <div className="space-y-4">
-                <p className="text-gray-400 text-sm">Enter finishing positions and knockouts for each player:</p>
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {resultEntries.map((entry, idx) => {
-                    const signup = eventSignups.find(s => s.user.id === entry.userId);
-                    return (
-                      <div key={entry.userId} className="flex items-center gap-3 bg-gray-700 p-3 rounded">
-                        <div className="flex-1">
-                          <span className="font-medium">{signup?.user.name || 'Unknown'}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <label className="text-gray-400 text-sm">Pos:</label>
-                          <input
-                            type="number"
-                            min="1"
-                            value={entry.position}
-                            onChange={(e) => {
-                              const newEntries = [...resultEntries];
-                              newEntries[idx].position = parseInt(e.target.value) || 1;
-                              setResultEntries(newEntries);
-                            }}
-                            className="w-16 p-2 bg-gray-600 border border-gray-500 rounded text-white text-center"
-                          />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <label className="text-gray-400 text-sm">KOs:</label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={entry.knockouts}
-                            onChange={(e) => {
-                              const newEntries = [...resultEntries];
-                              newEntries[idx].knockouts = parseInt(e.target.value) || 0;
-                              setResultEntries(newEntries);
-                            }}
-                            className="w-16 p-2 bg-gray-600 border border-gray-500 rounded text-white text-center"
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <button
-                  onClick={handleSubmitResults}
-                  disabled={resultEntries.length === 0}
-                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white py-3 rounded font-semibold"
-                >
-                  💾 Save Results & Update Standings
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Edit Season Modal */}
       {editingSeason && (
