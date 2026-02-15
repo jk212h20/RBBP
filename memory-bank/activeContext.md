@@ -12,9 +12,9 @@ The application is **live and deployed on Railway** with all core features funct
   - Event model: `lastLongerEnabled` (Boolean), `lastLongerSeedSats` (Int, default 10000), `lastLongerEntrySats` (Int, default 25000), `lastLongerWinnerId` (FK to User)
   - `LastLongerEntry` model: tracks each player's entry with Lightning invoice (userId, eventId, paymentRequest, paymentHash, amountSats, status PENDING/PAID/EXPIRED)
   - Backend: `server/src/services/last-longer.service.ts` — enterPool (creates Lightning invoice via Voltage), checkPayment (polls invoice status), getPoolEntries, selectWinner (credits winner's balance with seed + all entries), getPoolStatus
-  - Routes: `POST /events/:id/last-longer/enter`, `GET /events/:id/last-longer/check-payment/:entryId`, `GET /events/:id/last-longer/entries`, `POST /events/:id/last-longer/winner`, `GET /events/:id/last-longer/status`
+  - Routes: `GET /events/:id/last-longer` (pool info + entries + user status), `POST /events/:id/last-longer/enter`, `GET /events/:id/last-longer/check-payment`, `POST /events/:id/last-longer/winner`
   - Voltage service: Added `createInvoice()` and `lookupInvoice()` methods for receiving Lightning payments
-  - Client API: `lastLongerAPI.enterPool()`, `.checkPayment()`, `.getEntries()`, `.selectWinner()`, `.getPoolStatus()`
+  - Client API: `lastLongerAPI.getPoolInfo()`, `.enterPool()`, `.checkPayment()`, `.selectWinner()`
   - Event detail page: Players see "Enter Last Longer Pool" button → Lightning invoice QR code → auto-polls for payment confirmation. Admin/TD see pool status + dropdown to select winner from pool entrants.
   - Admin page: "Enable Last Longer Pool" checkbox in event creation form with seed amount and entry fee fields
   - Validator: `lastLongerEnabled`, `lastLongerSeedSats`, `lastLongerEntrySats` in event create/update schemas
@@ -182,7 +182,7 @@ server/src/
 ├── middleware/auth.middleware.ts  # JWT verification, role checks
 ├── middleware/rateLimiter.ts     # Rate limiters (auth routes) — extracted to avoid circular deps
 ├── routes/                 # 11 route files (auth, venue, venue-application, season, event, standings, admin, withdrawal, lnurl, balance, faq)
-├── services/               # 12 service files (business logic layer, incl. last-longer)
+├── services/               # 13 service files (business logic layer, incl. last-longer)
 ├── validators/             # 4 Zod validation schemas
 ├── types/express.d.ts      # Express type augmentation
 └── lib/prisma.ts           # Prisma client singleton

@@ -1,6 +1,6 @@
 # Progress — Roatan Poker League
 
-## Last Updated: February 14, 2026
+## Last Updated: February 15, 2026
 
 ---
 
@@ -109,6 +109,18 @@
 - [x] Lightning login E2E test script (`server/scripts/test-lightning-login.ts`) — 17 assertions, tests full LNURL-auth flow with real secp256k1 signing. Run: `npx ts-node scripts/test-lightning-login.ts` (local) or `--production` flag
 - [x] Production DB migration fix (Feb 14): profileImage/bio columns were missing → added admin migration endpoint (`POST /admin/apply-migrations`) secured by `MIGRATION_SECRET` env var
 
+### Last Longer Pool (Side Bet)
+- [x] `lastLongerEnabled`, `lastLongerSeedSats` (default 10000), `lastLongerEntrySats` (default 25000) on Event model
+- [x] `LastLongerEntry` model: tracks player entries with Lightning invoice payment
+- [x] Backend service: `last-longer.service.ts` — createEntryInvoice, checkPayment, getPoolEntries, getPoolInfo, selectWinner, isUserEntered
+- [x] Routes: `GET /events/:id/last-longer`, `POST /events/:id/last-longer/enter`, `GET /events/:id/last-longer/check-payment`, `POST /events/:id/last-longer/winner`
+- [x] Client: "Enter Last Longer Pool" button on event page → Lightning invoice QR → auto-poll payment
+- [x] Admin/TD: Pool status display + dropdown to select winner from paid entrants
+- [x] Winner gets total pool (seed + all entries) credited to Lightning balance
+- [x] Admin: Enable Last Longer checkbox + seed/entry fields in event creation form
+- [x] Validator: lastLongerEnabled, lastLongerSeedSats, lastLongerEntrySats in event schemas
+- [x] Migration: `20260215163000_add_last_longer_pool`
+
 ### User Experience
 - [x] Mobile-responsive design (MobileNav hamburger menu)
 - [x] Home page with upcoming events and leaderboard preview
@@ -147,7 +159,7 @@
 
 ---
 
-## 🗄️ Database Schema (15 Models)
+## 🗄️ Database Schema (16 Models)
 
 | Model | Purpose |
 |-------|---------|
@@ -166,6 +178,7 @@
 | DeletedUser | Archived user data on soft-delete |
 | Withdrawal | Lightning withdrawal records (amount, status, LNURL data) |
 | PointsHistory | Audit trail for all point changes |
+| LastLongerEntry | Last Longer pool entries with Lightning invoice payment tracking |
 
 ---
 
@@ -176,7 +189,7 @@
 | auth.routes | `/api/auth` | register, login, google, lightning (challenge/verify/status), me, profile, link-lightning, add-email |
 | venue.routes | `/api/venues` | CRUD, assign-manager, by-manager |
 | season.routes | `/api/seasons` | CRUD, activate, current, standings, recalculate |
-| event.routes | `/api/events` | CRUD, bulk-create, signup, cancel, check-in, results, enter-results, points-preview, status, process-no-shows, adjust-points |
+| event.routes | `/api/events` | CRUD, bulk-create, signup, cancel, check-in, results, enter-results, points-preview, status, process-no-shows, adjust-points, last-longer (pool info, enter, check-payment, winner) |
 | standings.routes | `/api/standings` | current, by-season, by-player, my-standing, my-all-seasons, recalculate |
 | admin.routes | `/api/admin` | users, user CRUD, role management, points (adjust/bulk/history), admin-notes, generate-claim-link, guest-users, merge-guest |
 | withdrawal.routes | `/api/withdrawals` | create, list, my-withdrawals, cancel, stats |
@@ -204,3 +217,4 @@
 | `20260214152400` | Feb 14 | Add `registrationCloseMinutes` to Event |
 | `20260214160000` | Feb 14 | Add `profileImage` + `bio` to Profile |
 | `20260214170000` | Feb 14 | Add VenueApplication model |
+| `20260215163000` | Feb 15 | Add Last Longer Pool (Event fields + LastLongerEntry model) |
