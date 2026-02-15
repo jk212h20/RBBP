@@ -72,6 +72,8 @@ model User {
   pointsHistory     PointsHistory[]
   venueApplicationsSubmitted VenueApplication[] @relation("VenueApplicationSubmitter")
   venueApplicationsReviewed  VenueApplication[] @relation("VenueApplicationReviewer")
+  lastLongerEntries          LastLongerEntry[]
+  lastLongerWins             Event[]            @relation("LastLongerWinner")
 
   @@map("users")
 }
@@ -179,6 +181,12 @@ model Event {
   totalEntrants         Int?        // Manual override for total player count (for points calc)
   status                EventStatus @default(SCHEDULED)
   
+  // Last Longer Pool
+  lastLongerEnabled    Boolean  @default(false)
+  lastLongerSeedSats   Int      @default(10000)
+  lastLongerEntrySats  Int      @default(25000)
+  lastLongerWinnerId   String?
+
   venueId     String
   seasonId    String
   directorId  String?
@@ -187,12 +195,14 @@ model Event {
   updatedAt   DateTime    @updatedAt
 
   // Relations
-  venue     Venue         @relation(fields: [venueId], references: [id])
-  season    Season        @relation(fields: [seasonId], references: [id])
-  director  User?         @relation("EventDirector", fields: [directorId], references: [id])
-  signups   EventSignup[]
-  results   Result[]
-  comments  Comment[]
+  venue              Venue              @relation(fields: [venueId], references: [id])
+  season             Season             @relation(fields: [seasonId], references: [id])
+  director           User?              @relation("EventDirector", fields: [directorId], references: [id])
+  lastLongerWinner   User?              @relation("LastLongerWinner", fields: [lastLongerWinnerId], references: [id])
+  signups            EventSignup[]
+  results            Result[]
+  comments           Comment[]
+  lastLongerEntries  LastLongerEntry[]
 
   @@map("events")
 }
@@ -442,6 +452,27 @@ model VenueApplication {
   venue       Venue? @relation(fields: [venueId], references: [id])
 
   @@map("venue_applications")
+}
+
+// ============================================
+// LAST LONGER POOL ENTRIES
+// ============================================
+
+model LastLongerEntry {
+  id          String    @id @default(cuid())
+  eventId     String
+  userId      String
+  amountSats  Int
+  paymentHash String?   // Lightning invoice payment hash
+  paidAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@map("last_longer_entries")
 }
 
 // ============================================

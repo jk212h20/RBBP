@@ -64,6 +64,9 @@ interface EventForm {
   maxPlayers: number;
   buyIn: number;
   registrationCloseMinutes: number;
+  lastLongerEnabled: boolean;
+  lastLongerSeedSats: number;
+  lastLongerEntrySats: number;
 }
 
 interface BulkEventForm {
@@ -144,7 +147,10 @@ export default function AdminPage() {
     seasonId: '', 
     maxPlayers: 50, 
     buyIn: 0,
-    registrationCloseMinutes: 30
+    registrationCloseMinutes: 30,
+    lastLongerEnabled: false,
+    lastLongerSeedSats: 10000,
+    lastLongerEntrySats: 25000
   });
   // Recurring event options (integrated into single form)
   const [isRecurring, setIsRecurring] = useState(false);
@@ -339,7 +345,7 @@ export default function AdminPage() {
       setMessage('');
       await eventsAPI.create(eventForm);
       setMessage('Event created successfully!');
-      setEventForm({ name: '', description: '', dateTime: '', venueId: '', seasonId: '', maxPlayers: 50, buyIn: 0, registrationCloseMinutes: 30 });
+      setEventForm({ name: '', description: '', dateTime: '', venueId: '', seasonId: '', maxPlayers: 50, buyIn: 0, registrationCloseMinutes: 30, lastLongerEnabled: false, lastLongerSeedSats: 10000, lastLongerEntrySats: 25000 });
       fetchStats();
     } catch (err: any) {
       setError(err.message || 'Failed to create event');
@@ -1785,6 +1791,45 @@ export default function AdminPage() {
                     placeholder="Event description..."
                   />
                 </div>
+                {/* Last Longer Pool Settings */}
+                <div className="md:col-span-2 border-t border-gray-700 pt-4">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={eventForm.lastLongerEnabled}
+                      onChange={(e) => setEventForm({ ...eventForm, lastLongerEnabled: e.target.checked })}
+                      className="w-5 h-5 rounded bg-gray-700 border-gray-600 text-yellow-500 focus:ring-yellow-500"
+                    />
+                    <span className="text-white font-semibold">⚡ Enable Last Longer Pool</span>
+                  </label>
+                  <p className="text-gray-500 text-xs mt-1 ml-8">Players can pay sats to enter a side pool. Winner takes all.</p>
+                </div>
+                {eventForm.lastLongerEnabled && (
+                  <>
+                    <div>
+                      <label className="block text-gray-400 mb-1">Seed Amount (sats)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={eventForm.lastLongerSeedSats}
+                        onChange={(e) => setEventForm({ ...eventForm, lastLongerSeedSats: parseInt(e.target.value) || 0 })}
+                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
+                      />
+                      <p className="text-gray-500 text-xs mt-1">Initial sats added to the pool by the house</p>
+                    </div>
+                    <div>
+                      <label className="block text-gray-400 mb-1">Entry Fee (sats)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={eventForm.lastLongerEntrySats}
+                        onChange={(e) => setEventForm({ ...eventForm, lastLongerEntrySats: parseInt(e.target.value) || 0 })}
+                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
+                      />
+                      <p className="text-gray-500 text-xs mt-1">Sats each player pays to enter the pool</p>
+                    </div>
+                  </>
+                )}
                 <div className="md:col-span-2">
                   <button
                     type="submit"

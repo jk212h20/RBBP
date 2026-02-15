@@ -7,6 +7,20 @@ The application is **live and deployed on Railway** with all core features funct
 
 ## Recent Work (Feb 2026)
 
+### Feb 15 — Last Longer Pool Feature
+- **Last Longer Pool**: Side bet feature where players pay sats to enter a pool; winner takes all
+  - Event model: `lastLongerEnabled` (Boolean), `lastLongerSeedSats` (Int, default 10000), `lastLongerEntrySats` (Int, default 25000), `lastLongerWinnerId` (FK to User)
+  - `LastLongerEntry` model: tracks each player's entry with Lightning invoice (userId, eventId, paymentRequest, paymentHash, amountSats, status PENDING/PAID/EXPIRED)
+  - Backend: `server/src/services/last-longer.service.ts` — enterPool (creates Lightning invoice via Voltage), checkPayment (polls invoice status), getPoolEntries, selectWinner (credits winner's balance with seed + all entries), getPoolStatus
+  - Routes: `POST /events/:id/last-longer/enter`, `GET /events/:id/last-longer/check-payment/:entryId`, `GET /events/:id/last-longer/entries`, `POST /events/:id/last-longer/winner`, `GET /events/:id/last-longer/status`
+  - Voltage service: Added `createInvoice()` and `lookupInvoice()` methods for receiving Lightning payments
+  - Client API: `lastLongerAPI.enterPool()`, `.checkPayment()`, `.getEntries()`, `.selectWinner()`, `.getPoolStatus()`
+  - Event detail page: Players see "Enter Last Longer Pool" button → Lightning invoice QR code → auto-polls for payment confirmation. Admin/TD see pool status + dropdown to select winner from pool entrants.
+  - Admin page: "Enable Last Longer Pool" checkbox in event creation form with seed amount and entry fee fields
+  - Validator: `lastLongerEnabled`, `lastLongerSeedSats`, `lastLongerEntrySats` in event create/update schemas
+  - Event service: Includes Last Longer fields in create/update + event queries include `lastLongerEntries` and `lastLongerWinner`
+  - Migration: `20260215163000_add_last_longer_pool`
+
 ### Feb 14 — Lightning Login Security Audit, Total Entrants Dynamic Slots, Logo Fix, Blue Background Site-wide, Venue Applications, Profile Image & Bio, Registration Close Cutoff, Enhanced Event Panels & CSV Exports
 - **Lightning Login Test Suite**: Created `server/scripts/test-lightning-login.ts` — comprehensive LNURL-auth E2E test (17 assertions). Tests full flow: challenge → LNURL decode → wallet callback simulation → status poll → JWT verification → /auth/me → rapid polling behavior. Uses `@noble/secp256k1` for real secp256k1 signing with DER encoding, `bech32` for LNURL decoding. Run: `npx ts-node scripts/test-lightning-login.ts` (local) or `--production` flag.
 - **Lightning Login Production Fix**: Root cause was `profileImage` column missing from production DB (migration `20260214160000` hadn't been applied). Added `POST /admin/apply-migrations` endpoint secured by `MIGRATION_SECRET` env var — runs raw SQL `ALTER TABLE` statements to add missing columns. Applied all 3 missing migrations (registrationCloseMinutes, profileImage+bio, VenueApplication). **Result: 17/17 tests passing on both local and production.**
@@ -168,14 +182,14 @@ server/src/
 ├── middleware/auth.middleware.ts  # JWT verification, role checks
 ├── middleware/rateLimiter.ts     # Rate limiters (auth routes) — extracted to avoid circular deps
 ├── routes/                 # 11 route files (auth, venue, venue-application, season, event, standings, admin, withdrawal, lnurl, balance, faq)
-├── services/               # 11 service files (business logic layer)
+├── services/               # 12 service files (business logic layer, incl. last-longer)
 ├── validators/             # 4 Zod validation schemas
 ├── types/express.d.ts      # Express type augmentation
 └── lib/prisma.ts           # Prisma client singleton
 ```
 
 ### Database (Prisma / PostgreSQL)
-17 models: User, Profile, Venue, Season, Event, EventSignup, Result, Standing, Achievement, UserAchievement, LightningChallenge, Comment, DeletedUser, Withdrawal, PointsHistory, Faq, VenueApplication
+18 models: User, Profile, Venue, Season, Event, EventSignup, Result, Standing, Achievement, UserAchievement, LightningChallenge, Comment, DeletedUser, Withdrawal, PointsHistory, Faq, VenueApplication, LastLongerEntry
 
 ## Key Patterns & Decisions
 

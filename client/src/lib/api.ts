@@ -296,6 +296,43 @@ export const eventsAPI = {
       method: 'PUT',
       body: JSON.stringify({ totalEntrants }),
     }),
+
+  // Last Longer Pool
+  getLastLongerPool: (eventId: string) =>
+    fetchAPI<{
+      enabled: boolean;
+      seedSats: number;
+      entrySats: number;
+      totalPot: number;
+      entryCount: number;
+      entries: { id: string; userId: string; userName: string; paidAt: string }[];
+      winnerId: string | null;
+      winnerName: string | null;
+      userEntry: { id: string; status: string; paidAt: string | null } | null;
+    }>(`/events/${eventId}/last-longer`),
+
+  enterLastLonger: (eventId: string) =>
+    fetchAPI<{
+      entry: { id: string; status: string };
+      invoice: { paymentRequest: string; paymentHash: string; amountSats: number; expiresAt: string };
+    }>(`/events/${eventId}/last-longer/enter`, { method: 'POST' }),
+
+  checkLastLongerPayment: (eventId: string, entryId: string) =>
+    fetchAPI<{
+      status: string;
+      paid: boolean;
+    }>(`/events/${eventId}/last-longer/check-payment/${entryId}`),
+
+  selectLastLongerWinner: (eventId: string, winnerId: string) =>
+    fetchAPI<{
+      message: string;
+      winnerId: string;
+      winnerName: string;
+      prizeAmount: number;
+    }>(`/events/${eventId}/last-longer/winner`, {
+      method: 'POST',
+      body: JSON.stringify({ winnerId }),
+    }),
 };
 
 // ============================================

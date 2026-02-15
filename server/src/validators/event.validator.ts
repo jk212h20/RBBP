@@ -15,6 +15,9 @@ export const createEventSchema = z.object({
   seasonId: z.string().min(1, 'Season is required'),
   directorId: z.string().optional(),
   status: z.nativeEnum(EventStatus).optional().default(EventStatus.SCHEDULED),
+  lastLongerEnabled: z.boolean().optional().default(false),
+  lastLongerSeedSats: z.number().int().min(0).optional().default(10000),
+  lastLongerEntrySats: z.number().int().min(0).optional().default(25000),
 });
 
 export const updateEventSchema = z.object({
@@ -31,6 +34,9 @@ export const updateEventSchema = z.object({
   seasonId: z.string().optional(),
   directorId: z.string().optional().nullable(),
   status: z.nativeEnum(EventStatus).optional(),
+  lastLongerEnabled: z.boolean().optional(),
+  lastLongerSeedSats: z.number().int().min(0).optional(),
+  lastLongerEntrySats: z.number().int().min(0).optional(),
 });
 
 export const resultEntrySchema = z.object({
@@ -68,6 +74,9 @@ export const bulkCreateEventsSchema = z.object({
   directorId: z.string().optional(),
   status: z.nativeEnum(EventStatus).optional().default(EventStatus.SCHEDULED),
   startingNumber: z.number().int().min(1).optional().default(1), // Starting # for naming
+  lastLongerEnabled: z.boolean().optional().default(false),
+  lastLongerSeedSats: z.number().int().min(0).optional().default(10000),
+  lastLongerEntrySats: z.number().int().min(0).optional().default(25000),
 });
 
 export type CreateEventInput = z.infer<typeof createEventSchema>;

@@ -124,7 +124,94 @@ export default function EventDetailPage() {
   // Extra player slots (for unaccounted players when totalEntrants > attended registered)
   const [extraSlots, setExtraSlots] = useState<ExtraPlayerSlot[]>([]);
 
+  // Last Longer Pool state
+  const [lastLongerPool, setLastLongerPool] = useState<{
+    enabled: boolean;
+    seedSats: number;
+    entrySats: number;
+    totalPot: number;
+    entryCount: number;
+    entries: { id: string; userId: string; userName: string; paidAt: string }[];
+    winnerId: string | null;
+    winnerName: string | null;
+    userEntry: { id: string; status: string; paidAt: string | null } | null;
+  } | null>(null);
+  const [lastLongerInvoice, setLastLongerInvoice] = useState<{
+    paymentRequest: string;
+    paymentHash: string;
+    amountSats: number;
+    expiresAt: string;
+    entryId: string;
+  } | null>(null);
+  const [lastLongerLoading, setLastLongerLoading] = useState(false);
+  const [lastLongerMessage, setLastLongerMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [selectedWinnerId, setSelectedWinnerId] = useState<string>('');
+  const [selectingWinner, setSelectingWinner] = useState(false);
+  const [paymentPolling, setPaymentPolling] = useState(false);
+
   const canManageEvent = user && (user.role === 'ADMIN' || user.role === 'TOURNAMENT_DIRECTOR' || user.role === 'VENUE_MANAGER');
+
+  // Load Last Longer Pool data
+  useEffect(() => {
+    if (event) {
+      eventsAPI.getLastLongerPool(eventId).then(data => {
+        setLastLongerPool(data);
+        if (data.winnerId) setSelectedWinnerId(data.winnerId);
+      }).catch(() => setLastLongerPool(null));
+    }
+  }, [event, eventId]);
+
+  // Poll for payment status when invoice is shown
+  useEffect(() => {
+    if (!lastLongerInvoice || !paymentPolling) return;
+    const interval = setInterval(async () => {
+      try {
+        const result = await eventsAPI.checkLastLongerPayment(eventId, lastLongerInvoice.entryId);
+        if (result.paid) {
+          setPaymentPolling(false);
+          setLastLongerInvoice(null);
+          setLastLongerMessage({ type: 'success', text: 'Payment received! You are in the Last Longer pool.' });
+          // Reload pool data
+          const data = await eventsAPI.getLastLongerPool(eventId);
+          setLastLongerPool(data);
+        }
+      } catch { /* ignore polling errors */ }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [lastLongerInvoice, paymentPolling, eventId]);
+
+  const handleEnterLastLonger = async () => {
+    setLastLongerLoading(true);
+    setLastLongerMessage(null);
+    try {
+      const result = await eventsAPI.enterLastLonger(eventId);
+      setLastLongerInvoice({
+        ...result.invoice,
+        entryId: result.entry.id,
+      });
+      setPaymentPolling(true);
+    } catch (err: any) {
+      setLastLongerMessage({ type: 'error', text: err.message || 'Failed to enter Last Longer pool' });
+    } finally {
+      setLastLongerLoading(false);
+    }
+  };
+
+  const handleSelectWinner = async () => {
+    if (!selectedWinnerId) return;
+    setSelectingWinner(true);
+    setLastLongerMessage(null);
+    try {
+      const result = await eventsAPI.selectLastLongerWinner(eventId, selectedWinnerId);
+      setLastLongerMessage({ type: 'success', text: `${result.winnerName} wins ${result.prizeAmount.toLocaleString()} sats!` });
+      const data = await eventsAPI.getLastLongerPool(eventId);
+      setLastLongerPool(data);
+    } catch (err: any) {
+      setLastLongerMessage({ type: 'error', text: err.message || 'Failed to select winner' });
+    } finally {
+      setSelectingWinner(false);
+    }
+  };
 
   // Calculate extra slots needed when totalEntrants or attendance changes
   // Formula: totalEntrants - attendedRegisteredCount = total extra slots needed
@@ -1166,6 +1253,137 @@ export default function EventDetailPage() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Last Longer Pool */}
+        {lastLongerPool?.enabled && (
+          <div className="bg-purple-500/10 backdrop-blur-sm rounded-xl border border-purple-500/30 p-6 mb-6">
+            <h2 className="text-xl font-bold text-purple-300 mb-4">⚡ Last Longer Pool</h2>
+            
+            {/* Pool Info */}
+            <div className="grid grid-cols-3 gap-4 text-center mb-4">
+              <div className="bg-white/5 rounded-lg p-3">
+                <p className="text-purple-200 text-xs">Seed</p>
+                <p className="text-white font-bold">{lastLongerPool.seedSats.toLocaleString()} sats</p>
+              </div>
+              <div className="bg-white/5 rounded-lg p-3">
+                <p className="text-purple-200 text-xs">Entry</p>
+                <p className="text-white font-bold">{lastLongerPool.entrySats.toLocaleString()} sats</p>
+              </div>
+              <div className="bg-white/5 rounded-lg p-3">
+                <p className="text-purple-200 text-xs">Total Pot</p>
+                <p className="text-yellow-400 font-bold">{lastLongerPool.totalPot.toLocaleString()} sats</p>
+              </div>
+            </div>
+
+            {/* Winner Display */}
+            {lastLongerPool.winnerName && (
+              <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4 mb-4 text-center">
+                <p className="text-yellow-400 text-lg font-bold">🏆 {lastLongerPool.winnerName} wins!</p>
+                <p className="text-yellow-300/70 text-sm">{lastLongerPool.totalPot.toLocaleString()} sats credited to their balance</p>
+              </div>
+            )}
+
+            {/* Player Entry Section */}
+            {isAuthenticated && isSignedUp && userSignupStatus !== 'WAITLISTED' && !lastLongerPool.winnerId && (
+              <div className="mb-4">
+                {lastLongerPool.userEntry?.paidAt ? (
+                  <div className="bg-green-500/20 border border-green-500/50 rounded-lg p-3 text-center">
+                    <p className="text-green-400 font-medium">✅ You&apos;re in the Last Longer pool!</p>
+                  </div>
+                ) : lastLongerInvoice ? (
+                  <div className="bg-white/5 border border-purple-500/30 rounded-lg p-4">
+                    <p className="text-purple-200 text-sm mb-3 text-center">
+                      Pay {lastLongerInvoice.amountSats.toLocaleString()} sats to enter the pool
+                    </p>
+                    <div className="bg-white rounded-lg p-4 mx-auto max-w-xs">
+                      <div className="text-center">
+                        <p className="text-gray-800 text-xs font-mono break-all select-all mb-2">
+                          {lastLongerInvoice.paymentRequest}
+                        </p>
+                        <button
+                          onClick={() => navigator.clipboard.writeText(lastLongerInvoice.paymentRequest)}
+                          className="text-purple-600 text-sm hover:text-purple-800 font-medium"
+                        >
+                          📋 Copy Invoice
+                        </button>
+                      </div>
+                    </div>
+                    {paymentPolling && (
+                      <div className="flex items-center justify-center gap-2 mt-3">
+                        <div className="animate-spin h-4 w-4 border-2 border-purple-400 border-t-transparent rounded-full"></div>
+                        <p className="text-purple-300 text-sm">Waiting for payment...</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleEnterLastLonger}
+                    disabled={lastLongerLoading}
+                    className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 disabled:opacity-50 text-white py-3 rounded-lg font-semibold transition"
+                  >
+                    {lastLongerLoading ? 'Creating invoice...' : `⚡ Enter Last Longer Pool (${lastLongerPool.entrySats.toLocaleString()} sats)`}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Message */}
+            {lastLongerMessage && (
+              <div className={`mb-4 p-3 rounded-lg ${
+                lastLongerMessage.type === 'success' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-400'
+              }`}>
+                {lastLongerMessage.text}
+              </div>
+            )}
+
+            {/* Entries List */}
+            {lastLongerPool.entries.length > 0 && (
+              <div>
+                <h3 className="text-purple-200 font-medium text-sm mb-2">
+                  Pool Entries ({lastLongerPool.entryCount})
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {lastLongerPool.entries.map(entry => (
+                    <div key={entry.id} className="flex items-center gap-2 p-2 bg-white/5 rounded-lg">
+                      <div className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold text-xs">
+                        {entry.userName.charAt(0).toUpperCase()}
+                      </div>
+                      <span className="text-white text-sm truncate">{entry.userName}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Admin: Select Winner */}
+            {canManageEvent && lastLongerPool.entries.length > 0 && !lastLongerPool.winnerId && (
+              <div className="mt-4 pt-4 border-t border-purple-500/30">
+                <h3 className="text-orange-300 font-medium text-sm mb-2">🎯 Select Winner (Admin)</h3>
+                <div className="flex gap-2">
+                  <select
+                    value={selectedWinnerId}
+                    onChange={(e) => setSelectedWinnerId(e.target.value)}
+                    className="flex-1 p-3 bg-white/10 border border-purple-500/50 rounded-lg text-white focus:outline-none focus:border-purple-400"
+                  >
+                    <option value="" className="bg-gray-900">Select winner...</option>
+                    {lastLongerPool.entries.map(entry => (
+                      <option key={entry.userId} value={entry.userId} className="bg-gray-900">
+                        {entry.userName}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={handleSelectWinner}
+                    disabled={!selectedWinnerId || selectingWinner}
+                    className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-yellow-800 disabled:opacity-50 text-white rounded-lg font-medium transition"
+                  >
+                    {selectingWinner ? '...' : '🏆 Award'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

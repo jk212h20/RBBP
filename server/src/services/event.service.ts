@@ -219,6 +219,9 @@ export class EventService {
         seasonId: data.seasonId,
         directorId: data.directorId || null,
         status: data.status || EventStatus.SCHEDULED,
+        lastLongerEnabled: data.lastLongerEnabled ?? false,
+        lastLongerSeedSats: data.lastLongerSeedSats ?? 10000,
+        lastLongerEntrySats: data.lastLongerEntrySats ?? 25000,
       },
       include: {
         venue: {
@@ -255,6 +258,9 @@ export class EventService {
         ...(data.seasonId && { seasonId: data.seasonId }),
         ...(data.directorId !== undefined && { directorId: data.directorId }),
         ...(data.status && { status: data.status }),
+        ...(data.lastLongerEnabled !== undefined && { lastLongerEnabled: data.lastLongerEnabled }),
+        ...(data.lastLongerSeedSats !== undefined && { lastLongerSeedSats: data.lastLongerSeedSats }),
+        ...(data.lastLongerEntrySats !== undefined && { lastLongerEntrySats: data.lastLongerEntrySats }),
       },
       include: {
         venue: {
@@ -1019,6 +1025,9 @@ export class EventService {
           seasonId: data.seasonId,
           directorId: data.directorId || null,
           status: data.status || EventStatus.SCHEDULED,
+          lastLongerEnabled: data.lastLongerEnabled ?? false,
+          lastLongerSeedSats: data.lastLongerSeedSats ?? 10000,
+          lastLongerEntrySats: data.lastLongerEntrySats ?? 25000,
         },
         include: {
           venue: {

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { eventService } from '../services/event.service';
+import { lastLongerService } from '../services/last-longer.service';
 import { createEventSchema, updateEventSchema, bulkResultsSchema, bulkCreateEventsSchema } from '../validators/event.validator';
 import { authenticate, requireAdmin, requireTournamentDirector } from '../middleware/auth.middleware';
 import { EventStatus } from '@prisma/client';
@@ -579,6 +580,111 @@ router.put('/:id/total-entrants', authenticate, requireTournamentDirector, async
   } catch (error: any) {
     console.error('Error setting total entrants:', error);
     res.status(500).json({ error: error.message || 'Failed to set total entrants' });
+  }
+});
+
+// ============================================
+// LAST LONGER POOL ENDPOINTS
+// ============================================
+
+/**
+ * GET /api/events/:id/last-longer
+ * Get Last Longer pool info for an event (public)
+ */
+router.get('/:id/last-longer', async (req: Request, res: Response) => {
+  try {
+    const poolInfo = await lastLongerService.getPoolInfo(req.params.id);
+    res.json(poolInfo);
+  } catch (error: any) {
+    console.error('Error fetching last longer pool:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch last longer pool info' });
+  }
+});
+
+/**
+ * GET /api/events/:id/last-longer/entries
+ * Get all paid entries for the Last Longer pool (public)
+ */
+router.get('/:id/last-longer/entries', async (req: Request, res: Response) => {
+  try {
+    const entries = await lastLongerService.getPoolEntries(req.params.id);
+    res.json(entries);
+  } catch (error: any) {
+    console.error('Error fetching last longer entries:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch last longer entries' });
+  }
+});
+
+/**
+ * GET /api/events/:id/last-longer/status
+ * Check if current user has entered the Last Longer pool (authenticated)
+ */
+router.get('/:id/last-longer/status', authenticate, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    const status = await lastLongerService.isUserEntered(req.params.id, req.user.userId);
+    res.json(status);
+  } catch (error: any) {
+    console.error('Error checking last longer status:', error);
+    res.status(500).json({ error: error.message || 'Failed to check last longer status' });
+  }
+});
+
+/**
+ * POST /api/events/:id/last-longer/enter
+ * Create a Lightning invoice to enter the Last Longer pool (authenticated)
+ * Returns a BOLT11 invoice for the player to pay
+ */
+router.post('/:id/last-longer/enter', authenticate, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    const result = await lastLongerService.createEntryInvoice(req.params.id, req.user.userId);
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error creating last longer entry:', error);
+    res.status(400).json({ error: error.message || 'Failed to create last longer entry' });
+  }
+});
+
+/**
+ * GET /api/events/:id/last-longer/check-payment
+ * Check if the user's Last Longer entry invoice has been paid (authenticated)
+ * Client polls this after showing the invoice
+ */
+router.get('/:id/last-longer/check-payment', authenticate, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    const result = await lastLongerService.checkPayment(req.params.id, req.user.userId);
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error checking last longer payment:', error);
+    res.status(400).json({ error: error.message || 'Failed to check payment' });
+  }
+});
+
+/**
+ * POST /api/events/:id/last-longer/winner
+ * Select the winner of the Last Longer pool (Admin/TD only)
+ * Body: { winnerId: string }
+ * Credits the total pool to the winner's lightning balance
+ */
+router.post('/:id/last-longer/winner', authenticate, requireTournamentDirector, async (req: Request, res: Response) => {
+  try {
+    const { winnerId } = req.body;
+    if (!winnerId) {
+      return res.status(400).json({ error: 'winnerId is required' });
+    }
+    const result = await lastLongerService.selectWinner(req.params.id, winnerId);
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error selecting last longer winner:', error);
+    res.status(400).json({ error: error.message || 'Failed to select winner' });
   }
 });
 

@@ -193,6 +193,70 @@ export async function payInvoice(
   }
 }
 
+interface AddInvoiceResponse {
+  r_hash: string;        // Base64 encoded payment hash
+  payment_request: string; // BOLT11 invoice string
+  add_index: string;
+}
+
+interface LookupInvoiceResponse {
+  settled: boolean;
+  state: string; // OPEN, SETTLED, CANCELED, ACCEPTED
+  amt_paid_sat: string;
+  settle_date: string;
+}
+
+/**
+ * Create a Lightning invoice (for receiving payments)
+ * 
+ * @param amountSats - Amount in satoshis
+ * @param memo - Description for the invoice
+ * @param expiry - Expiry in seconds (default 3600 = 1 hour)
+ * @returns BOLT11 invoice and payment hash
+ */
+export async function createInvoice(
+  amountSats: number,
+  memo: string,
+  expiry: number = 3600
+): Promise<{ paymentRequest: string; paymentHash: string }> {
+  const result = await lndRequest<AddInvoiceResponse>('/v1/invoices', 'POST', {
+    value: amountSats.toString(),
+    memo,
+    expiry: expiry.toString(),
+  });
+
+  // Convert base64 r_hash to hex
+  const paymentHash = Buffer.from(result.r_hash, 'base64').toString('hex');
+
+  console.log(`[Voltage] Created invoice: ${amountSats} sats, hash: ${paymentHash.substring(0, 16)}...`);
+
+  return {
+    paymentRequest: result.payment_request,
+    paymentHash,
+  };
+}
+
+/**
+ * Look up an invoice by its payment hash to check if it's been paid
+ * 
+ * @param paymentHashHex - Hex-encoded payment hash
+ * @returns Invoice status
+ */
+export async function lookupInvoice(
+  paymentHashHex: string
+): Promise<{ settled: boolean; amountPaidSats: number }> {
+  // LND REST API expects the r_hash in the URL as a URL-safe base64 string
+  const hashBase64 = Buffer.from(paymentHashHex, 'hex').toString('base64')
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  
+  const result = await lndRequest<LookupInvoiceResponse>(`/v1/invoice/${hashBase64}`);
+
+  return {
+    settled: result.settled || result.state === 'SETTLED',
+    amountPaidSats: parseInt(result.amt_paid_sat || '0', 10),
+  };
+}
+
 /**
  * Verify the Voltage connection is working
  */
