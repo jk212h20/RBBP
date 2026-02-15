@@ -1,6 +1,6 @@
 # Active Context — Roatan Poker League
 
-## Last Updated: February 14, 2026
+## Last Updated: February 15, 2026
 
 ## Current State
 The application is **live and deployed on Railway** with all core features functional. The system handles the full poker league lifecycle: venue management, season/event creation, player registration, tournament execution, results entry, standings calculation, and Lightning Network payouts.

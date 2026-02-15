@@ -16,6 +16,7 @@ interface Event {
   maxPlayers: number;
   buyIn?: number;
   status: string;
+  registrationCloseMinutes?: number;
   venue: {
     id: string;
     name: string;
@@ -236,6 +237,13 @@ export default function EventsPage() {
               const eventDate = new Date(event.dateTime);
               const upcoming = isUpcoming(event);
 
+              // Registration close check: match server logic
+              const regCloseMinutes = event.registrationCloseMinutes ?? 30;
+              const regCloseTime = new Date(eventDate.getTime() - regCloseMinutes * 60 * 1000);
+              const isRegistrationClosed = new Date() >= regCloseTime;
+              const isAdmin = user?.role === 'ADMIN';
+              const playerRegBlocked = isRegistrationClosed && !isAdmin;
+
               return (
                 <div
                   key={event.id}
@@ -316,7 +324,7 @@ export default function EventsPage() {
                       >
                         View Details
                       </Link>
-                      {(event.status === 'SCHEDULED' || event.status === 'REGISTRATION_OPEN') && (
+                      {(event.status === 'SCHEDULED' || event.status === 'REGISTRATION_OPEN') && !playerRegBlocked && (
                         isUserSignedUp(event) ? (
                           <button
                             onClick={() => handleCancelSignup(event.id)}
@@ -332,6 +340,11 @@ export default function EventsPage() {
                             Sign Up
                           </button>
                         )
+                      )}
+                      {(event.status === 'SCHEDULED' || event.status === 'REGISTRATION_OPEN') && playerRegBlocked && (
+                        <span className="flex-1 text-center text-red-400 text-sm py-2">
+                          Registration Closed
+                        </span>
                       )}
                     </div>
                   </div>

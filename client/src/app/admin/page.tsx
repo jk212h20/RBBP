@@ -99,6 +99,7 @@ interface User {
   name: string;
   role: string;
   isActive: boolean;
+  isGuest?: boolean;
   createdAt: string;
   authProvider: string;
   seasonPoints?: number;
@@ -196,6 +197,9 @@ export default function AdminPage() {
   const [merging, setMerging] = useState(false);
   const [claimLinkUrl, setClaimLinkUrl] = useState('');
   const [generatingClaim, setGeneratingClaim] = useState(false);
+  const [userClaimLinks, setUserClaimLinks] = useState<Record<string, string>>({});
+  const [generatingClaimForUser, setGeneratingClaimForUser] = useState<string | null>(null);
+  const [copiedClaimUserId, setCopiedClaimUserId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -1069,9 +1073,58 @@ export default function AdminPage() {
                     {users.map((u) => (
                       <tr key={u.id} className="border-b border-gray-700/50 hover:bg-gray-700/30">
                         <td className="py-3 px-4">
-                          <span className="font-medium">{u.name}</span>
-                          {u.id === user?.id && (
-                            <span className="ml-2 text-xs bg-blue-600 px-2 py-0.5 rounded">You</span>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium">{u.name}</span>
+                            {u.id === user?.id && (
+                              <span className="text-xs bg-blue-600 px-2 py-0.5 rounded">You</span>
+                            )}
+                            {u.isGuest && (
+                              <span className="text-xs bg-orange-600/20 text-orange-400 px-2 py-0.5 rounded">Guest</span>
+                            )}
+                          </div>
+                          {u.isGuest && (
+                            <div className="mt-1">
+                              {userClaimLinks[u.id] ? (
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="text"
+                                    readOnly
+                                    value={userClaimLinks[u.id]}
+                                    className="w-40 p-1 bg-gray-700 border border-gray-600 rounded text-white text-xs font-mono"
+                                    onClick={(e) => (e.target as HTMLInputElement).select()}
+                                  />
+                                  <button
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(userClaimLinks[u.id]);
+                                      setCopiedClaimUserId(u.id);
+                                      setTimeout(() => setCopiedClaimUserId(null), 2000);
+                                    }}
+                                    className="text-xs px-2 py-1 rounded bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 whitespace-nowrap"
+                                  >
+                                    {copiedClaimUserId === u.id ? '✅ Copied!' : '📋 Copy'}
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  disabled={generatingClaimForUser === u.id}
+                                  onClick={async () => {
+                                    setGeneratingClaimForUser(u.id);
+                                    setError('');
+                                    try {
+                                      const result = await adminAPI.generateClaimLink(u.id);
+                                      setUserClaimLinks(prev => ({ ...prev, [u.id]: result.claimUrl }));
+                                    } catch (err: any) {
+                                      setError(err.message || 'Failed to generate claim link');
+                                    } finally {
+                                      setGeneratingClaimForUser(null);
+                                    }
+                                  }}
+                                  className="text-xs px-2 py-1 rounded bg-orange-600/20 text-orange-400 hover:bg-orange-600/30"
+                                >
+                                  {generatingClaimForUser === u.id ? '⏳...' : '🔗 Get Claim Link'}
+                                </button>
+                              )}
+                            </div>
                           )}
                         </td>
                         <td className="py-3 px-4 text-gray-400">

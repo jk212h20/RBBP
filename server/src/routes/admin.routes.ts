@@ -86,6 +86,7 @@ router.get('/users', authenticate, requireAdmin, async (req: Request, res: Respo
         name: true,
         role: true,
         isActive: true,
+        isGuest: true,
         createdAt: true,
         authProvider: true,
         standings: activeSeason ? {
