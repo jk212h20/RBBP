@@ -589,12 +589,65 @@ router.put('/:id/total-entrants', authenticate, requireTournamentDirector, async
 
 /**
  * GET /api/events/:id/last-longer
- * Get Last Longer pool info for an event (public)
+ * Get Last Longer pool info for an event
+ * If authenticated, also returns the user's entry status
+ * Returns combined pool info + entries + user entry in one call
  */
 router.get('/:id/last-longer', async (req: Request, res: Response) => {
   try {
-    const poolInfo = await lastLongerService.getPoolInfo(req.params.id);
-    res.json(poolInfo);
+    const eventId = req.params.id;
+    const poolInfo = await lastLongerService.getPoolInfo(eventId);
+    const entriesRaw = await lastLongerService.getPoolEntries(eventId);
+
+    // Map entries to the shape the client expects
+    const entries = entriesRaw.map((e: any) => ({
+      id: e.id,
+      userId: e.userId,
+      userName: e.user?.name || 'Unknown',
+      paidAt: e.paidAt,
+    }));
+
+    // Check if authenticated user has an entry
+    let userEntry: { id: string; status: string; paidAt: string | null } | null = null;
+    // Try to extract user from auth header (optional - don't require auth)
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      try {
+        const jwt = await import('jsonwebtoken');
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.default.verify(token, process.env.JWT_SECRET || 'dev-secret') as any;
+        if (decoded?.userId) {
+          const entryStatus = await lastLongerService.isUserEntered(eventId, decoded.userId);
+          if (entryStatus.entered || entryStatus.pending) {
+            // Find the entry in the DB
+            const userEntryRecord = await prisma.lastLongerEntry.findUnique({
+              where: { eventId_userId: { eventId, userId: decoded.userId } },
+            });
+            if (userEntryRecord) {
+              userEntry = {
+                id: userEntryRecord.id,
+                status: userEntryRecord.paidAt ? 'paid' : 'pending',
+                paidAt: userEntryRecord.paidAt?.toISOString() || null,
+              };
+            }
+          }
+        }
+      } catch {
+        // Token invalid or expired - just skip user entry
+      }
+    }
+
+    res.json({
+      enabled: poolInfo.enabled,
+      seedSats: poolInfo.seedSats,
+      entrySats: poolInfo.entrySats,
+      totalPot: poolInfo.totalPoolSats,
+      entryCount: poolInfo.entryCount,
+      entries,
+      winnerId: poolInfo.winnerId,
+      winnerName: poolInfo.winner?.name || null,
+      userEntry,
+    });
   } catch (error: any) {
     console.error('Error fetching last longer pool:', error);
     res.status(500).json({ error: error.message || 'Failed to fetch last longer pool info' });
@@ -643,7 +696,24 @@ router.post('/:id/last-longer/enter', authenticate, async (req: Request, res: Re
       return res.status(401).json({ error: 'Not authenticated' });
     }
     const result = await lastLongerService.createEntryInvoice(req.params.id, req.user.userId);
-    res.json(result);
+
+    // Find the entry record to return its id
+    const entryRecord = await prisma.lastLongerEntry.findUnique({
+      where: { eventId_userId: { eventId: req.params.id, userId: req.user.userId } },
+    });
+
+    res.json({
+      entry: {
+        id: entryRecord?.id || '',
+        status: 'pending',
+      },
+      invoice: {
+        paymentRequest: result.paymentRequest,
+        paymentHash: result.paymentHash,
+        amountSats: result.amountSats,
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(), // 10 min expiry
+      },
+    });
   } catch (error: any) {
     console.error('Error creating last longer entry:', error);
     res.status(400).json({ error: error.message || 'Failed to create last longer entry' });

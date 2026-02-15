@@ -248,10 +248,17 @@ export class LastLongerService {
       }),
     ]);
 
+    // Get winner name
+    const winner = await prisma.user.findUnique({
+      where: { id: winnerId },
+      select: { name: true },
+    });
+
     return {
+      message: `Winner selected! ${poolInfo.totalPoolSats} sats credited to ${winner?.name || 'winner'}`,
       winnerId,
-      totalPoolSats: poolInfo.totalPoolSats,
-      eventName: event?.name,
+      winnerName: winner?.name || 'Unknown',
+      prizeAmount: poolInfo.totalPoolSats,
     };
   }
 

@@ -317,11 +317,11 @@ export const eventsAPI = {
       invoice: { paymentRequest: string; paymentHash: string; amountSats: number; expiresAt: string };
     }>(`/events/${eventId}/last-longer/enter`, { method: 'POST' }),
 
-  checkLastLongerPayment: (eventId: string, entryId: string) =>
+  checkLastLongerPayment: (eventId: string, _entryId?: string) =>
     fetchAPI<{
-      status: string;
       paid: boolean;
-    }>(`/events/${eventId}/last-longer/check-payment/${entryId}`),
+      paidAt?: string;
+    }>(`/events/${eventId}/last-longer/check-payment`),
 
   selectLastLongerWinner: (eventId: string, winnerId: string) =>
     fetchAPI<{
