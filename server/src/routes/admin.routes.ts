@@ -1094,6 +1094,75 @@ router.post('/apply-migrations-key', async (req: Request, res: Response) => {
       results.push(`⚠️ venue_applications FK venueId: ${e.message?.includes('already exists') ? 'already exists' : e.message}`);
     }
 
+    // Migration 4: Last Longer Pool
+    try {
+      await prisma.$executeRaw`ALTER TABLE "events" ADD COLUMN IF NOT EXISTS "lastLongerEnabled" BOOLEAN NOT NULL DEFAULT false`;
+      await prisma.$executeRaw`ALTER TABLE "events" ADD COLUMN IF NOT EXISTS "lastLongerSeedSats" INTEGER NOT NULL DEFAULT 10000`;
+      await prisma.$executeRaw`ALTER TABLE "events" ADD COLUMN IF NOT EXISTS "lastLongerEntrySats" INTEGER NOT NULL DEFAULT 25000`;
+      await prisma.$executeRaw`ALTER TABLE "events" ADD COLUMN IF NOT EXISTS "lastLongerWinnerId" TEXT`;
+      results.push('✅ events Last Longer columns added');
+    } catch (e: any) {
+      results.push(`⚠️ events Last Longer columns: ${e.message}`);
+    }
+
+    try {
+      await prisma.$executeRaw`
+        CREATE TABLE IF NOT EXISTS "last_longer_entries" (
+          "id" TEXT NOT NULL,
+          "eventId" TEXT NOT NULL,
+          "userId" TEXT NOT NULL,
+          "amountSats" INTEGER NOT NULL,
+          "paymentHash" TEXT,
+          "paidAt" TIMESTAMP(3),
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          CONSTRAINT "last_longer_entries_pkey" PRIMARY KEY ("id")
+        )
+      `;
+      results.push('✅ last_longer_entries table created');
+    } catch (e: any) {
+      results.push(`⚠️ last_longer_entries table: ${e.message}`);
+    }
+
+    try {
+      await prisma.$executeRaw`CREATE UNIQUE INDEX IF NOT EXISTS "last_longer_entries_eventId_userId_key" ON "last_longer_entries"("eventId", "userId")`;
+      results.push('✅ last_longer_entries unique index created');
+    } catch (e: any) {
+      results.push(`⚠️ last_longer_entries unique index: ${e.message}`);
+    }
+
+    try {
+      await prisma.$executeRaw`ALTER TABLE "last_longer_entries" ADD CONSTRAINT "last_longer_entries_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "events"("id") ON DELETE CASCADE ON UPDATE CASCADE`;
+      results.push('✅ last_longer_entries FK eventId added');
+    } catch (e: any) {
+      results.push(`⚠️ last_longer_entries FK eventId: ${e.message?.includes('already exists') ? 'already exists' : e.message}`);
+    }
+
+    try {
+      await prisma.$executeRaw`ALTER TABLE "last_longer_entries" ADD CONSTRAINT "last_longer_entries_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE`;
+      results.push('✅ last_longer_entries FK userId added');
+    } catch (e: any) {
+      results.push(`⚠️ last_longer_entries FK userId: ${e.message?.includes('already exists') ? 'already exists' : e.message}`);
+    }
+
+    try {
+      await prisma.$executeRaw`ALTER TABLE "events" ADD CONSTRAINT "events_lastLongerWinnerId_fkey" FOREIGN KEY ("lastLongerWinnerId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE`;
+      results.push('✅ events FK lastLongerWinnerId added');
+    } catch (e: any) {
+      results.push(`⚠️ events FK lastLongerWinnerId: ${e.message?.includes('already exists') ? 'already exists' : e.message}`);
+    }
+
+    // Mark the last_longer_pool migration as applied in _prisma_migrations so prisma migrate deploy doesn't try to re-run it
+    try {
+      await prisma.$executeRaw`
+        INSERT INTO "_prisma_migrations" (id, checksum, migration_name, finished_at, applied_steps_count)
+        SELECT gen_random_uuid(), 'manual', '20260215163000_add_last_longer_pool', NOW(), 1
+        WHERE NOT EXISTS (SELECT 1 FROM "_prisma_migrations" WHERE migration_name = '20260215163000_add_last_longer_pool')
+      `;
+      results.push('✅ Marked last_longer_pool migration as applied');
+    } catch (e: any) {
+      results.push(`⚠️ Marking migration: ${e.message}`);
+    }
+
     res.json({ message: 'Pending migrations applied', results });
   } catch (error: any) {
     console.error('Error applying migrations:', error);
