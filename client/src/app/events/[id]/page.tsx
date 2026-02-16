@@ -794,6 +794,29 @@ export default function EventDetailPage() {
             </div>
           </div>
 
+          {/* Last Longer Available Badge */}
+          {lastLongerPool?.enabled && (
+            <div className="mt-6 pt-6 border-t border-blue-600/30">
+              <div className="flex items-center gap-3 bg-purple-500/20 border border-purple-500/40 rounded-lg p-4">
+                <span className="text-2xl">⚡</span>
+                <div className="flex-1">
+                  <p className="text-purple-200 font-semibold">Last Longer Pool Active</p>
+                  <p className="text-purple-300/70 text-sm">
+                    {lastLongerPool.totalPot.toLocaleString()} sats pot • {lastLongerPool.entryCount} {lastLongerPool.entryCount === 1 ? 'entry' : 'entries'} • {lastLongerPool.entrySats.toLocaleString()} sats to enter
+                  </p>
+                </div>
+                {isAuthenticated && isSignedUp && userSignupStatus !== 'WAITLISTED' && !lastLongerPool.winnerId && !lastLongerPool.userEntry?.paidAt && (
+                  <a href="#last-longer-pool" className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap">
+                    Enter Pool ⚡
+                  </a>
+                )}
+                {lastLongerPool.userEntry?.paidAt && (
+                  <span className="text-green-400 text-sm font-medium whitespace-nowrap">✅ Entered</span>
+                )}
+              </div>
+            </div>
+          )}
+
           {event.description && (
             <div className="mt-6 pt-6 border-t border-blue-600/30">
               <h3 className="text-white font-medium mb-2">About this Event</h3>
@@ -801,6 +824,153 @@ export default function EventDetailPage() {
             </div>
           )}
         </div>
+
+        {/* Last Longer Pool - Player Section (shown before TD panel for visibility) */}
+        {lastLongerPool?.enabled && (
+          <div id="last-longer-pool" className="bg-purple-500/10 backdrop-blur-sm rounded-xl border border-purple-500/30 p-6 mb-6">
+            <h2 className="text-xl font-bold text-purple-300 mb-4">⚡ Last Longer Pool</h2>
+            
+            {/* Pool Info */}
+            <div className="grid grid-cols-3 gap-4 text-center mb-4">
+              <div className="bg-white/5 rounded-lg p-3">
+                <p className="text-purple-200 text-xs">Seed</p>
+                <p className="text-white font-bold">{lastLongerPool.seedSats.toLocaleString()} sats</p>
+              </div>
+              <div className="bg-white/5 rounded-lg p-3">
+                <p className="text-purple-200 text-xs">Entry</p>
+                <p className="text-white font-bold">{lastLongerPool.entrySats.toLocaleString()} sats</p>
+              </div>
+              <div className="bg-white/5 rounded-lg p-3">
+                <p className="text-purple-200 text-xs">Total Pot</p>
+                <p className="text-yellow-400 font-bold">{lastLongerPool.totalPot.toLocaleString()} sats</p>
+              </div>
+            </div>
+
+            {/* Winner Display */}
+            {lastLongerPool.winnerName && (
+              <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4 mb-4 text-center">
+                <p className="text-yellow-400 text-lg font-bold">🏆 {lastLongerPool.winnerName} wins!</p>
+                <p className="text-yellow-300/70 text-sm">{lastLongerPool.totalPot.toLocaleString()} sats credited to their balance</p>
+              </div>
+            )}
+
+            {/* Player Entry Section */}
+            {isAuthenticated && isSignedUp && userSignupStatus !== 'WAITLISTED' && !lastLongerPool.winnerId && (
+              <div className="mb-4">
+                {lastLongerPool.userEntry?.paidAt ? (
+                  <div className="bg-green-500/20 border border-green-500/50 rounded-lg p-3 text-center">
+                    <p className="text-green-400 font-medium">✅ You&apos;re in the Last Longer pool!</p>
+                  </div>
+                ) : lastLongerInvoice ? (
+                  <div className="bg-white/5 border border-purple-500/30 rounded-lg p-4">
+                    <p className="text-purple-200 text-sm mb-3 text-center">
+                      Pay {lastLongerInvoice.amountSats.toLocaleString()} sats to enter the pool
+                    </p>
+                    <div className="bg-white rounded-lg p-4 mx-auto max-w-xs">
+                      <div className="text-center">
+                        <p className="text-gray-800 text-xs font-mono break-all select-all mb-2">
+                          {lastLongerInvoice.paymentRequest}
+                        </p>
+                        <button
+                          onClick={() => navigator.clipboard.writeText(lastLongerInvoice.paymentRequest)}
+                          className="text-purple-600 text-sm hover:text-purple-800 font-medium"
+                        >
+                          📋 Copy Invoice
+                        </button>
+                      </div>
+                    </div>
+                    {paymentPolling && (
+                      <div className="flex items-center justify-center gap-2 mt-3">
+                        <div className="animate-spin h-4 w-4 border-2 border-purple-400 border-t-transparent rounded-full"></div>
+                        <p className="text-purple-300 text-sm">Waiting for payment...</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleEnterLastLonger}
+                    disabled={lastLongerLoading}
+                    className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 disabled:opacity-50 text-white py-3 rounded-lg font-semibold transition"
+                  >
+                    {lastLongerLoading ? 'Creating invoice...' : `⚡ Enter Last Longer Pool (${lastLongerPool.entrySats.toLocaleString()} sats)`}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Not signed up prompt */}
+            {isAuthenticated && !isSignedUp && !lastLongerPool.winnerId && (
+              <div className="mb-4 bg-white/5 border border-purple-500/20 rounded-lg p-3 text-center">
+                <p className="text-purple-300/70 text-sm">Register for this event to enter the Last Longer pool</p>
+              </div>
+            )}
+
+            {/* Not logged in prompt */}
+            {!isAuthenticated && !lastLongerPool.winnerId && (
+              <div className="mb-4 bg-white/5 border border-purple-500/20 rounded-lg p-3 text-center">
+                <p className="text-purple-300/70 text-sm">
+                  <Link href="/login" className="text-purple-300 hover:text-purple-200 underline">Sign in</Link> and register to enter the Last Longer pool
+                </p>
+              </div>
+            )}
+
+            {/* Message */}
+            {lastLongerMessage && (
+              <div className={`mb-4 p-3 rounded-lg ${
+                lastLongerMessage.type === 'success' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-400'
+              }`}>
+                {lastLongerMessage.text}
+              </div>
+            )}
+
+            {/* Entries List */}
+            {lastLongerPool.entries.length > 0 && (
+              <div>
+                <h3 className="text-purple-200 font-medium text-sm mb-2">
+                  Pool Entries ({lastLongerPool.entryCount})
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {lastLongerPool.entries.map(entry => (
+                    <div key={entry.id} className="flex items-center gap-2 p-2 bg-white/5 rounded-lg">
+                      <div className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold text-xs">
+                        {entry.userName.charAt(0).toUpperCase()}
+                      </div>
+                      <span className="text-white text-sm truncate">{entry.userName}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Admin: Select Winner */}
+            {canManageEvent && lastLongerPool.entries.length > 0 && !lastLongerPool.winnerId && (
+              <div className="mt-4 pt-4 border-t border-purple-500/30">
+                <h3 className="text-orange-300 font-medium text-sm mb-2">🎯 Select Winner (Admin)</h3>
+                <div className="flex gap-2">
+                  <select
+                    value={selectedWinnerId}
+                    onChange={(e) => setSelectedWinnerId(e.target.value)}
+                    className="flex-1 p-3 bg-white/10 border border-purple-500/50 rounded-lg text-white focus:outline-none focus:border-purple-400"
+                  >
+                    <option value="" className="bg-gray-900">Select winner...</option>
+                    {lastLongerPool.entries.map(entry => (
+                      <option key={entry.userId} value={entry.userId} className="bg-gray-900">
+                        {entry.userName}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={handleSelectWinner}
+                    disabled={!selectedWinnerId || selectingWinner}
+                    className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-yellow-800 disabled:opacity-50 text-white rounded-lg font-medium transition"
+                  >
+                    {selectingWinner ? '...' : '🏆 Award'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Tournament Director Management Panel */}
         {canManageEvent && !isFinalized && (
@@ -1253,137 +1423,6 @@ export default function EventDetailPage() {
                 </div>
               ))}
             </div>
-          </div>
-        )}
-
-        {/* Last Longer Pool */}
-        {lastLongerPool?.enabled && (
-          <div className="bg-purple-500/10 backdrop-blur-sm rounded-xl border border-purple-500/30 p-6 mb-6">
-            <h2 className="text-xl font-bold text-purple-300 mb-4">⚡ Last Longer Pool</h2>
-            
-            {/* Pool Info */}
-            <div className="grid grid-cols-3 gap-4 text-center mb-4">
-              <div className="bg-white/5 rounded-lg p-3">
-                <p className="text-purple-200 text-xs">Seed</p>
-                <p className="text-white font-bold">{lastLongerPool.seedSats.toLocaleString()} sats</p>
-              </div>
-              <div className="bg-white/5 rounded-lg p-3">
-                <p className="text-purple-200 text-xs">Entry</p>
-                <p className="text-white font-bold">{lastLongerPool.entrySats.toLocaleString()} sats</p>
-              </div>
-              <div className="bg-white/5 rounded-lg p-3">
-                <p className="text-purple-200 text-xs">Total Pot</p>
-                <p className="text-yellow-400 font-bold">{lastLongerPool.totalPot.toLocaleString()} sats</p>
-              </div>
-            </div>
-
-            {/* Winner Display */}
-            {lastLongerPool.winnerName && (
-              <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4 mb-4 text-center">
-                <p className="text-yellow-400 text-lg font-bold">🏆 {lastLongerPool.winnerName} wins!</p>
-                <p className="text-yellow-300/70 text-sm">{lastLongerPool.totalPot.toLocaleString()} sats credited to their balance</p>
-              </div>
-            )}
-
-            {/* Player Entry Section */}
-            {isAuthenticated && isSignedUp && userSignupStatus !== 'WAITLISTED' && !lastLongerPool.winnerId && (
-              <div className="mb-4">
-                {lastLongerPool.userEntry?.paidAt ? (
-                  <div className="bg-green-500/20 border border-green-500/50 rounded-lg p-3 text-center">
-                    <p className="text-green-400 font-medium">✅ You&apos;re in the Last Longer pool!</p>
-                  </div>
-                ) : lastLongerInvoice ? (
-                  <div className="bg-white/5 border border-purple-500/30 rounded-lg p-4">
-                    <p className="text-purple-200 text-sm mb-3 text-center">
-                      Pay {lastLongerInvoice.amountSats.toLocaleString()} sats to enter the pool
-                    </p>
-                    <div className="bg-white rounded-lg p-4 mx-auto max-w-xs">
-                      <div className="text-center">
-                        <p className="text-gray-800 text-xs font-mono break-all select-all mb-2">
-                          {lastLongerInvoice.paymentRequest}
-                        </p>
-                        <button
-                          onClick={() => navigator.clipboard.writeText(lastLongerInvoice.paymentRequest)}
-                          className="text-purple-600 text-sm hover:text-purple-800 font-medium"
-                        >
-                          📋 Copy Invoice
-                        </button>
-                      </div>
-                    </div>
-                    {paymentPolling && (
-                      <div className="flex items-center justify-center gap-2 mt-3">
-                        <div className="animate-spin h-4 w-4 border-2 border-purple-400 border-t-transparent rounded-full"></div>
-                        <p className="text-purple-300 text-sm">Waiting for payment...</p>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <button
-                    onClick={handleEnterLastLonger}
-                    disabled={lastLongerLoading}
-                    className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 disabled:opacity-50 text-white py-3 rounded-lg font-semibold transition"
-                  >
-                    {lastLongerLoading ? 'Creating invoice...' : `⚡ Enter Last Longer Pool (${lastLongerPool.entrySats.toLocaleString()} sats)`}
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* Message */}
-            {lastLongerMessage && (
-              <div className={`mb-4 p-3 rounded-lg ${
-                lastLongerMessage.type === 'success' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-400'
-              }`}>
-                {lastLongerMessage.text}
-              </div>
-            )}
-
-            {/* Entries List */}
-            {lastLongerPool.entries.length > 0 && (
-              <div>
-                <h3 className="text-purple-200 font-medium text-sm mb-2">
-                  Pool Entries ({lastLongerPool.entryCount})
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                  {lastLongerPool.entries.map(entry => (
-                    <div key={entry.id} className="flex items-center gap-2 p-2 bg-white/5 rounded-lg">
-                      <div className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold text-xs">
-                        {entry.userName.charAt(0).toUpperCase()}
-                      </div>
-                      <span className="text-white text-sm truncate">{entry.userName}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Admin: Select Winner */}
-            {canManageEvent && lastLongerPool.entries.length > 0 && !lastLongerPool.winnerId && (
-              <div className="mt-4 pt-4 border-t border-purple-500/30">
-                <h3 className="text-orange-300 font-medium text-sm mb-2">🎯 Select Winner (Admin)</h3>
-                <div className="flex gap-2">
-                  <select
-                    value={selectedWinnerId}
-                    onChange={(e) => setSelectedWinnerId(e.target.value)}
-                    className="flex-1 p-3 bg-white/10 border border-purple-500/50 rounded-lg text-white focus:outline-none focus:border-purple-400"
-                  >
-                    <option value="" className="bg-gray-900">Select winner...</option>
-                    {lastLongerPool.entries.map(entry => (
-                      <option key={entry.userId} value={entry.userId} className="bg-gray-900">
-                        {entry.userName}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={handleSelectWinner}
-                    disabled={!selectedWinnerId || selectingWinner}
-                    className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-yellow-800 disabled:opacity-50 text-white rounded-lg font-medium transition"
-                  >
-                    {selectingWinner ? '...' : '🏆 Award'}
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         )}
 
