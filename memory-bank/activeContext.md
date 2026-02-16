@@ -42,5 +42,5 @@ Last Longer Pool feature fully implemented with complete UI. Deployed to product
 - Client: `client/.env.local` (NEXT_PUBLIC_API_URL)
 
 ## Known Issues
-- Events endpoint returning "Failed to fetch events" on production - likely deployment still in progress
-- Need to verify once Railway deployment completes
+- Production deployment needs `prisma db push` or migration applied for Last Longer columns
+- Local dev verified working after `prisma db push`
