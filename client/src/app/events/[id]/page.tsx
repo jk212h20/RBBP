@@ -785,9 +785,14 @@ export default function EventDetailPage() {
                                   <p className="text-purple-200 text-sm mb-2 text-center">
                                     Pay {lastLongerInvoice.amountSats.toLocaleString()} sats to enter
                                   </p>
-                                  <div className="bg-white rounded-lg p-3 mx-auto">
+                                  <div className="bg-white rounded-lg p-3 mx-auto text-center">
+                                    <img
+                                      src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(lastLongerInvoice.paymentRequest)}`}
+                                      alt="Lightning Invoice QR Code"
+                                      className="w-40 h-40 mx-auto mb-2"
+                                    />
                                     <p className="text-gray-800 text-xs font-mono break-all select-all mb-2">
-                                      {lastLongerInvoice.paymentRequest}
+                                      {lastLongerInvoice.paymentRequest.slice(0, 40)}...
                                     </p>
                                     <button
                                       onClick={() => navigator.clipboard.writeText(lastLongerInvoice.paymentRequest)}
@@ -917,8 +922,13 @@ export default function EventDetailPage() {
                     </p>
                     <div className="bg-white rounded-lg p-4 mx-auto max-w-xs">
                       <div className="text-center">
+                        <img
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(lastLongerInvoice.paymentRequest)}`}
+                          alt="Lightning Invoice QR Code"
+                          className="w-48 h-48 mx-auto mb-3"
+                        />
                         <p className="text-gray-800 text-xs font-mono break-all select-all mb-2">
-                          {lastLongerInvoice.paymentRequest}
+                          {lastLongerInvoice.paymentRequest.slice(0, 60)}...
                         </p>
                         <button
                           onClick={() => navigator.clipboard.writeText(lastLongerInvoice.paymentRequest)}

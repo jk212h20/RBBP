@@ -1,16 +1,20 @@
 # Active Context
 
-## Current Date: 2026-02-15
+## Current Date: 2026-02-16
 
 ## Current Focus
-Last Longer Pool feature fully implemented with complete UI. Deployed to production.
+Last Longer Pool feature fully implemented with polished UI. Deployed to production.
+
+## Recent Changes (2026-02-16)
+- **Last Longer UI polish** - Moved "Enter Last Longer" button inline next to Cancel Registration button (no scrolling needed). Badge section now links to pool details section. Winner name shown in badge.
+- **Events list page** - Added "⚡ Enter Last Longer Pool" CTA button on event cards for registered users when pool is enabled (links to event detail `#last-longer-pool` section).
 
 ## Recent Changes (2026-02-15)
 - **Last Longer Pool - FULLY COMPLETE** - All UI + backend implemented:
   - DB: `LastLongerEntry` model + 5 fields on `Event` (migration `20260215163000`)
   - Server: `last-longer.service.ts`, 6 routes in `event.routes.ts`
   - Admin: toggle + seed/entry sats config in event create/edit forms
-  - Event detail page: full pool section (stats, entries, payment, winner display)
+  - Event detail page: inline entry button + detailed pool section below
   - **Events list page**: "⚡ Last Longer" badge on event cards when enabled
   - **Homepage**: "⚡ Last Longer" badge on upcoming event cards when enabled
   - Players pay Lightning invoice to enter; admin selects winner; winner credited to balance
