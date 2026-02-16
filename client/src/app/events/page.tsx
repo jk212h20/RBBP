@@ -17,6 +17,7 @@ interface Event {
   buyIn?: number;
   status: string;
   registrationCloseMinutes?: number;
+  lastLongerEnabled?: boolean;
   venue: {
     id: string;
     name: string;
@@ -263,9 +264,16 @@ export default function EventsPage() {
                   <div className="p-6">
                     {/* Status badge + buy-in row */}
                     <div className="flex justify-between items-start mb-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(event.status)}`}>
-                        {event.status.replace('_', ' ')}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(event.status)}`}>
+                          {event.status.replace('_', ' ')}
+                        </span>
+                        {event.lastLongerEnabled && (
+                          <span className="px-2 py-1 rounded-full text-xs font-bold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
+                            ⚡ Last Longer
+                          </span>
+                        )}
+                      </div>
                       {event.buyIn && (
                         <span className="text-yellow-400 font-bold">${event.buyIn}</span>
                       )}

@@ -16,6 +16,7 @@ interface UpcomingEvent {
   venue: { name: string; address?: string };
   _count: { signups: number };
   maxPlayers: number;
+  lastLongerEnabled?: boolean;
 }
 
 interface TopPlayer {
@@ -156,7 +157,14 @@ export default function HomePage() {
                       )}
                       <div className="p-4">
                         <div className="flex justify-between items-start">
-                          <h3 className="text-white font-semibold text-lg">{event.name}</h3>
+                          <div>
+                            <h3 className="text-white font-semibold text-lg">{event.name}</h3>
+                            {event.lastLongerEnabled && (
+                              <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-bold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
+                                ⚡ Last Longer
+                              </span>
+                            )}
+                          </div>
                           {/* Countdown badge */}
                           <span className="bg-blue-600/30 text-blue-200 text-xs font-bold px-2 py-1 rounded-lg whitespace-nowrap ml-2">
                             ⏱ {formatCountdown(event.dateTime)}

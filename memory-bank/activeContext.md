@@ -6,20 +6,14 @@
 Last Longer Pool feature fully implemented with complete UI. Deployed to production.
 
 ## Recent Changes (2026-02-15)
-- **Last Longer Pool UI Enhancement** - Completed full player-facing UI:
-  - Added "⚡ Last Longer Pool Active" badge in event header with pot/entry info
-  - Moved full Last Longer section above TD panel for visibility (was at bottom)
-  - Added prompts for non-registered and non-authenticated users
-  - Added "Enter Pool ⚡" quick-link button in header badge
-  - Shows pool stats (seed/entry/total pot), entries list, payment flow, winner display
-  - Admin winner selection integrated into pool section
-- **Last Longer Pool Feature** - Full backend + admin:
-  - DB: New `LastLongerEntry` model + 5 fields on `Event` model (migration `20260215163000`)
-  - Server: `last-longer.service.ts`, routes in `event.routes.ts`, validator updates
-  - Admin create form: toggle + seed/entry sats config
-  - Players registered for event can pay Lightning invoice to enter pool
-  - Admin/TD can select winner from dropdown of pool participants
-  - Winner gets total pool (seed + all entries) credited to their lightning balance
+- **Last Longer Pool - FULLY COMPLETE** - All UI + backend implemented:
+  - DB: `LastLongerEntry` model + 5 fields on `Event` (migration `20260215163000`)
+  - Server: `last-longer.service.ts`, 6 routes in `event.routes.ts`
+  - Admin: toggle + seed/entry sats config in event create/edit forms
+  - Event detail page: full pool section (stats, entries, payment, winner display)
+  - **Events list page**: "⚡ Last Longer" badge on event cards when enabled
+  - **Homepage**: "⚡ Last Longer" badge on upcoming event cards when enabled
+  - Players pay Lightning invoice to enter; admin selects winner; winner credited to balance
 
 ## Architecture Overview
 - **Client**: Next.js 15 (App Router) on Railway (`roatanbitcoinpoker.com`)

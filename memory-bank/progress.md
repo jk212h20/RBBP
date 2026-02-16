@@ -120,6 +120,7 @@
 - [x] Admin: Enable Last Longer checkbox + seed/entry fields in event creation form
 - [x] Validator: lastLongerEnabled, lastLongerSeedSats, lastLongerEntrySats in event schemas
 - [x] Migration: `20260215163000_add_last_longer_pool`
+- [x] "⚡ Last Longer" badge on events list page and homepage event cards
 
 ### User Experience
 - [x] Mobile-responsive design (MobileNav hamburger menu)
