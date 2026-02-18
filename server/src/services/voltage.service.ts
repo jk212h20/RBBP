@@ -245,11 +245,8 @@ export async function createInvoice(
 export async function lookupInvoice(
   paymentHashHex: string
 ): Promise<{ settled: boolean; amountPaidSats: number }> {
-  // LND REST API expects the r_hash in the URL as a URL-safe base64 string
-  const hashBase64 = Buffer.from(paymentHashHex, 'hex').toString('base64')
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  
-  const result = await lndRequest<LookupInvoiceResponse>(`/v1/invoice/${hashBase64}`);
+  // LND REST API /v1/invoice/{r_hash_str} expects the hex-encoded payment hash
+  const result = await lndRequest<LookupInvoiceResponse>(`/v1/invoice/${paymentHashHex}`);
 
   return {
     settled: result.settled || result.state === 'SETTLED',

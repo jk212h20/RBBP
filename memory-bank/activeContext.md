@@ -59,6 +59,11 @@ Player profiles, social links, leaderboard/event profile pics, navigation consis
 - Server: `server/.env` (DATABASE_URL, LND creds, OAuth keys)
 - Client: `client/.env.local` (NEXT_PUBLIC_API_URL)
 
+## Recent Changes (2026-02-18 - Last Longer Payment Fix)
+- **Bug fix**: `lookupInvoice()` in `voltage.service.ts` was passing base64url-encoded payment hash to LND REST API `/v1/invoice/{r_hash_str}`, but this endpoint expects **hex-encoded** hash. Invoice lookups were failing silently, so payment polling never detected paid invoices.
+- **Fix**: Changed `lookupInvoice()` to pass hex hash directly instead of converting to base64url
+- **Added logging**: `last-longer.service.ts` now logs payment check attempts and results for debugging
+
 ## Known Issues
 - Production deployment needs `prisma db push` or migration applied for Last Longer columns
 - Social links stored as JSON in Profile.socialLinks field

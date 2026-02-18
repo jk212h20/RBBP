@@ -113,7 +113,9 @@ export class LastLongerService {
     }
 
     // Check with LND if the invoice has been paid
+    console.log(`[LastLonger] Checking payment for entry ${entry.id}, hash: ${entry.paymentHash.substring(0, 16)}...`);
     const { settled } = await lookupInvoice(entry.paymentHash);
+    console.log(`[LastLonger] Invoice settled: ${settled}`);
 
     if (settled) {
       // Mark as paid
