@@ -14,9 +14,16 @@ Player profiles, social links, leaderboard/event profile pics, navigation consis
 - **Profile page** - New "Social Links" card (Instagram, X/Twitter, Facebook, Hendon Mob, Website) with edit UI
 - **Profile page** - Uses MobileNav instead of custom header
 - **Navigation consistency** - All pages now use MobileNav component:
-  - Events list, Event detail, Leaderboard, Venues list, Venue detail, FAQ, Dashboard, Profile, Player profile
-- **Server: profileImage in queries** - Leaderboard standings and event signups/results now include `user.profile.profileImage`
+  - Events list, Event detail, Leaderboard, Venues list, Venue detail, FAQ, Dashboard, Profile, Player profile, Login, Register
+- **Dashboard** - Replaced custom minimal nav with full MobileNav component
+- **Login/Register** - Added MobileNav for consistent navigation across all pages
+- **Avatars** - Leaderboard and event detail pages use Google avatar URLs directly (not profileImage upload)
 - **Client API** - Added `playersAPI.getProfile(id)` to `api.ts`
+
+## Recent Changes (2026-02-18 - Events Ordering)
+- **Events page sorting** - Upcoming events now appear first (soonest first), completed events below (most recent first)
+- **Section headers** - Events page split into "📅 Upcoming Events" and "✅ Completed Events" sections with count badges
+- **Client-side sort** - Sorting done in `client/src/app/events/page.tsx` using `isUpcoming()` check (future date + not COMPLETED status)
 
 ## Recent Changes (2026-02-18 - Earlier)
 - **Events list page** - Added small venue image thumbnail + venue address as Google Maps link on event cards

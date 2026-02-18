@@ -1416,8 +1416,8 @@ export default function EventDetailPage() {
           </div>
         )}
 
-        {/* Registered Players */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 p-6">
+        {/* Registered Players - hide for completed events since Results section shows point earners */}
+        {!isFinalized && <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 p-6">
           <h2 className="text-xl font-bold text-white mb-4">
             👥 Registered Players ({registeredCount})
             {waitlistedCount > 0 && (
@@ -1538,7 +1538,7 @@ export default function EventDetailPage() {
               )}
             </div>
           )}
-        </div>
+        </div>}
       </main>
     </div>
   );
