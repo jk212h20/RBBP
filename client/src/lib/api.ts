@@ -618,6 +618,20 @@ export const venueApplicationsAPI = {
     fetchAPI<{ message: string }>(`/venue-applications/${id}`, { method: 'DELETE' }),
 };
 
+// Players API (public profiles)
+export const playersAPI = {
+  getProfile: (id: string) => fetchAPI<any>(`/auth/players/${id}/profile`),
+};
+
+// Profile API (authenticated user's own profile)
+export const profileAPI = {
+  updateSocialLinks: (socialLinks: Record<string, string>) =>
+    fetchAPI<any>('/auth/profile/social-links', {
+      method: 'PUT',
+      body: JSON.stringify({ socialLinks }),
+    }),
+};
+
 // Default export for simple usage
 const api = {
   get: <T>(endpoint: string) => fetchAPI<T>(endpoint),

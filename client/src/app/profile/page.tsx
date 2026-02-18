@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { eventsAPI, authAPI, standingsAPI, balanceAPI, withdrawalsAPI } from '@/lib/api';
+import MobileNav from '@/components/MobileNav';
+import { eventsAPI, authAPI, standingsAPI, balanceAPI, withdrawalsAPI, playersAPI } from '@/lib/api';
 
 interface UserEvent {
   id: string;
@@ -90,6 +91,12 @@ export default function ProfilePage() {
   const [editProfileImage, setEditProfileImage] = useState<string | null>(null);
   const [savingDetails, setSavingDetails] = useState(false);
   const [loadingDetails, setLoadingDetails] = useState(true);
+
+  // Social links state
+  const [socialLinks, setSocialLinks] = useState<Record<string, string>>({});
+  const [editingSocialLinks, setEditingSocialLinks] = useState(false);
+  const [editSocialLinks, setEditSocialLinks] = useState<Record<string, string>>({});
+  const [savingSocialLinks, setSavingSocialLinks] = useState(false);
 
   // Check if name has been set (locked)
   const nameIsLocked = user?.nameSetAt != null;
@@ -263,9 +270,14 @@ export default function ProfilePage() {
   const loadProfileDetails = async () => {
     setLoadingDetails(true);
     try {
-      const data = await authAPI.getProfileDetails();
+      const data = await authAPI.getProfileDetails() as any;
       setBio(data.profile?.bio || '');
       setProfileImage(data.profile?.profileImage || null);
+      // Load social links
+      if (data.profile?.socialLinks) {
+        const links = typeof data.profile.socialLinks === 'string' ? JSON.parse(data.profile.socialLinks) : data.profile.socialLinks;
+        setSocialLinks(links);
+      }
     } catch (err) {
       console.error('Failed to load profile details:', err);
     } finally {
@@ -431,21 +443,7 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Header */}
-      <header className="bg-black/30 backdrop-blur-sm border-b border-blue-700/50">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/" className="text-xl md:text-2xl font-bold text-white">
-            🃏 RBBP
-          </Link>
-          <nav className="flex items-center gap-2 md:gap-4">
-            <Link href="/events" className="text-white/80 hover:text-white text-sm md:text-base">Events</Link>
-            <Link href="/leaderboard" className="text-white/80 hover:text-white text-sm md:text-base hidden sm:inline">Leaderboard</Link>
-            <Link href="/dashboard" className="bg-blue-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg hover:bg-blue-700 text-sm md:text-base">
-              Dashboard
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <MobileNav currentPage="dashboard" />
 
       <main className="max-w-4xl mx-auto px-4 py-6 md:py-8">
         {/* Back Link */}
@@ -728,6 +726,116 @@ export default function ProfilePage() {
                   <p className="text-gray-500 text-sm italic">No bio yet. Click Edit to add one!</p>
                 )}
               </div>
+            </div>
+          )}
+        </div>
+
+        {/* Social Links Card */}
+        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 p-4 md:p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg md:text-xl font-bold text-white">🔗 Social Links</h2>
+            {!editingSocialLinks && (
+              <button
+                onClick={() => {
+                  setEditSocialLinks({ ...socialLinks });
+                  setEditingSocialLinks(true);
+                  setSaveMessage(null);
+                }}
+                className="text-blue-300 hover:text-blue-200 text-sm font-medium"
+              >
+                ✏️ Edit
+              </button>
+            )}
+          </div>
+
+          {editingSocialLinks ? (
+            <div className="space-y-3">
+              {[
+                { key: 'instagram', label: 'Instagram', placeholder: 'https://instagram.com/username', icon: '📸' },
+                { key: 'twitter', label: 'X / Twitter', placeholder: 'https://x.com/username', icon: '🐦' },
+                { key: 'facebook', label: 'Facebook', placeholder: 'https://facebook.com/username', icon: '👤' },
+                { key: 'hendonmob', label: 'Hendon Mob', placeholder: 'https://pokerdb.thehendonmob.com/player...', icon: '🃏' },
+                { key: 'website', label: 'Website', placeholder: 'https://yoursite.com', icon: '🌐' },
+              ].map(({ key, label, placeholder, icon }) => (
+                <div key={key}>
+                  <label className="block text-blue-100 text-sm mb-1">{icon} {label}</label>
+                  <input
+                    type="url"
+                    value={editSocialLinks[key] || ''}
+                    onChange={(e) => setEditSocialLinks({ ...editSocialLinks, [key]: e.target.value })}
+                    className="w-full p-2.5 bg-white/10 border border-blue-600/50 rounded-lg text-white placeholder-blue-200/30 focus:outline-none focus:border-blue-500 text-sm"
+                    placeholder={placeholder}
+                  />
+                </div>
+              ))}
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={async () => {
+                    setSavingSocialLinks(true);
+                    setSaveMessage(null);
+                    try {
+                      // Filter out empty links
+                      const filtered: Record<string, string> = {};
+                      Object.entries(editSocialLinks).forEach(([k, v]) => {
+                        if (v && v.trim()) filtered[k] = v.trim();
+                      });
+                      await authAPI.updateProfileDetails({ bio, profileImage, socialLinks: filtered } as any);
+                      setSocialLinks(filtered);
+                      setEditingSocialLinks(false);
+                      setSaveMessage({ type: 'success', text: 'Social links updated!' });
+                    } catch (err: any) {
+                      setSaveMessage({ type: 'error', text: err.message || 'Failed to save social links' });
+                    } finally {
+                      setSavingSocialLinks(false);
+                    }
+                  }}
+                  disabled={savingSocialLinks}
+                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white px-5 py-2 rounded-lg font-medium transition text-sm"
+                >
+                  {savingSocialLinks ? 'Saving...' : 'Save Links'}
+                </button>
+                <button
+                  onClick={() => setEditingSocialLinks(false)}
+                  disabled={savingSocialLinks}
+                  className="bg-white/10 hover:bg-white/20 text-white px-5 py-2 rounded-lg font-medium transition text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              {Object.keys(socialLinks).length === 0 ? (
+                <p className="text-gray-500 text-sm italic">No social links added yet. Click Edit to add yours!</p>
+              ) : (
+                <div className="flex flex-wrap gap-3">
+                  {socialLinks.instagram && (
+                    <a href={socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-purple-600/30 to-pink-600/30 rounded-lg text-white hover:from-purple-600/50 hover:to-pink-600/50 transition text-sm">
+                      📸 Instagram
+                    </a>
+                  )}
+                  {socialLinks.twitter && (
+                    <a href={socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-2 bg-blue-500/20 rounded-lg text-white hover:bg-blue-500/40 transition text-sm">
+                      🐦 X / Twitter
+                    </a>
+                  )}
+                  {socialLinks.facebook && (
+                    <a href={socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-2 bg-blue-700/30 rounded-lg text-white hover:bg-blue-700/50 transition text-sm">
+                      👤 Facebook
+                    </a>
+                  )}
+                  {socialLinks.hendonmob && (
+                    <a href={socialLinks.hendonmob} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-2 bg-green-600/20 rounded-lg text-white hover:bg-green-600/40 transition text-sm">
+                      🃏 Hendon Mob
+                    </a>
+                  )}
+                  {socialLinks.website && (
+                    <a href={socialLinks.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg text-white hover:bg-white/20 transition text-sm">
+                      🌐 Website
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>

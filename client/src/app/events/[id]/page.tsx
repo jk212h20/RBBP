@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import MobileNav from '@/components/MobileNav';
 import { eventsAPI } from '@/lib/api';
 
 interface EventDetail {
@@ -641,27 +642,7 @@ export default function EventDetailPage() {
 
   return (
     <div className="min-h-screen ">
-      {/* Header */}
-      <header className="bg-black/30 backdrop-blur-sm border-b border-blue-700/50">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/" className="text-xl md:text-2xl font-bold text-white">
-            🃏 RBBP
-          </Link>
-          <nav className="flex items-center gap-2 md:gap-4">
-            <Link href="/events" className="text-white/80 hover:text-white text-sm md:text-base">Events</Link>
-            <Link href="/leaderboard" className="text-white/80 hover:text-white text-sm md:text-base hidden sm:inline">Leaderboard</Link>
-            {isAuthenticated ? (
-              <Link href="/dashboard" className="bg-blue-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg hover:bg-blue-700 text-sm md:text-base">
-                Dashboard
-              </Link>
-            ) : (
-              <Link href="/login" className="bg-blue-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg hover:bg-blue-700 text-sm md:text-base">
-                Sign In
-              </Link>
-            )}
-          </nav>
-        </div>
-      </header>
+      <MobileNav currentPage="events" />
 
       <main className="max-w-4xl mx-auto px-4 py-6 md:py-8">
         {/* Back Link */}
@@ -1412,7 +1393,16 @@ export default function EventDetailPage() {
                     <span className="text-2xl font-bold text-white w-8">
                       {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${result.position}`}
                     </span>
-                    <span className="text-white font-medium">{result.user.name}</span>
+                    {result.user.avatar ? (
+                      <img src={result.user.avatar} alt={result.user.name} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                    ) : (
+                      <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                        {result.user.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <Link href={`/players/${result.user.id}`} className="text-white font-medium hover:text-blue-300 transition">
+                      {result.user.name}
+                    </Link>
                   </div>
                   <div className="text-right">
                     <p className="text-blue-300 font-bold">{result.pointsEarned} pts</p>
@@ -1449,10 +1439,16 @@ export default function EventDetailPage() {
                         signup.status === 'CHECKED_IN' ? 'bg-blue-500/20 border border-blue-500/30' : 'bg-white/5'
                       }`}
                     >
-                      <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0">
-                        {signup.user.name.charAt(0).toUpperCase()}
-                      </div>
-                      <span className="text-white text-sm truncate flex-1">{signup.user.name}</span>
+                      {signup.user.avatar ? (
+                        <img src={signup.user.avatar} alt={signup.user.name} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0">
+                          {signup.user.name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <Link href={`/players/${signup.user.id}`} className="text-white text-sm truncate flex-1 hover:text-blue-300 transition">
+                        {signup.user.name}
+                      </Link>
                       {signup.status === 'CHECKED_IN' && (
                         <span className="text-blue-300 text-xs flex-shrink-0">✓</span>
                       )}

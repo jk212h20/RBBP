@@ -9,6 +9,7 @@ import {
   updateProfile,
   updateProfileDetails,
   getProfileDetails,
+  getPublicPlayerProfile,
   linkLightningToAccount,
   addEmailToAccount,
   validateClaimToken,
@@ -343,11 +344,11 @@ router.get('/profile/details', authenticate, async (req: Request, res: Response)
 
 /**
  * PUT /api/auth/profile/details
- * Update profile details (bio, profileImage)
+ * Update profile details (bio, profileImage, socialLinks)
  */
 router.put('/profile/details', authenticate, async (req: Request, res: Response) => {
   try {
-    const { bio, profileImage } = req.body;
+    const { bio, profileImage, socialLinks } = req.body;
 
     // Validate profileImage size (max ~500KB base64 string)
     if (profileImage && profileImage.length > 700000) {
@@ -361,11 +362,51 @@ router.put('/profile/details', authenticate, async (req: Request, res: Response)
       return;
     }
 
-    const profile = await updateProfileDetails(req.user!.userId, { bio, profileImage });
+    // Validate socialLinks - must be an object with string values (URLs)
+    if (socialLinks !== undefined && socialLinks !== null) {
+      if (typeof socialLinks !== 'object' || Array.isArray(socialLinks)) {
+        res.status(400).json({ error: 'Social links must be an object.' });
+        return;
+      }
+      // Validate each link is a string and reasonable length
+      for (const [key, value] of Object.entries(socialLinks)) {
+        if (typeof value !== 'string' || (value as string).length > 500) {
+          res.status(400).json({ error: `Invalid social link for ${key}.` });
+          return;
+        }
+      }
+    }
+
+    const profile = await updateProfileDetails(req.user!.userId, { bio, profileImage, socialLinks });
     res.json({ message: 'Profile details updated', profile });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to update profile details';
     res.status(400).json({ error: message });
+  }
+});
+
+// ============================================
+// PUBLIC PLAYER PROFILES
+// ============================================
+
+/**
+ * GET /api/auth/players/:id
+ * Get public player profile (no auth required)
+ */
+router.get('/players/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const profile = await getPublicPlayerProfile(id);
+    
+    if (!profile) {
+      res.status(404).json({ error: 'Player not found' });
+      return;
+    }
+
+    res.json({ player: profile });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to get player profile';
+    res.status(500).json({ error: message });
   }
 });
 

@@ -106,7 +106,12 @@ export const standingsService = {
             id: true,
             name: true,
             email: true,
-            avatar: true
+            avatar: true,
+            profile: {
+              select: {
+                profileImage: true,
+              }
+            }
           }
         }
       },
@@ -119,6 +124,7 @@ export const standingsService = {
       id: standing.userId,
       displayName: standing.user.name || standing.user.email?.split('@')[0] || 'Unknown',
       avatar: standing.user.avatar,
+      profileImage: standing.user.profile?.profileImage || null,
       totalPoints: standing.totalPoints,
       eventsPlayed: standing.eventsPlayed,
       wins: standing.wins,

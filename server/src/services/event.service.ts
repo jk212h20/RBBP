@@ -172,6 +172,11 @@ export class EventService {
                 id: true,
                 name: true,
                 avatar: true,
+                profile: {
+                  select: {
+                    profileImage: true,
+                  }
+                }
               },
             },
           },
@@ -186,6 +191,11 @@ export class EventService {
                 id: true,
                 name: true,
                 avatar: true,
+                profile: {
+                  select: {
+                    profileImage: true,
+                  }
+                }
               },
             },
           },

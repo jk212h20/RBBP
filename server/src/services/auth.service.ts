@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { User, AuthProvider } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { awardLightningBonusPoint } from './standings.service';
 
@@ -341,29 +342,153 @@ export async function getProfileDetails(userId: string) {
   return {
     bio: profile?.bio || '',
     profileImage: profile?.profileImage || null,
+    socialLinks: profile?.socialLinks || null,
   };
 }
 
 /**
- * Update profile details (bio, profileImage) for a user
+ * Update profile details (bio, profileImage, socialLinks) for a user
  */
-export async function updateProfileDetails(userId: string, input: { bio?: string; profileImage?: string | null }) {
+export async function updateProfileDetails(userId: string, input: { bio?: string; profileImage?: string | null; socialLinks?: Record<string, string> | null }) {
+  const socialLinksValue = input.socialLinks === null ? Prisma.JsonNull : input.socialLinks;
+  
   const profile = await prisma.profile.upsert({
     where: { userId },
     update: {
       ...(input.bio !== undefined && { bio: input.bio }),
       ...(input.profileImage !== undefined && { profileImage: input.profileImage }),
+      ...(input.socialLinks !== undefined && { socialLinks: socialLinksValue }),
     },
     create: {
       userId,
       bio: input.bio || '',
       profileImage: input.profileImage || null,
+      socialLinks: input.socialLinks ? input.socialLinks : Prisma.JsonNull,
     },
   });
 
   return {
     bio: profile.bio,
     profileImage: profile.profileImage,
+    socialLinks: profile.socialLinks,
+  };
+}
+
+/**
+ * Get a public player profile by user ID (for public profile pages)
+ */
+export async function getPublicPlayerProfile(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      name: true,
+      avatar: true,
+      isGuest: true,
+      profile: {
+        select: {
+          bio: true,
+          profileImage: true,
+          socialLinks: true,
+        },
+      },
+    },
+  });
+
+  if (!user) return null;
+
+  // Get current season standing
+  const activeSeason = await prisma.season.findFirst({
+    where: { isActive: true },
+  });
+
+  let currentSeasonStanding = null;
+  if (activeSeason) {
+    const standing = await prisma.standing.findUnique({
+      where: {
+        seasonId_userId: {
+          seasonId: activeSeason.id,
+          userId,
+        },
+      },
+    });
+    if (standing) {
+      currentSeasonStanding = {
+        seasonName: activeSeason.name,
+        totalPoints: standing.totalPoints,
+        eventsPlayed: standing.eventsPlayed,
+        wins: standing.wins,
+        topThrees: standing.topThrees,
+        knockouts: standing.knockouts,
+        rank: standing.rank,
+      };
+    }
+  }
+
+  // Get upcoming registered events
+  const upcomingSignups = await prisma.eventSignup.findMany({
+    where: {
+      userId,
+      event: {
+        dateTime: { gte: new Date() },
+        status: { not: 'CANCELLED' },
+      },
+    },
+    include: {
+      event: {
+        select: {
+          id: true,
+          name: true,
+          dateTime: true,
+          venue: { select: { name: true } },
+        },
+      },
+    },
+    orderBy: { event: { dateTime: 'asc' } },
+    take: 5,
+  });
+
+  // Get recent results
+  const recentResults = await prisma.result.findMany({
+    where: { userId },
+    include: {
+      event: {
+        select: {
+          id: true,
+          name: true,
+          dateTime: true,
+          venue: { select: { name: true } },
+        },
+      },
+    },
+    orderBy: { event: { dateTime: 'desc' } },
+    take: 10,
+  });
+
+  return {
+    id: user.id,
+    name: user.name,
+    avatar: user.avatar,
+    isGuest: user.isGuest,
+    bio: user.profile?.bio || '',
+    profileImage: user.profile?.profileImage || null,
+    socialLinks: user.profile?.socialLinks || null,
+    currentSeasonStanding,
+    upcomingEvents: upcomingSignups.map(s => ({
+      id: s.event.id,
+      name: s.event.name,
+      dateTime: s.event.dateTime,
+      venue: s.event.venue.name,
+    })),
+    recentResults: recentResults.map(r => ({
+      eventId: r.event.id,
+      eventName: r.event.name,
+      eventDate: r.event.dateTime,
+      venue: r.event.venue.name,
+      position: r.position,
+      pointsEarned: r.pointsEarned,
+      knockouts: r.knockouts,
+    })),
   };
 }
 

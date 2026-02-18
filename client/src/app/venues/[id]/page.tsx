@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import MobileNav from '@/components/MobileNav';
 import { venuesAPI, eventsAPI } from '@/lib/api';
 
 interface Venue {
@@ -93,19 +94,12 @@ export default function VenueDetailPage() {
 
   return (
     <div className="min-h-screen  text-white">
-      {/* Header */}
-      <header className="bg-black/30 border-b border-white/10 p-4">
-        <div className="max-w-4xl mx-auto flex justify-between items-center">
-          <Link href="/venues" className="text-blue-300 hover:text-blue-200">
-            ← Back to Venues
-          </Link>
-          <Link href="/dashboard" className="text-white/70 hover:text-white">
-            Dashboard
-          </Link>
-        </div>
-      </header>
+      <MobileNav currentPage="venues" />
 
       <main className="max-w-4xl mx-auto p-4 md:p-8">
+        <Link href="/venues" className="text-blue-300 hover:text-blue-200 mb-4 inline-block text-sm">
+          ← Back to Venues
+        </Link>
         {/* Venue Header - Side by side layout */}
         <div className="bg-white/10 backdrop-blur rounded-2xl overflow-hidden mb-8">
           <div className={`flex flex-col ${venue.imageUrl ? 'md:flex-row' : ''}`}>
