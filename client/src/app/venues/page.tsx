@@ -135,7 +135,7 @@ export default function VenuesPage() {
 
                   <div className="mt-4">
                     <span
-                      className="block text-center bg-blue-600/20 text-blue-300 py-2 rounded-lg"
+                      className="block text-center bg-emerald-600 text-white py-2 rounded-lg hover:bg-emerald-500 transition font-medium"
                     >
                       View Venue Details →
                     </span>

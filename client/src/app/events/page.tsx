@@ -320,7 +320,7 @@ export default function EventsPage() {
           <div className="mt-4 flex gap-2">
             <Link
               href={`/events/${event.id}`}
-              className="flex-1 text-center bg-blue-600/20 text-blue-300 py-2 rounded-lg hover:bg-blue-600/30 transition"
+              className="flex-1 text-center bg-emerald-600 text-white py-2 rounded-lg hover:bg-emerald-500 transition font-medium"
             >
               View Details
             </Link>
