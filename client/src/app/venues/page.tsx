@@ -12,6 +12,7 @@ interface Venue {
   description?: string;
   phone?: string;
   email?: string;
+  imageUrl?: string;
   isActive: boolean;
   _count?: {
     events: number;
@@ -77,10 +78,20 @@ export default function VenuesPage() {
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {venues.map((venue) => (
-              <div
+              <Link
                 key={venue.id}
-                className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 overflow-hidden hover:border-blue-500/50 transition"
+                href={`/venues/${venue.id}`}
+                className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 overflow-hidden hover:border-blue-500/50 transition block"
               >
+                {venue.imageUrl && (
+                  <div className="h-40 overflow-hidden">
+                    <img
+                      src={venue.imageUrl}
+                      alt={venue.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
                 <div className="p-6">
                   <div className="flex justify-between items-start mb-3">
                     <h3 className="text-xl font-bold text-white">{venue.name}</h3>
@@ -123,15 +134,14 @@ export default function VenuesPage() {
                   )}
 
                   <div className="mt-4">
-                    <Link
-                      href={`/events?venueId=${venue.id}`}
-                      className="block text-center bg-blue-600/20 text-blue-300 py-2 rounded-lg hover:bg-blue-600/30 transition"
+                    <span
+                      className="block text-center bg-blue-600/20 text-blue-300 py-2 rounded-lg"
                     >
-                      View Events at this Venue
-                    </Link>
+                      View Venue Details →
+                    </span>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}

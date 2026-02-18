@@ -22,6 +22,7 @@ interface Event {
     id: string;
     name: string;
     address?: string;
+    imageUrl?: string;
   };
   season: {
     id: string;
@@ -287,12 +288,26 @@ export default function EventsPage() {
                       <p className="flex items-center gap-2">
                         📅 {formatDate(event.dateTime)}
                       </p>
-                      <p className="flex items-center gap-2">
-                        📍 {event.venue.name}
-                        {event.venue.address && (
-                          <span className="text-blue-200/60">— {event.venue.address}</span>
+                      <div className="flex items-center gap-2">
+                        {event.venue.imageUrl && (
+                          <img
+                            src={event.venue.imageUrl}
+                            alt={event.venue.name}
+                            className="w-8 h-8 rounded-md object-cover flex-shrink-0"
+                          />
                         )}
-                      </p>
+                        <span>📍 {event.venue.name}</span>
+                        {event.venue.address && (
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.venue.address)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-300/70 hover:text-blue-200 underline underline-offset-2 truncate"
+                          >
+                            {event.venue.address}
+                          </a>
+                        )}
+                      </div>
 
                       {/* Countdown */}
                       {upcoming && (

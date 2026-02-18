@@ -1,13 +1,20 @@
 # Active Context
 
-## Current Date: 2026-02-16
+## Current Date: 2026-02-18
 
 ## Current Focus
-Last Longer Pool feature fully implemented with polished UI. Deployed to production.
+Venue/event UI improvements - venue images, Google Maps links, individual venue pages.
+
+## Recent Changes (2026-02-18)
+- **Events list page** - Added small venue image thumbnail + venue address as Google Maps link on event cards
+- **Individual Event page** - Venue image now shows; address is a Google Maps link
+- **Venues list page** - Each venue card now links to `/venues/[id]` individual page; shows venue image
+- **Individual Venue page** - Address is now a Google Maps link (opens in new tab)
+- **Server** - `getAllEvents` and `getUpcomingEvents` now include `venue.imageUrl` in select
 
 ## Recent Changes (2026-02-16)
-- **Last Longer UI polish** - Moved "Enter Last Longer" button inline next to Cancel Registration button (no scrolling needed). Badge section now links to pool details section. Winner name shown in badge.
-- **Events list page** - Added "⚡ Enter Last Longer Pool" CTA button on event cards for registered users when pool is enabled (links to event detail `#last-longer-pool` section).
+- **Last Longer UI cleanup** - All Last Longer interaction lives in dedicated purple section below event header card.
+- **Events list page** - Added "⚡ Enter Last Longer Pool" CTA on event cards for registered users.
 
 ## Recent Changes (2026-02-15)
 - **Last Longer Pool - FULLY COMPLETE** - All UI + backend implemented:

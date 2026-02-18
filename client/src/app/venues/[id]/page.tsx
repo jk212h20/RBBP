@@ -125,9 +125,15 @@ export default function VenueDetailPage() {
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <h1 className="text-3xl font-bold mb-2">{venue.name}</h1>
-                  <p className="text-blue-300 flex items-center gap-2">
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(venue.address)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-300 hover:text-blue-200 flex items-center gap-2 underline underline-offset-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     📍 {venue.address}
-                  </p>
+                  </a>
                 </div>
                 {venue.isActive ? (
                   <span className="bg-blue-600/30 text-blue-300 px-3 py-1 rounded-full text-sm">

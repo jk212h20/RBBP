@@ -71,6 +71,7 @@ export class EventService {
             id: true,
             name: true,
             address: true,
+            imageUrl: true,
           },
         },
         season: {
@@ -120,6 +121,7 @@ export class EventService {
             id: true,
             name: true,
             address: true,
+            imageUrl: true,
           },
         },
         season: {
