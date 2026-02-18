@@ -187,7 +187,179 @@ export default function EventsPage() {
     return badges[status] || 'bg-gray-100 text-gray-800';
   };
 
-  const isUpcoming = (event: Event) => new Date(event.dateTime) > new Date();
+  const isUpcoming = (event: Event) => new Date(event.dateTime) > new Date() && event.status !== 'COMPLETED';
+
+  // Sort events: upcoming first (soonest first), then completed/past (most recent first)
+  const sortedEvents = [...events].sort((a, b) => {
+    const aUpcoming = isUpcoming(a);
+    const bUpcoming = isUpcoming(b);
+    
+    // Upcoming events come before past events
+    if (aUpcoming && !bUpcoming) return -1;
+    if (!aUpcoming && bUpcoming) return 1;
+    
+    // Within upcoming: soonest first (ascending)
+    if (aUpcoming && bUpcoming) {
+      return new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime();
+    }
+    
+    // Within past/completed: most recent first (descending)
+    return new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime();
+  });
+
+  const upcomingEvents = sortedEvents.filter(isUpcoming);
+  const pastEvents = sortedEvents.filter(e => !isUpcoming(e));
+
+  const renderEventCard = (event: Event) => {
+    const signupCount = event._count.signups;
+    const possiblePoints = calculatePossiblePoints(signupCount);
+    const eventDate = new Date(event.dateTime);
+    const upcoming = isUpcoming(event);
+
+    // Registration close check: match server logic
+    const regCloseMinutes = event.registrationCloseMinutes ?? 30;
+    const regCloseTime = new Date(eventDate.getTime() - regCloseMinutes * 60 * 1000);
+    const isRegistrationClosed = new Date() >= regCloseTime;
+    const isAdmin = user?.role === 'ADMIN';
+    const playerRegBlocked = isRegistrationClosed && !isAdmin;
+
+    return (
+      <div
+        key={event.id}
+        className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 overflow-hidden hover:border-blue-500/50 transition"
+      >
+        {/* Thumbnail image */}
+        {event.imageUrl && (
+          <div className="w-full h-40 overflow-hidden">
+            <img
+              src={event.imageUrl}
+              alt={event.name}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        )}
+
+        <div className="p-6">
+          {/* Status badge + buy-in row */}
+          <div className="flex justify-between items-start mb-3">
+            <div className="flex items-center gap-2">
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(event.status)}`}>
+                {event.status.replace('_', ' ')}
+              </span>
+              {event.lastLongerEnabled && (
+                <span className="px-2 py-1 rounded-full text-xs font-bold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
+                  ⚡ Last Longer
+                </span>
+              )}
+            </div>
+            {event.buyIn && (
+              <span className="text-yellow-400 font-bold">${event.buyIn}</span>
+            )}
+          </div>
+          
+          {/* Event name */}
+          <h3 className="text-xl font-bold text-white mb-2">{event.name}</h3>
+          
+          {/* Event info */}
+          <div className="space-y-2 text-sm text-blue-100">
+            <p className="flex items-center gap-2">
+              📅 {formatDate(event.dateTime)}
+            </p>
+            <div className="flex items-center gap-2">
+              {event.venue.imageUrl && (
+                <img
+                  src={event.venue.imageUrl}
+                  alt={event.venue.name}
+                  className="w-8 h-8 rounded-md object-cover flex-shrink-0"
+                />
+              )}
+              <span>📍 {event.venue.name}</span>
+              {event.venue.address && (
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.venue.address)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-300/70 hover:text-blue-200 underline underline-offset-2 truncate"
+                >
+                  {event.venue.address}
+                </a>
+              )}
+            </div>
+
+            {/* Countdown */}
+            {upcoming && (
+              <p className="flex items-center gap-2 text-yellow-300">
+                ⏱️ {formatCountdown(eventDate)}
+              </p>
+            )}
+          </div>
+
+          {/* Player count (large) + Points row */}
+          <div className="mt-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">👥</span>
+              <span className="text-2xl font-bold text-white">
+                {signupCount} / {event.maxPlayers}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-yellow-500/20 px-3 py-1.5 rounded-lg">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-yellow-300">
+                <path d="M3 13h18v7a1 1 0 01-1 1H4a1 1 0 01-1-1v-7zm0-2V8a3 3 0 013-3h2V3h2v2h4V3h2v2h2a3 3 0 013 3v3H3zm9 4a1 1 0 00-1 1v2h2v-2a1 1 0 00-1-1z"/>
+              </svg>
+              <span className="text-yellow-300 font-bold text-sm">{possiblePoints} pts</span>
+            </div>
+          </div>
+
+          {event.description && (
+            <p className="mt-3 text-blue-200/70 text-sm line-clamp-2">
+              {event.description}
+            </p>
+          )}
+
+          {/* Action buttons */}
+          <div className="mt-4 flex gap-2">
+            <Link
+              href={`/events/${event.id}`}
+              className="flex-1 text-center bg-blue-600/20 text-blue-300 py-2 rounded-lg hover:bg-blue-600/30 transition"
+            >
+              View Details
+            </Link>
+            {(event.status === 'SCHEDULED' || event.status === 'REGISTRATION_OPEN') && !playerRegBlocked && (
+              isUserSignedUp(event) ? (
+                <button
+                  onClick={() => handleCancelSignup(event.id)}
+                  className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition"
+                >
+                  Unregister
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleSignup(event.id)}
+                  className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
+                >
+                  Sign Up
+                </button>
+              )
+            )}
+            {(event.status === 'SCHEDULED' || event.status === 'REGISTRATION_OPEN') && playerRegBlocked && (
+              <span className="flex-1 text-center text-red-400 text-sm py-2">
+                Registration Closed
+              </span>
+            )}
+          </div>
+          {/* Last Longer Entry CTA */}
+          {event.lastLongerEnabled && isUserSignedUp(event) && (event.status === 'SCHEDULED' || event.status === 'REGISTRATION_OPEN' || event.status === 'IN_PROGRESS') && (
+            <Link
+              href={`/events/${event.id}#last-longer-pool`}
+              className="mt-2 block w-full text-center bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 py-2 rounded-lg font-medium transition border border-purple-500/30"
+            >
+              ⚡ Enter Last Longer Pool
+            </Link>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen ">
@@ -216,7 +388,7 @@ export default function EventsPage() {
           </select>
         </div>
 
-        {/* Events Grid */}
+        {/* Events */}
         {loading ? (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto"></div>
@@ -232,158 +404,37 @@ export default function EventsPage() {
             <p className="text-blue-200/60 mt-2">Check back later for upcoming tournaments</p>
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {events.map((event) => {
-              const signupCount = event._count.signups;
-              const possiblePoints = calculatePossiblePoints(signupCount);
-              const eventDate = new Date(event.dateTime);
-              const upcoming = isUpcoming(event);
-
-              // Registration close check: match server logic
-              const regCloseMinutes = event.registrationCloseMinutes ?? 30;
-              const regCloseTime = new Date(eventDate.getTime() - regCloseMinutes * 60 * 1000);
-              const isRegistrationClosed = new Date() >= regCloseTime;
-              const isAdmin = user?.role === 'ADMIN';
-              const playerRegBlocked = isRegistrationClosed && !isAdmin;
-
-              return (
-                <div
-                  key={event.id}
-                  className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 overflow-hidden hover:border-blue-500/50 transition"
-                >
-                  {/* Thumbnail image */}
-                  {event.imageUrl && (
-                    <div className="w-full h-40 overflow-hidden">
-                      <img
-                        src={event.imageUrl}
-                        alt={event.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  )}
-
-                  <div className="p-6">
-                    {/* Status badge + buy-in row */}
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(event.status)}`}>
-                          {event.status.replace('_', ' ')}
-                        </span>
-                        {event.lastLongerEnabled && (
-                          <span className="px-2 py-1 rounded-full text-xs font-bold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
-                            ⚡ Last Longer
-                          </span>
-                        )}
-                      </div>
-                      {event.buyIn && (
-                        <span className="text-yellow-400 font-bold">${event.buyIn}</span>
-                      )}
-                    </div>
-                    
-                    {/* Event name */}
-                    <h3 className="text-xl font-bold text-white mb-2">{event.name}</h3>
-                    
-                    {/* Event info */}
-                    <div className="space-y-2 text-sm text-blue-100">
-                      <p className="flex items-center gap-2">
-                        📅 {formatDate(event.dateTime)}
-                      </p>
-                      <div className="flex items-center gap-2">
-                        {event.venue.imageUrl && (
-                          <img
-                            src={event.venue.imageUrl}
-                            alt={event.venue.name}
-                            className="w-8 h-8 rounded-md object-cover flex-shrink-0"
-                          />
-                        )}
-                        <span>📍 {event.venue.name}</span>
-                        {event.venue.address && (
-                          <a
-                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.venue.address)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-300/70 hover:text-blue-200 underline underline-offset-2 truncate"
-                          >
-                            {event.venue.address}
-                          </a>
-                        )}
-                      </div>
-
-                      {/* Countdown */}
-                      {upcoming && (
-                        <p className="flex items-center gap-2 text-yellow-300">
-                          ⏱️ {formatCountdown(eventDate)}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Player count (large) + Points row */}
-                    <div className="mt-4 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl">👥</span>
-                        <span className="text-2xl font-bold text-white">
-                          {signupCount} / {event.maxPlayers}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 bg-yellow-500/20 px-3 py-1.5 rounded-lg">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-yellow-300">
-                          <path d="M3 13h18v7a1 1 0 01-1 1H4a1 1 0 01-1-1v-7zm0-2V8a3 3 0 013-3h2V3h2v2h4V3h2v2h2a3 3 0 013 3v3H3zm9 4a1 1 0 00-1 1v2h2v-2a1 1 0 00-1-1z"/>
-                        </svg>
-                        <span className="text-yellow-300 font-bold text-sm">{possiblePoints} pts</span>
-                      </div>
-                    </div>
-
-                    {event.description && (
-                      <p className="mt-3 text-blue-200/70 text-sm line-clamp-2">
-                        {event.description}
-                      </p>
-                    )}
-
-                    {/* Action buttons */}
-                    <div className="mt-4 flex gap-2">
-                      <Link
-                        href={`/events/${event.id}`}
-                        className="flex-1 text-center bg-blue-600/20 text-blue-300 py-2 rounded-lg hover:bg-blue-600/30 transition"
-                      >
-                        View Details
-                      </Link>
-                      {(event.status === 'SCHEDULED' || event.status === 'REGISTRATION_OPEN') && !playerRegBlocked && (
-                        isUserSignedUp(event) ? (
-                          <button
-                            onClick={() => handleCancelSignup(event.id)}
-                            className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition"
-                          >
-                            Unregister
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleSignup(event.id)}
-                            className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
-                          >
-                            Sign Up
-                          </button>
-                        )
-                      )}
-                      {(event.status === 'SCHEDULED' || event.status === 'REGISTRATION_OPEN') && playerRegBlocked && (
-                        <span className="flex-1 text-center text-red-400 text-sm py-2">
-                          Registration Closed
-                        </span>
-                      )}
-                    </div>
-                    {/* Last Longer Entry CTA */}
-                    {event.lastLongerEnabled && isUserSignedUp(event) && (event.status === 'SCHEDULED' || event.status === 'REGISTRATION_OPEN' || event.status === 'IN_PROGRESS') && (
-                      <Link
-                        href={`/events/${event.id}#last-longer-pool`}
-                        className="mt-2 block w-full text-center bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 py-2 rounded-lg font-medium transition border border-purple-500/30"
-                      >
-                        ⚡ Enter Last Longer Pool
-                      </Link>
-                    )}
-                  </div>
+          <>
+            {/* Upcoming Events */}
+            {upcomingEvents.length > 0 && (
+              <div className="mb-10">
+                <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                  📅 Upcoming Events
+                  <span className="text-sm font-normal text-blue-300 bg-blue-600/20 px-2 py-0.5 rounded-full">
+                    {upcomingEvents.length}
+                  </span>
+                </h2>
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {upcomingEvents.map(renderEventCard)}
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            )}
+
+            {/* Completed / Past Events */}
+            {pastEvents.length > 0 && (
+              <div>
+                <h2 className="text-2xl font-bold text-gray-400 mb-4 flex items-center gap-2">
+                  ✅ Completed Events
+                  <span className="text-sm font-normal text-gray-500 bg-gray-600/20 px-2 py-0.5 rounded-full">
+                    {pastEvents.length}
+                  </span>
+                </h2>
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {pastEvents.map(renderEventCard)}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </main>
     </div>
