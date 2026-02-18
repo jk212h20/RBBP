@@ -620,7 +620,7 @@ export const venueApplicationsAPI = {
 
 // Players API (public profiles)
 export const playersAPI = {
-  getProfile: (id: string) => fetchAPI<any>(`/auth/players/${id}/profile`),
+  getProfile: (id: string) => fetchAPI<any>(`/auth/players/${id}`),
 };
 
 // Profile API (authenticated user's own profile)

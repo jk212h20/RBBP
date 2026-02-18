@@ -66,7 +66,7 @@ export default function PlayerProfilePage() {
   const loadProfile = async () => {
     try {
       const data = await playersAPI.getProfile(playerId);
-      setProfile(data);
+      setProfile(data.player);
     } catch (err: any) {
       setError(err.message || 'Failed to load player profile');
     } finally {
