@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import MobileNav from '@/components/MobileNav';
 import { getGoogleAuthUrl } from '@/lib/api';
 
 export default function RegisterPage() {
@@ -51,7 +52,9 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center ">
+    <div className="min-h-screen">
+      <MobileNav />
+      <div className="flex items-center justify-center py-8">
       <div className="max-w-md w-full mx-4">
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           {/* Header */}
@@ -186,6 +189,7 @@ export default function RegisterPage() {
             </Link>
           </p>
         </div>
+      </div>
       </div>
     </div>
   );

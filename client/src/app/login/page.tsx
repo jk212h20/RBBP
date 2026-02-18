@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import MobileNav from '@/components/MobileNav';
 import { authAPI, getGoogleAuthUrl } from '@/lib/api';
 
 export default function LoginPage() {
@@ -113,7 +114,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center  py-8">
+    <div className="min-h-screen">
+      <MobileNav />
+      <div className="flex items-center justify-center py-8">
       <div className="max-w-md w-full mx-4">
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           {/* Header */}
@@ -275,6 +278,7 @@ export default function LoginPage() {
             </Link>
           </p>
         </div>
+      </div>
       </div>
     </div>
   );

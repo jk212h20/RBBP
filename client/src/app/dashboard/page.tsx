@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import MobileNav from '@/components/MobileNav';
 import { standingsAPI } from '@/lib/api';
 
 interface SeasonStanding {
@@ -117,26 +118,7 @@ function DashboardContent() {
         </div>
       )}
 
-      {/* Navigation */}
-      <nav className="bg-black/30 border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">🃏</span>
-              <span className="text-white font-bold text-xl">RBBP</span>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="text-white/70">{user.name}</span>
-              <button
-                onClick={handleLogout}
-                className="text-white/70 hover:text-white transition"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <MobileNav currentPage="dashboard" />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
