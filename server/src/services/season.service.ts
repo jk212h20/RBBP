@@ -198,11 +198,6 @@ export class SeasonService {
             name: true,
             avatar: true,
             isGuest: true,
-            profile: {
-              select: {
-                profileImage: true,
-              }
-            }
           },
         },
       },

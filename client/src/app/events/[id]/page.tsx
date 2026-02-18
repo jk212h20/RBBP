@@ -1374,12 +1374,12 @@ export default function EventDetailPage() {
           </div>
         )}
 
-        {/* Results (if completed) */}
-        {event.results.length > 0 && (
+        {/* Results (if completed) - only show players who earned points */}
+        {event.results.filter(r => r.pointsEarned > 0).length > 0 && (
           <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 p-6 mb-6">
             <h2 className="text-xl font-bold text-white mb-4">🏆 Results {isFinalized && <span className="text-blue-300 text-sm font-normal">(Final)</span>}</h2>
             <div className="space-y-2">
-              {event.results.map((result, index) => (
+              {event.results.filter(r => r.pointsEarned > 0).map((result, index) => (
                 <div
                   key={result.id}
                   className={`flex items-center justify-between p-3 rounded-lg ${
