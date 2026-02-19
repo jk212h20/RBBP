@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import MobileNav from '@/components/MobileNav';
 import { authAPI, getGoogleAuthUrl } from '@/lib/api';
@@ -121,7 +122,7 @@ export default function LoginPage() {
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           {/* Header */}
           <div className="text-center mb-6">
-            <h1 className="text-3xl font-bold text-gray-900">🃏 Roatan Bitcoin Bar Poker</h1>
+            <h1 className="text-3xl font-bold text-gray-900 flex items-center justify-center gap-2"><Image src="/logo.png" alt="RBBP" width={32} height={32} /> Roatan Bitcoin Bar Poker</h1>
             <p className="text-gray-600 mt-2">Sign in to your account</p>
           </div>
 

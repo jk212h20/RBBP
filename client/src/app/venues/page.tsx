@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import MobileNav from '@/components/MobileNav';
 import { venuesAPI } from '@/lib/api';
@@ -20,6 +21,7 @@ interface Venue {
 }
 
 export default function VenuesPage() {
+  const router = useRouter();
   const [venues, setVenues] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -27,6 +29,13 @@ export default function VenuesPage() {
   useEffect(() => {
     loadVenues();
   }, []);
+
+  // If there's only one venue, redirect directly to its detail page
+  useEffect(() => {
+    if (!loading && venues.length === 1) {
+      router.replace(`/venues/${venues[0].id}`);
+    }
+  }, [loading, venues, router]);
 
   const loadVenues = async () => {
     setLoading(true);
@@ -61,7 +70,7 @@ export default function VenuesPage() {
         </div>
 
         {/* Venues Grid */}
-        {loading ? (
+        {loading || (!loading && venues.length === 1) ? (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto"></div>
             <p className="text-blue-100 mt-4">Loading venues...</p>
@@ -122,7 +131,7 @@ export default function VenuesPage() {
                     )}
                     {venue._count && (
                       <p className="flex items-center gap-2">
-                        🃏 {venue._count.events} events hosted
+                        🎰 {venue._count.events} events hosted
                       </p>
                     )}
                   </div>

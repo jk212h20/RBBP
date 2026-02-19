@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import MobileNav from '@/components/MobileNav';
 import { useAuth } from '@/context/AuthContext';
 import { eventsAPI, seasonsAPI } from '@/lib/api';
@@ -368,7 +369,7 @@ export default function EventsPage() {
       <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Page Title */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">🃏 Poker Events</h1>
+          <h1 className="text-4xl font-bold text-white mb-2 flex items-center gap-2"><Image src="/logo.png" alt="RBBP" width={36} height={36} /> Poker Events</h1>
           <p className="text-blue-100">Find and register for upcoming tournaments</p>
         </div>
 

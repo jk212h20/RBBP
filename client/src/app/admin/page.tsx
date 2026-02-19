@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { adminAPI, venuesAPI, seasonsAPI, eventsAPI, withdrawalsAPI } from '@/lib/api';
 import ImageUpload from '@/components/ImageUpload';
 import WithdrawalsTab from '@/components/WithdrawalsTab';
@@ -555,7 +556,7 @@ export default function AdminPage() {
       {/* Header */}
       <header className="bg-gray-800 border-b border-gray-700 p-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <h1 className="text-2xl font-bold">🃏 Admin Dashboard</h1>
+          <h1 className="text-2xl font-bold flex items-center gap-2"><Image src="/logo.png" alt="RBBP" width={28} height={28} /> Admin Dashboard</h1>
           <Link href="/dashboard" className="text-blue-300 hover:text-blue-200">
             ← Back to Dashboard
           </Link>
