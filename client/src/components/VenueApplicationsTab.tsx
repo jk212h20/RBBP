@@ -19,7 +19,7 @@ interface VenueApplication {
   venueId: string | null;
   createdAt: string;
   updatedAt: string;
-  applicant: { id: string; name: string; email: string | null };
+  submittedBy: { id: string; name: string; email: string | null };
 }
 
 interface Props {
@@ -169,7 +169,7 @@ export default function VenueApplicationsTab({ setMessage, setError }: Props) {
                   {app.contactEmail && <p className="text-gray-300">✉️ {app.contactEmail}</p>}
                   {app.contactPhone && <p className="text-gray-300">📞 {app.contactPhone}</p>}
                   <p className="text-gray-500 text-xs mt-1">
-                    Account: {app.applicant.name} ({app.applicant.email || 'no email'})
+                    Account: {app.submittedBy.name} ({app.submittedBy.email || 'no email'})
                   </p>
                 </div>
               </div>

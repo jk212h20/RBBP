@@ -5,6 +5,11 @@
 ## Current Focus
 Player profiles, social links, leaderboard/event profile pics, navigation consistency.
 
+## Recent Changes (2026-02-18 - Desktop Logout Button)
+- **Bug fix**: Desktop navigation had no Logout button — only mobile hamburger menu had one
+- **Fix**: Added dropdown user menu to desktop nav in `MobileNav.tsx` — clicking user's name shows dropdown with Dashboard, Profile, Admin (if admin), and Logout
+- **Dropdown**: Uses `useRef` + click-outside listener to auto-close; styled with dark bg matching site theme
+
 ## Recent Changes (2026-02-18 - Player Profiles & Nav)
 - **Public Player Profile Page** (`/players/[id]`) - New page showing player stats, bio, social links, event history
 - **Server: Player profile endpoint** - `GET /api/players/:id/profile` returns user info + profile + standings + events
