@@ -11,7 +11,7 @@ const router = Router();
 // GET /api/puzzle/today - Get today's puzzle (auth required)
 router.get('/today', authenticate, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.id;
+    const userId = (req as any).user.userId;
     const eligible = await puzzleService.isEligible(userId);
 
     // If user just became eligible, release any pending sats
@@ -38,7 +38,7 @@ router.get('/today', authenticate, async (req: Request, res: Response) => {
 // GET /api/puzzle/yesterday - Get yesterday's catch-up puzzle (auth required)
 router.get('/yesterday', authenticate, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.id;
+    const userId = (req as any).user.userId;
     const data = await puzzleService.getYesterdaysPuzzle(userId);
     res.json(data);
   } catch (error) {
@@ -50,7 +50,7 @@ router.get('/yesterday', authenticate, async (req: Request, res: Response) => {
 // POST /api/puzzle/answer - Submit an answer (auth required)
 router.post('/answer', authenticate, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.id;
+    const userId = (req as any).user.userId;
     const { puzzleId, selectedIndex, isYesterdayAttempt } = req.body;
 
     if (!puzzleId || selectedIndex === undefined || selectedIndex === null) {
@@ -74,7 +74,7 @@ router.post('/answer', authenticate, async (req: Request, res: Response) => {
 // GET /api/puzzle/streak - Get current streak (auth required)
 router.get('/streak', authenticate, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.id;
+    const userId = (req as any).user.userId;
     const streak = await puzzleService.getStreak(userId);
     res.json({ streak });
   } catch (error) {

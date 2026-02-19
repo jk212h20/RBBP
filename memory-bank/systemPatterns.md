@@ -202,6 +202,33 @@ Users are never hard-deleted. Instead:
 ### Migration Strategy
 Migrations are created with `npx prisma migrate dev` and committed to git. Each migration is a timestamped SQL file in `server/prisma/migrations/`. Railway auto-runs migrations on deploy via the build command in `nixpacks.toml`.
 
+### ⚠️ Common Pitfalls — READ BEFORE WRITING NEW FEATURES
+
+**Dual Migration System:**
+This project has TWO ways migrations get applied to production:
+1. Prisma migration files (`prisma migrate deploy` in nixpacks build)
+2. Inline SQL in `admin.routes.ts` → `apply-migrations-key` endpoint
+
+Both MUST be updated when adding new tables/columns. The inline SQL exists because Railway's Prisma migration runner has been unreliable.
+
+**Rules When Adding Database Changes:**
+1. ALWAYS use camelCase for column names in raw SQL — Prisma maps model field names directly to column names unless `@map()` is used
+2. After writing any raw SQL, cross-check column names against the Prisma schema field names **character-by-character**
+3. PostgreSQL table names use snake_case (`daily_puzzles`), NOT PascalCase model names (`DailyPuzzle`)
+4. After adding new route files, verify they're imported and mounted in `index.ts`
+5. After pushing, verify the production endpoint responds (even a 401 "auth required" confirms the route works)
+
+**JWT Payload Field Names:**
+- The JWT payload uses `req.user.userId` (NOT `req.user.id`)
+- Full payload: `{ userId, email, role }` — see `JwtPayload` in `auth.service.ts`
+- Always use `(req as any).user.userId` in route handlers
+
+**Post-Deploy Verification:**
+After deploying new features, always:
+1. Hit a known endpoint to confirm server is running
+2. Hit the NEW endpoint (even unauthenticated) to confirm route is registered
+3. If database changes were made, confirm no column mismatch errors
+
 ---
 
 ## Deployment Patterns
