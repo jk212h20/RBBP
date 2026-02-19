@@ -1229,11 +1229,36 @@ router.post('/apply-migrations-key', async (req: Request, res: Response) => {
       results.push(`⚠️ puzzle_attempts FK userId: ${e.message?.includes('already exists') ? 'already exists' : e.message}`);
     }
 
+    // Migration 6: Fix puzzle column names (sort_order -> sortOrder, used_at -> usedAt)
+    try {
+      await prisma.$executeRaw`
+        DO $$
+        BEGIN
+          IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'daily_puzzles' AND column_name = 'sort_order'
+          ) THEN
+            ALTER TABLE "daily_puzzles" RENAME COLUMN "sort_order" TO "sortOrder";
+          END IF;
+          IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'daily_puzzles' AND column_name = 'used_at'
+          ) THEN
+            ALTER TABLE "daily_puzzles" RENAME COLUMN "used_at" TO "usedAt";
+          END IF;
+        END $$
+      `;
+      results.push('✅ daily_puzzles columns renamed (sort_order→sortOrder, used_at→usedAt)');
+    } catch (e: any) {
+      results.push(`⚠️ daily_puzzles column rename: ${e.message}`);
+    }
+
     // Mark puzzle migrations as applied in _prisma_migrations
     const puzzleMigrations = [
       '20260219164800_add_daily_puzzles',
       '20260219170000_add_pending_sats',
       '20260219180000_puzzle_queue_system',
+      '20260219190000_fix_puzzle_column_names',
     ];
     for (const migName of puzzleMigrations) {
       try {
