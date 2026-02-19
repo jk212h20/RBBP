@@ -4,6 +4,41 @@ import { EventStatus, SignupStatus } from '@prisma/client';
 import { seasonService } from './season.service';
 import { pointsService } from './points.service';
 
+// ============================================
+// ROATAN TIMEZONE HANDLING
+// ============================================
+// Roatan, Honduras is in Central Standard Time (CST) year-round.
+// It does NOT observe daylight saving time. Always UTC-6.
+// All event times entered by admins are assumed to be in Roatan time.
+const ROATAN_UTC_OFFSET = '-06:00';
+
+/**
+ * Convert a datetime string (without timezone) to a Date interpreted as Roatan time (CST, UTC-6).
+ * If the string already has timezone info (Z, +, -), it is parsed as-is.
+ * Examples:
+ *   "2026-02-20T19:00" → interpreted as 2026-02-20T19:00:00-06:00 → stored as 2026-02-21T01:00:00Z
+ *   "2026-02-20T19:00:00Z" → kept as-is (already has timezone)
+ */
+function toRoatanTime(dateTimeStr: string): Date {
+  // If the string already contains timezone info, parse as-is
+  if (dateTimeStr.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(dateTimeStr)) {
+    return new Date(dateTimeStr);
+  }
+  // Otherwise, append Roatan offset so it's interpreted as CST
+  return new Date(`${dateTimeStr}:00${ROATAN_UTC_OFFSET}`);
+}
+
+/**
+ * Build a Roatan-time Date from year/month/day/hours/minutes.
+ * Used by bulk event creation where we construct dates manually.
+ */
+function buildRoatanDate(year: number, month: number, day: number, hours: number, minutes: number): Date {
+  // Construct ISO string with Roatan offset
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  const isoStr = `${year}-${pad(month + 1)}-${pad(day)}T${pad(hours)}:${pad(minutes)}:00${ROATAN_UTC_OFFSET}`;
+  return new Date(isoStr);
+}
+
 // Points for registration/unregistration
 const REGISTRATION_POINTS = 1;
 const EARLY_BIRD_REGISTRATION_POINTS = 2;  // First 5 signups get bonus
@@ -222,7 +257,7 @@ export class EventService {
       data: {
         name: data.name,
         description: data.description || null,
-        dateTime: new Date(data.dateTime),
+        dateTime: toRoatanTime(data.dateTime),
         registrationOpenDays: data.registrationOpenDays ?? 10,
         registrationCloseMinutes: data.registrationCloseMinutes ?? 30,
         maxPlayers: data.maxPlayers || 50,
@@ -261,7 +296,7 @@ export class EventService {
       data: {
         ...(data.name && { name: data.name }),
         ...(data.description !== undefined && { description: data.description }),
-        ...(data.dateTime && { dateTime: new Date(data.dateTime) }),
+        ...(data.dateTime && { dateTime: toRoatanTime(data.dateTime) }),
         ...(data.registrationOpenDays !== undefined && { registrationOpenDays: data.registrationOpenDays }),
         ...(data.registrationCloseMinutes !== undefined && { registrationCloseMinutes: data.registrationCloseMinutes }),
         ...(data.maxPlayers && { maxPlayers: data.maxPlayers }),
@@ -1023,8 +1058,14 @@ export class EventService {
     
     // Create events for each week
     for (let i = 0; i < data.numberOfWeeks; i++) {
-      const eventDate = new Date(currentDate);
-      eventDate.setHours(hours, minutes, 0, 0);
+      // Use buildRoatanDate to correctly interpret time as Roatan CST (UTC-6)
+      const eventDate = buildRoatanDate(
+        currentDate.getFullYear(),
+        currentDate.getMonth(),
+        currentDate.getDate(),
+        hours,
+        minutes
+      );
       
       const eventNumber = (data.startingNumber || 1) + i;
       const eventName = `${data.baseName} #${eventNumber}`;

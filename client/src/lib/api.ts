@@ -203,19 +203,11 @@ export const eventsAPI = {
       body: JSON.stringify(data),
     }),
   
-  update: (id: string, data: Partial<{ 
-    name: string; 
-    dateTime: string; 
-    description?: string;
-    maxPlayers?: number;
-    buyIn?: number;
-    status?: string;
-  }>) =>
+  update: (id: string, data: any) =>
     fetchAPI<any>(`/events/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
-  
   updateStatus: (id: string, status: string) =>
     fetchAPI<any>(`/events/${id}/status`, {
       method: 'PUT',
@@ -371,6 +363,7 @@ export const adminAPI = {
     ),
   
   getDeletedUsers: () => fetchAPI<any[]>('/admin/deleted-users'),
+  fixEventTimes: () => fetchAPI<any>('/admin/fix-event-times', { method: 'POST' }),
   
   // Points management
   getMigrationStatus: () => fetchAPI<{ pointsHistoryEnabled: boolean }>('/admin/migration-status'),

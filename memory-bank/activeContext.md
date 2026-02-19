@@ -1,9 +1,20 @@
 # Active Context
 
-## Current Date: 2026-02-18
+## Current Date: 2026-02-19
 
 ## Current Focus
-Player profiles, social links, leaderboard/event profile pics, navigation consistency.
+Timezone fix (all times in Roatan/CST), event editing in admin panel.
+
+## ⚠️ IMPORTANT: Timezone Rule
+**All event times are in Roatan time (America/Tegucigalpa, CST/UTC-6).** The server stores dates in UTC but creates/displays them assuming Roatan local time. The `createBulkEvents()` function in `event.service.ts` explicitly constructs dates in CST (UTC-6). When creating events, the `time` field (e.g., "19:00") is interpreted as Roatan time. This must NEVER be changed.
+
+## Recent Changes (2026-02-19 - Timezone Fix & Event Editing)
+- **Bug found**: Bulk event creation was using `getTimezoneOffset()` which returns the SERVER's timezone offset, not Roatan's. When the server runs in a different timezone (e.g., UTC on Railway), events got the wrong time.
+- **Fix**: Hardcoded CST offset (UTC-6) in `event.service.ts` `createBulkEvents()` instead of using `getTimezoneOffset()`
+- **Admin fix-event-times endpoint**: Added `POST /api/admin/fix-event-times` in `admin.routes.ts` — bulk-fixes all future events to 7pm CST (01:00 UTC next day)
+- **Admin UI**: Added "Fix Event Times (7pm CST)" button in Events tab of admin page
+- **Event edit modal**: Added inline edit functionality in admin Events tab — click ✏️ on any event to edit name, date/time, venue, max players, buy-in, description
+- **Server**: PUT `/api/events/:id` route already existed; client `eventsAPI.update()` added to `api.ts`
 
 ## Recent Changes (2026-02-18 - Desktop Logout Button)
 - **Bug fix**: Desktop navigation had no Logout button — only mobile hamburger menu had one

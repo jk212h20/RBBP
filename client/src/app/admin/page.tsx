@@ -207,6 +207,11 @@ export default function AdminPage() {
   const [userClaimLinks, setUserClaimLinks] = useState<Record<string, string>>({});
   const [generatingClaimForUser, setGeneratingClaimForUser] = useState<string | null>(null);
   const [copiedClaimUserId, setCopiedClaimUserId] = useState<string | null>(null);
+  
+  // Event edit state
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [editEventForm, setEditEventForm] = useState({ name: '', description: '', dateTime: '', maxPlayers: 50, buyIn: 0, venueId: '', seasonId: '' });
+  const [fixingEventTimes, setFixingEventTimes] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -1436,9 +1441,32 @@ export default function AdminPage() {
             <div className="bg-gray-800 rounded-lg p-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold">📅 All Events ({events.length})</h2>
-                <button onClick={fetchEvents} className="text-blue-300 hover:text-blue-200 text-sm">
-                  🔄 Refresh
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    disabled={fixingEventTimes}
+                    onClick={async () => {
+                      if (!confirm('Fix all event times to 7:00 PM Roatan time (CST/UTC-6)?\n\nThis will update ALL events to start at 7pm on their existing date.')) return;
+                      setFixingEventTimes(true);
+                      setError('');
+                      setMessage('');
+                      try {
+                        const result = await adminAPI.fixEventTimes();
+                        setMessage(result.message || `Fixed ${result.updated} event times to 7pm Roatan time!`);
+                        fetchEvents();
+                      } catch (err: any) {
+                        setError(err.message || 'Failed to fix event times');
+                      } finally {
+                        setFixingEventTimes(false);
+                      }
+                    }}
+                    className="bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 text-white px-3 py-1 rounded text-sm font-semibold"
+                  >
+                    {fixingEventTimes ? '⏳ Fixing...' : '🕐 Fix All to 7pm'}
+                  </button>
+                  <button onClick={fetchEvents} className="text-blue-300 hover:text-blue-200 text-sm">
+                    🔄 Refresh
+                  </button>
+                </div>
               </div>
               
               {loadingEvents ? (
@@ -1482,6 +1510,25 @@ export default function AdminPage() {
                             <option value="CANCELLED">❌ Cancelled</option>
                           </select>
                           <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                setEditingEvent(event);
+                                const dt = new Date(event.dateTime);
+                                const localDt = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+                                setEditEventForm({
+                                  name: event.name,
+                                  description: event.description || '',
+                                  dateTime: localDt,
+                                  maxPlayers: event.maxPlayers,
+                                  buyIn: event.buyIn || 0,
+                                  venueId: event.venue.id,
+                                  seasonId: event.season.id
+                                });
+                              }}
+                              className="text-yellow-400 hover:text-yellow-300 text-xs"
+                            >
+                              ✏️ Edit
+                            </button>
                             <Link
                               href={`/events/${event.id}`}
                               className="text-blue-400 hover:text-blue-300 text-xs"
@@ -1896,6 +1943,69 @@ export default function AdminPage() {
                 >
                   Save Changes
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Event Modal */}
+      {editingEvent && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold mb-4">✏️ Edit Event</h2>
+            <p className="text-gray-400 text-xs mb-4">⏰ All times are in Roatan time (CST / UTC-6)</p>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (!editingEvent) return;
+              try {
+                setError('');
+                setMessage('');
+                await eventsAPI.update(editingEvent.id, editEventForm);
+                setMessage('Event updated successfully!');
+                setEditingEvent(null);
+                fetchEvents();
+              } catch (err: any) {
+                setError(err.message || 'Failed to update event');
+              }
+            }} className="space-y-4">
+              <div>
+                <label className="block text-gray-400 mb-1">Name *</label>
+                <input type="text" value={editEventForm.name} onChange={(e) => setEditEventForm({ ...editEventForm, name: e.target.value })} required className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white" />
+              </div>
+              <div>
+                <label className="block text-gray-400 mb-1">Date & Time (Roatan CST) *</label>
+                <input type="datetime-local" value={editEventForm.dateTime} onChange={(e) => setEditEventForm({ ...editEventForm, dateTime: e.target.value })} required className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-400 mb-1">Max Players</label>
+                  <input type="number" value={editEventForm.maxPlayers} onChange={(e) => setEditEventForm({ ...editEventForm, maxPlayers: parseInt(e.target.value) })} className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white" />
+                </div>
+                <div>
+                  <label className="block text-gray-400 mb-1">Buy-in ($)</label>
+                  <input type="number" value={editEventForm.buyIn} onChange={(e) => setEditEventForm({ ...editEventForm, buyIn: parseFloat(e.target.value) })} className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-gray-400 mb-1">Venue</label>
+                <select value={editEventForm.venueId} onChange={(e) => setEditEventForm({ ...editEventForm, venueId: e.target.value })} className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white">
+                  {venues.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-gray-400 mb-1">Season</label>
+                <select value={editEventForm.seasonId} onChange={(e) => setEditEventForm({ ...editEventForm, seasonId: e.target.value })} className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white">
+                  {seasons.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-gray-400 mb-1">Description</label>
+                <textarea value={editEventForm.description} onChange={(e) => setEditEventForm({ ...editEventForm, description: e.target.value })} className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white" rows={3} />
+              </div>
+              <div className="flex gap-3">
+                <button type="button" onClick={() => setEditingEvent(null)} className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded">Cancel</button>
+                <button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded">Save Changes</button>
               </div>
             </form>
           </div>

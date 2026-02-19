@@ -1170,6 +1170,65 @@ router.post('/apply-migrations-key', async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/admin/fix-event-times - Fix all existing events to 7pm Roatan time (CST, UTC-6)
+// This is a one-time fix for events that were created with wrong timezone
+router.post('/fix-event-times', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    // 7pm Roatan time = 01:00 UTC next day (19:00 - (-6:00) = 01:00 UTC)
+    const ROATAN_7PM_UTC_HOUR = 1; // 19:00 CST = 01:00 UTC next day
+    const ROATAN_7PM_UTC_MINUTE = 0;
+
+    const events = await prisma.event.findMany({
+      select: { id: true, name: true, dateTime: true },
+      orderBy: { dateTime: 'asc' },
+    });
+
+    let updatedCount = 0;
+    const updates: { name: string; oldTime: string; newTime: string }[] = [];
+
+    for (const event of events) {
+      const oldDate = new Date(event.dateTime);
+      
+      // Get the Roatan date for this event (UTC-6)
+      // We extract the date portion in Roatan timezone
+      const roatanDate = new Date(oldDate.getTime() - (6 * 60 * 60 * 1000)); // subtract 6 hours to get Roatan local
+      const year = roatanDate.getUTCFullYear();
+      const month = roatanDate.getUTCMonth(); // 0-indexed
+      const day = roatanDate.getUTCDate();
+      
+      // Build the correct 7pm Roatan time for that date
+      // 7pm CST = next day 01:00 UTC
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      const newDateStr = `${year}-${pad(month + 1)}-${pad(day)}T19:00:00-06:00`;
+      const newDate = new Date(newDateStr);
+
+      // Only update if the time is different
+      if (oldDate.getTime() !== newDate.getTime()) {
+        await prisma.event.update({
+          where: { id: event.id },
+          data: { dateTime: newDate },
+        });
+        updatedCount++;
+        updates.push({
+          name: event.name,
+          oldTime: oldDate.toISOString(),
+          newTime: newDate.toISOString(),
+        });
+      }
+    }
+
+    res.json({
+      message: `Updated ${updatedCount} of ${events.length} events to 7:00 PM Roatan time (CST, UTC-6)`,
+      updatedCount,
+      totalEvents: events.length,
+      updates: updates.slice(0, 20), // Show first 20 for preview
+    });
+  } catch (error) {
+    console.error('Error fixing event times:', error);
+    res.status(500).json({ error: 'Failed to fix event times' });
+  }
+});
+
 // GET /api/admin/migration-status - Check if points migration has been applied
 router.get('/migration-status', authenticate, requireAdmin, async (req: Request, res: Response) => {
   try {
