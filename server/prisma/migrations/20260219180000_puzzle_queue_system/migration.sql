@@ -2,12 +2,12 @@
 -- Add sortOrder for manual ordering, usedAt to track when a puzzle was shown
 
 -- Add new columns
-ALTER TABLE "daily_puzzles" ADD COLUMN "sort_order" INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE "daily_puzzles" ADD COLUMN "used_at" DATE;
+ALTER TABLE "daily_puzzles" ADD COLUMN "sortOrder" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "daily_puzzles" ADD COLUMN "usedAt" DATE;
 
--- Migrate existing data: copy date to used_at, set sort_order from date order
-UPDATE "daily_puzzles" SET "used_at" = "date";
-UPDATE "daily_puzzles" AS dp SET "sort_order" = sub.rn
+-- Migrate existing data: copy date to usedAt, set sortOrder from date order
+UPDATE "daily_puzzles" SET "usedAt" = "date";
+UPDATE "daily_puzzles" AS dp SET "sortOrder" = sub.rn
 FROM (SELECT id, ROW_NUMBER() OVER (ORDER BY "date" ASC) as rn FROM "daily_puzzles") sub
 WHERE dp.id = sub.id;
 

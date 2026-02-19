@@ -100,3 +100,5 @@ Daily Poker Puzzle feature (sats faucet for event attendees).
 ## Known Issues
 - Social links stored as JSON in Profile.socialLinks field
 - Daily Puzzle: Need to create initial puzzle content via admin panel before users can play
+- Daily Puzzle: Production DB tables created via `/api/admin/apply-migrations-key` endpoint (2026-02-19). API verified working at `/api/puzzle/today`.
+- **FIXED (2026-02-19)**: Puzzle admin "failed to load puzzles" / "failed to create puzzle" — caused by column name mismatch. Migration `20260219180000` created `sort_order` and `used_at` (snake_case) but Prisma schema expected `sortOrder` and `usedAt` (camelCase, no `@map`). Fix: migration `20260219190000_fix_puzzle_column_names` renames columns. Also fixed `20260219170000` which referenced wrong table name `PuzzleAttempt` instead of `puzzle_attempts`. **Must run migration on production via `/api/admin/apply-migrations-key`.**
