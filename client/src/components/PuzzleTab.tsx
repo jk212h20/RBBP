@@ -31,12 +31,24 @@ export default function PuzzleTab({ setMessage, setError }: PuzzleTabProps) {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [puzzleData, statsData] = await Promise.all([
+      // Load puzzles and stats separately so one failure doesn't block the other
+      const [puzzleResult, statsResult] = await Promise.allSettled([
         puzzleAPI.getAllAdmin(),
         puzzleAPI.getStats(),
       ]);
-      setPuzzles(puzzleData);
-      setStats(statsData);
+
+      if (puzzleResult.status === 'fulfilled') {
+        setPuzzles(puzzleResult.value);
+      } else {
+        setError(puzzleResult.reason?.message || 'Failed to load puzzles');
+      }
+
+      if (statsResult.status === 'fulfilled') {
+        setStats(statsResult.value);
+      } else {
+        // Stats failure is non-critical, just log it
+        console.warn('Failed to load puzzle stats:', statsResult.reason?.message);
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to load puzzles');
     } finally {

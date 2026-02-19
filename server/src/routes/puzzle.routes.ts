@@ -103,9 +103,18 @@ router.get('/admin/stats', authenticate, requireAdmin, async (req: Request, res:
   try {
     const stats = await puzzleService.getPuzzleStats();
     res.json(stats);
-  } catch (error) {
-    console.error('Error fetching puzzle stats:', error);
-    res.status(500).json({ error: 'Failed to fetch stats' });
+  } catch (error: any) {
+    console.error('Error fetching puzzle stats:', error?.message || error);
+    // Return empty stats instead of error so admin page still works
+    res.json({
+      totalPuzzles: 0,
+      usedPuzzles: 0,
+      queuedPuzzles: 0,
+      totalAttempts: 0,
+      correctAttempts: 0,
+      accuracy: 0,
+      totalSatsAwarded: 0,
+    });
   }
 });
 
