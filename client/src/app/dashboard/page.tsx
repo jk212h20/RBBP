@@ -125,9 +125,9 @@ function DashboardContent() {
         {/* Welcome Card - Simplified */}
         <div className="bg-white rounded-2xl shadow-2xl p-6 mb-8">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-blue-500 rounded-full flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
-              {user.avatar ? (
-                <img src={user.avatar} alt={user.name} className="w-full h-full rounded-full" />
+            <div className="w-14 h-14 bg-blue-500 rounded-full flex items-center justify-center text-white text-xl font-bold flex-shrink-0 overflow-hidden">
+              {user.profile?.profileImage || user.avatar ? (
+                <img src={(user.profile?.profileImage || user.avatar)!} alt={user.name} className="w-full h-full rounded-full object-cover" />
               ) : (
                 user.name.charAt(0).toUpperCase()
               )}

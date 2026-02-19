@@ -58,6 +58,11 @@ export class SeasonService {
                 id: true,
                 name: true,
                 avatar: true,
+                profile: {
+                  select: {
+                    profileImage: true,
+                  },
+                },
               },
             },
           },
@@ -198,6 +203,11 @@ export class SeasonService {
             name: true,
             avatar: true,
             isGuest: true,
+            profile: {
+              select: {
+                profileImage: true,
+              },
+            },
           },
         },
       },

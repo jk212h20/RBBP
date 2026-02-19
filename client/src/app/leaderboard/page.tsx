@@ -18,6 +18,9 @@ interface Standing {
     name: string;
     avatar?: string;
     isGuest?: boolean;
+    profile?: {
+      profileImage?: string;
+    };
   };
 }
 
@@ -201,8 +204,8 @@ export default function LeaderboardPage() {
 
                       {/* Player */}
                       <div className="col-span-4 flex items-center gap-3">
-                        {standing.user.avatar ? (
-                          <img src={standing.user.avatar} alt={standing.user.name} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                        {(standing.user.profile?.profileImage || standing.user.avatar) ? (
+                          <img src={standing.user.profile?.profileImage || standing.user.avatar} alt={standing.user.name} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
                         ) : (
                           <div className={`w-10 h-10 ${standing.user.isGuest ? 'bg-gray-500' : 'bg-blue-600'} rounded-full flex items-center justify-center text-white font-bold flex-shrink-0`}>
                             {standing.user.name.charAt(0).toUpperCase()}
@@ -262,8 +265,8 @@ export default function LeaderboardPage() {
                         <span className="text-2xl font-bold">
                           {index < 3 ? rankInfo.emoji : `#${index + 1}`}
                         </span>
-                        {standing.user.avatar ? (
-                          <img src={standing.user.avatar} alt={standing.user.name} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                        {(standing.user.profile?.profileImage || standing.user.avatar) ? (
+                          <img src={standing.user.profile?.profileImage || standing.user.avatar} alt={standing.user.name} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
                         ) : (
                           <div className={`w-10 h-10 ${standing.user.isGuest ? 'bg-gray-500' : 'bg-blue-600'} rounded-full flex items-center justify-center text-white font-bold flex-shrink-0`}>
                             {standing.user.name.charAt(0).toUpperCase()}

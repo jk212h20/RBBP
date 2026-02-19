@@ -13,6 +13,9 @@ interface User {
   authProvider: string;
   googleId: string | null;
   lightningPubkey: string | null;
+  profile?: {
+    profileImage?: string | null;
+  } | null;
 }
 
 interface AuthContextType {

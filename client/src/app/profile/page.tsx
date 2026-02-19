@@ -467,9 +467,9 @@ export default function ProfilePage() {
           {!isEditing ? (
             <>
               <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
-                <div className="w-20 h-20 md:w-24 md:h-24 bg-blue-600 rounded-full flex items-center justify-center text-white text-3xl md:text-4xl font-bold flex-shrink-0">
-                  {user.avatar ? (
-                    <img src={user.avatar} alt={user.name} className="w-full h-full rounded-full" />
+                <div className="w-20 h-20 md:w-24 md:h-24 bg-blue-600 rounded-full flex items-center justify-center text-white text-3xl md:text-4xl font-bold flex-shrink-0 overflow-hidden">
+                  {profileImage || user.avatar ? (
+                    <img src={(profileImage || user.avatar)!} alt={user.name} className="w-full h-full rounded-full object-cover" />
                   ) : (
                     user.name.charAt(0).toUpperCase()
                   )}

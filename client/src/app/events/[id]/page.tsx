@@ -41,6 +41,9 @@ interface EventDetail {
       id: string;
       name: string;
       avatar?: string;
+      profile?: {
+        profileImage?: string;
+      };
     };
   }[];
   results: {
@@ -52,6 +55,9 @@ interface EventDetail {
       id: string;
       name: string;
       avatar?: string;
+      profile?: {
+        profileImage?: string;
+      };
     };
   }[];
   totalEntrants?: number | null;
@@ -1393,8 +1399,8 @@ export default function EventDetailPage() {
                     <span className="text-2xl font-bold text-white w-8">
                       {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${result.position}`}
                     </span>
-                    {result.user.avatar ? (
-                      <img src={result.user.avatar} alt={result.user.name} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                    {(result.user.profile?.profileImage || result.user.avatar) ? (
+                      <img src={result.user.profile?.profileImage || result.user.avatar} alt={result.user.name} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
                     ) : (
                       <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
                         {result.user.name.charAt(0).toUpperCase()}
@@ -1439,8 +1445,8 @@ export default function EventDetailPage() {
                         signup.status === 'CHECKED_IN' ? 'bg-blue-500/20 border border-blue-500/30' : 'bg-white/5'
                       }`}
                     >
-                      {signup.user.avatar ? (
-                        <img src={signup.user.avatar} alt={signup.user.name} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                      {(signup.user.profile?.profileImage || signup.user.avatar) ? (
+                        <img src={signup.user.profile?.profileImage || signup.user.avatar} alt={signup.user.name} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
                       ) : (
                         <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0">
                           {signup.user.name.charAt(0).toUpperCase()}

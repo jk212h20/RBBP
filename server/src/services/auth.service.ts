@@ -385,6 +385,7 @@ export async function getPublicPlayerProfile(userId: string) {
       name: true,
       avatar: true,
       isGuest: true,
+      createdAt: true,
       profile: {
         select: {
           bio: true,
@@ -470,6 +471,7 @@ export async function getPublicPlayerProfile(userId: string) {
     name: user.name,
     avatar: user.avatar,
     isGuest: user.isGuest,
+    memberSince: user.createdAt.toISOString(),
     bio: user.profile?.bio || '',
     profileImage: user.profile?.profileImage || null,
     socialLinks: user.profile?.socialLinks || null,
