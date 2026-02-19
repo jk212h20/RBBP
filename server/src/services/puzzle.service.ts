@@ -1,15 +1,17 @@
 import prisma from '../lib/prisma';
 
 // ============================================
-// DAILY PUZZLE SERVICE
+// DAILY PUZZLE SERVICE (Queue-based)
 // ============================================
 
-// Get today's puzzle for a user (hides correctIndex until they've answered)
+// Get today's puzzle for a user
+// Logic: find puzzle with usedAt = today. If none, pop next from queue (lowest sortOrder with usedAt null)
 export async function getTodaysPuzzle(userId: string) {
   const today = getDateOnly(new Date());
 
-  const puzzle = await prisma.dailyPuzzle.findUnique({
-    where: { date: today },
+  // Try to find puzzle already assigned to today
+  let puzzle = await prisma.dailyPuzzle.findFirst({
+    where: { usedAt: today, isActive: true },
     include: {
       attempts: {
         where: { userId },
@@ -18,7 +20,29 @@ export async function getTodaysPuzzle(userId: string) {
     },
   });
 
-  if (!puzzle || !puzzle.isActive) {
+  // If no puzzle for today, pop next from queue
+  if (!puzzle) {
+    const nextInQueue = await prisma.dailyPuzzle.findFirst({
+      where: { usedAt: null, isActive: true },
+      orderBy: { sortOrder: 'asc' },
+    });
+
+    if (nextInQueue) {
+      // Assign it to today
+      puzzle = await prisma.dailyPuzzle.update({
+        where: { id: nextInQueue.id },
+        data: { usedAt: today },
+        include: {
+          attempts: {
+            where: { userId },
+            take: 1,
+          },
+        },
+      });
+    }
+  }
+
+  if (!puzzle) {
     return { puzzle: null, attempt: null, streak: 0, yesterdayAvailable: false };
   }
 
@@ -29,7 +53,6 @@ export async function getTodaysPuzzle(userId: string) {
   return {
     puzzle: {
       id: puzzle.id,
-      date: puzzle.date,
       scenario: puzzle.scenario,
       question: puzzle.question,
       options: puzzle.options,
@@ -56,8 +79,8 @@ export async function getTodaysPuzzle(userId: string) {
 export async function getYesterdaysPuzzle(userId: string) {
   const yesterday = getDateOnly(new Date(Date.now() - 86400000));
 
-  const puzzle = await prisma.dailyPuzzle.findUnique({
-    where: { date: yesterday },
+  const puzzle = await prisma.dailyPuzzle.findFirst({
+    where: { usedAt: yesterday, isActive: true },
     include: {
       attempts: {
         where: { userId },
@@ -66,7 +89,7 @@ export async function getYesterdaysPuzzle(userId: string) {
     },
   });
 
-  if (!puzzle || !puzzle.isActive) {
+  if (!puzzle) {
     return { puzzle: null, attempt: null };
   }
 
@@ -75,7 +98,6 @@ export async function getYesterdaysPuzzle(userId: string) {
   return {
     puzzle: {
       id: puzzle.id,
-      date: puzzle.date,
       scenario: puzzle.scenario,
       question: puzzle.question,
       options: puzzle.options,
@@ -114,26 +136,26 @@ export async function submitAnswer(
 
   // Get puzzle
   const puzzle = await prisma.dailyPuzzle.findUnique({ where: { id: puzzleId } });
-  if (!puzzle || !puzzle.isActive) {
-    throw new Error('Puzzle not found or inactive.');
+  if (!puzzle || !puzzle.isActive || !puzzle.usedAt) {
+    throw new Error('Puzzle not found or not yet active.');
   }
 
-  // Validate date: must be today's or yesterday's puzzle
+  // Validate: must be today's or yesterday's puzzle
   const today = getDateOnly(new Date());
   const yesterday = getDateOnly(new Date(Date.now() - 86400000));
-  const puzzleDate = getDateOnly(new Date(puzzle.date));
+  const puzzleUsedAt = getDateOnly(new Date(puzzle.usedAt));
 
-  if (puzzleDate.getTime() !== today.getTime() && puzzleDate.getTime() !== yesterday.getTime()) {
+  if (puzzleUsedAt.getTime() !== today.getTime() && puzzleUsedAt.getTime() !== yesterday.getTime()) {
     throw new Error('This puzzle is no longer available.');
   }
 
-  if (isYesterdayAttempt && puzzleDate.getTime() !== yesterday.getTime()) {
+  if (isYesterdayAttempt && puzzleUsedAt.getTime() !== yesterday.getTime()) {
     throw new Error('This is not yesterday\'s puzzle.');
   }
 
   // If trying yesterday's puzzle, check they haven't done today's yet
   if (isYesterdayAttempt) {
-    const todayPuzzle = await prisma.dailyPuzzle.findUnique({ where: { date: today } });
+    const todayPuzzle = await prisma.dailyPuzzle.findFirst({ where: { usedAt: today } });
     if (todayPuzzle) {
       const todayAttempt = await prisma.puzzleAttempt.findUnique({
         where: { puzzleId_userId: { puzzleId: todayPuzzle.id, userId } },
@@ -166,18 +188,16 @@ export async function submitAnswer(
     }
 
     if (eligible) {
-      // Credit sats to user's lightning balance immediately
       await prisma.user.update({
         where: { id: userId },
         data: { lightningBalanceSats: { increment: satsAwarded } },
       });
     } else {
-      // Mark as pending — sats tracked but not credited until user attends an event
       isPending = true;
     }
   }
 
-  const attempt = await prisma.puzzleAttempt.create({
+  await prisma.puzzleAttempt.create({
     data: {
       puzzleId,
       userId,
@@ -213,10 +233,10 @@ export async function getStreak(userId: string): Promise<number> {
     where: {
       userId,
       isCorrect: true,
-      isYesterdayAttempt: false, // Only count today's puzzles for streak
+      isYesterdayAttempt: false,
     },
-    include: { puzzle: { select: { date: true } } },
-    orderBy: { puzzle: { date: 'desc' } },
+    include: { puzzle: { select: { usedAt: true } } },
+    orderBy: { puzzle: { usedAt: 'desc' } },
   });
 
   if (attempts.length === 0) return 0;
@@ -225,18 +245,21 @@ export async function getStreak(userId: string): Promise<number> {
   let expectedDate = getDateOnly(new Date());
 
   // If they haven't done today's puzzle yet, start from yesterday
-  const latestAttemptDate = getDateOnly(new Date(attempts[0].puzzle.date));
-  if (latestAttemptDate.getTime() !== expectedDate.getTime()) {
+  const latestDate = attempts[0].puzzle.usedAt ? getDateOnly(new Date(attempts[0].puzzle.usedAt)) : null;
+  if (!latestDate) return 0;
+
+  if (latestDate.getTime() !== expectedDate.getTime()) {
     const yesterday = getDateOnly(new Date(Date.now() - 86400000));
-    if (latestAttemptDate.getTime() === yesterday.getTime()) {
+    if (latestDate.getTime() === yesterday.getTime()) {
       expectedDate = yesterday;
     } else {
-      return 0; // Gap of more than 1 day
+      return 0;
     }
   }
 
   for (const attempt of attempts) {
-    const attemptDate = getDateOnly(new Date(attempt.puzzle.date));
+    const attemptDate = attempt.puzzle.usedAt ? getDateOnly(new Date(attempt.puzzle.usedAt)) : null;
+    if (!attemptDate) break;
     if (attemptDate.getTime() === expectedDate.getTime()) {
       streak++;
       expectedDate = getDateOnly(new Date(expectedDate.getTime() - 86400000));
@@ -251,8 +274,6 @@ export async function getStreak(userId: string): Promise<number> {
 // Calculate what streak would be if they answer correctly today
 async function getStreakIfCorrect(userId: string): Promise<number> {
   const currentStreak = await getStreak(userId);
-  // If the current streak already includes today (shouldn't happen since we call before insert), return as is
-  // Otherwise add 1 for today's correct answer
   return currentStreak + 1;
 }
 
@@ -261,13 +282,11 @@ async function isYesterdayAvailable(userId: string): Promise<boolean> {
   const yesterday = getDateOnly(new Date(Date.now() - 86400000));
   const today = getDateOnly(new Date());
 
-  // Check yesterday's puzzle exists
-  const yesterdayPuzzle = await prisma.dailyPuzzle.findUnique({
-    where: { date: yesterday },
+  const yesterdayPuzzle = await prisma.dailyPuzzle.findFirst({
+    where: { usedAt: yesterday, isActive: true },
   });
-  if (!yesterdayPuzzle || !yesterdayPuzzle.isActive) return false;
+  if (!yesterdayPuzzle) return false;
 
-  // Check they haven't answered yesterday's puzzle
   const yesterdayAttempt = await prisma.puzzleAttempt.findUnique({
     where: {
       puzzleId_userId: { puzzleId: yesterdayPuzzle.id, userId },
@@ -275,10 +294,7 @@ async function isYesterdayAvailable(userId: string): Promise<boolean> {
   });
   if (yesterdayAttempt) return false;
 
-  // Check they haven't done today's puzzle yet
-  const todayPuzzle = await prisma.dailyPuzzle.findUnique({
-    where: { date: today },
-  });
+  const todayPuzzle = await prisma.dailyPuzzle.findFirst({ where: { usedAt: today } });
   if (todayPuzzle) {
     const todayAttempt = await prisma.puzzleAttempt.findUnique({
       where: {
@@ -297,7 +313,10 @@ async function isYesterdayAvailable(userId: string): Promise<boolean> {
 
 export async function getAllPuzzles() {
   return prisma.dailyPuzzle.findMany({
-    orderBy: { date: 'desc' },
+    orderBy: [
+      { usedAt: 'desc' },   // Used puzzles first (most recent)
+      { sortOrder: 'asc' }, // Then queued puzzles by sort order
+    ],
     include: {
       _count: { select: { attempts: true } },
     },
@@ -305,7 +324,6 @@ export async function getAllPuzzles() {
 }
 
 export async function createPuzzle(data: {
-  date: string;
   scenario: string;
   question: string;
   options: string[];
@@ -314,9 +332,15 @@ export async function createPuzzle(data: {
   rewardSats?: number;
   imageUrl?: string;
 }) {
+  // Auto-assign next sortOrder (put at end of queue)
+  const maxOrder = await prisma.dailyPuzzle.aggregate({
+    _max: { sortOrder: true },
+  });
+  const nextOrder = (maxOrder._max.sortOrder ?? 0) + 1;
+
   return prisma.dailyPuzzle.create({
     data: {
-      date: new Date(data.date),
+      sortOrder: nextOrder,
       scenario: data.scenario,
       question: data.question,
       options: data.options,
@@ -331,7 +355,6 @@ export async function createPuzzle(data: {
 export async function updatePuzzle(
   id: string,
   data: Partial<{
-    date: string;
     scenario: string;
     question: string;
     options: string[];
@@ -342,20 +365,41 @@ export async function updatePuzzle(
     isActive: boolean;
   }>
 ) {
-  const updateData: any = { ...data };
-  if (data.date) updateData.date = new Date(data.date);
   return prisma.dailyPuzzle.update({
     where: { id },
-    data: updateData,
+    data,
   });
 }
 
+// Reorder queued (unused) puzzles
+export async function reorderPuzzles(orderedIds: string[]) {
+  // Only reorder puzzles that haven't been used yet
+  const updates = orderedIds.map((id, index) =>
+    prisma.dailyPuzzle.updateMany({
+      where: { id, usedAt: null },
+      data: { sortOrder: index + 1 },
+    })
+  );
+  await prisma.$transaction(updates);
+  return { reordered: orderedIds.length };
+}
+
 export async function deletePuzzle(id: string) {
+  // Only allow deleting unused puzzles (or puzzles with no attempts)
+  const puzzle = await prisma.dailyPuzzle.findUnique({
+    where: { id },
+    include: { _count: { select: { attempts: true } } },
+  });
+  if (puzzle && puzzle._count.attempts > 0) {
+    throw new Error('Cannot delete a puzzle that has been attempted. Deactivate it instead.');
+  }
   return prisma.dailyPuzzle.delete({ where: { id } });
 }
 
 export async function getPuzzleStats() {
   const totalPuzzles = await prisma.dailyPuzzle.count();
+  const usedPuzzles = await prisma.dailyPuzzle.count({ where: { usedAt: { not: null } } });
+  const queuedPuzzles = await prisma.dailyPuzzle.count({ where: { usedAt: null, isActive: true } });
   const totalAttempts = await prisma.puzzleAttempt.count();
   const correctAttempts = await prisma.puzzleAttempt.count({ where: { isCorrect: true } });
   const totalSatsAwarded = await prisma.puzzleAttempt.aggregate({
@@ -364,6 +408,8 @@ export async function getPuzzleStats() {
 
   return {
     totalPuzzles,
+    usedPuzzles,
+    queuedPuzzles,
     totalAttempts,
     correctAttempts,
     accuracy: totalAttempts > 0 ? Math.round((correctAttempts / totalAttempts) * 100) : 0,
@@ -375,25 +421,18 @@ export async function getPuzzleStats() {
 // PENDING SATS FUNCTIONS
 // ============================================
 
-// Get total pending (unreleased) sats for a user
 export async function getPendingSats(userId: string): Promise<number> {
   const result = await prisma.puzzleAttempt.aggregate({
-    where: {
-      userId,
-      satsPending: true,
-    },
+    where: { userId, satsPending: true },
     _sum: { satsAwarded: true },
   });
   return result._sum.satsAwarded || 0;
 }
 
-// Release all pending sats — credit them to user's lightning balance
-// Called when user becomes eligible (attends their first event)
 export async function releasePendingSats(userId: string): Promise<number> {
   const pendingSats = await getPendingSats(userId);
   if (pendingSats <= 0) return 0;
 
-  // Credit balance and clear pending flags in a transaction
   await prisma.$transaction([
     prisma.user.update({
       where: { id: userId },

@@ -653,6 +653,8 @@ export const puzzleAPI = {
   getStats: () =>
     fetchAPI<{
       totalPuzzles: number;
+      usedPuzzles: number;
+      queuedPuzzles: number;
       totalAttempts: number;
       correctAttempts: number;
       accuracy: number;
@@ -660,7 +662,6 @@ export const puzzleAPI = {
     }>('/puzzle/admin/stats'),
 
   create: (data: {
-    date: string;
     scenario: string;
     question: string;
     options: string[];
@@ -678,6 +679,12 @@ export const puzzleAPI = {
     fetchAPI<any>(`/puzzle/admin/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
+    }),
+
+  reorder: (orderedIds: string[]) =>
+    fetchAPI<{ reordered: number }>('/puzzle/admin/reorder', {
+      method: 'POST',
+      body: JSON.stringify({ orderedIds }),
     }),
 
   delete: (id: string) =>

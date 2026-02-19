@@ -112,10 +112,10 @@ router.get('/admin/stats', authenticate, requireAdmin, async (req: Request, res:
 // POST /api/puzzle/admin - Create puzzle (admin)
 router.post('/admin', authenticate, requireAdmin, async (req: Request, res: Response) => {
   try {
-    const { date, scenario, question, options, correctIndex, explanation, rewardSats, imageUrl } = req.body;
+    const { scenario, question, options, correctIndex, explanation, rewardSats, imageUrl } = req.body;
 
-    if (!date || !scenario || !question || !options || correctIndex === undefined || !explanation) {
-      res.status(400).json({ error: 'date, scenario, question, options, correctIndex, and explanation are required' });
+    if (!scenario || !question || !options || correctIndex === undefined || !explanation) {
+      res.status(400).json({ error: 'scenario, question, options, correctIndex, and explanation are required' });
       return;
     }
 
@@ -125,16 +125,28 @@ router.post('/admin', authenticate, requireAdmin, async (req: Request, res: Resp
     }
 
     const puzzle = await puzzleService.createPuzzle({
-      date, scenario, question, options, correctIndex, explanation, rewardSats, imageUrl,
+      scenario, question, options, correctIndex, explanation, rewardSats, imageUrl,
     });
     res.status(201).json(puzzle);
   } catch (error: any) {
-    if (error.code === 'P2002') {
-      res.status(409).json({ error: 'A puzzle already exists for this date' });
-      return;
-    }
     console.error('Error creating puzzle:', error);
     res.status(500).json({ error: 'Failed to create puzzle' });
+  }
+});
+
+// POST /api/puzzle/admin/reorder - Reorder queued puzzles (admin)
+router.post('/admin/reorder', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { orderedIds } = req.body;
+    if (!Array.isArray(orderedIds)) {
+      res.status(400).json({ error: 'orderedIds must be an array of puzzle IDs' });
+      return;
+    }
+    const result = await puzzleService.reorderPuzzles(orderedIds);
+    res.json(result);
+  } catch (error) {
+    console.error('Error reordering puzzles:', error);
+    res.status(500).json({ error: 'Failed to reorder puzzles' });
   }
 });
 

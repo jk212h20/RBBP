@@ -501,18 +501,19 @@ model PointsHistory {
 // ============================================
 
 model DailyPuzzle {
-  id           String   @id @default(cuid())
-  date         DateTime @unique @db.Date
-  scenario     String   // Context/flavor text shown above the question
-  question     String   // The actual question
-  options      Json     // Array of 5 answer strings
-  correctIndex Int      // Index (0-4) of the correct answer
-  explanation  String   // Shown after answering
-  rewardSats   Int      @default(500)
-  imageUrl     String?  // Optional image for the puzzle
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id           String    @id @default(cuid())
+  sortOrder    Int       @default(0) // Queue position for unused puzzles
+  usedAt       DateTime? @db.Date    // Date the puzzle was shown (null = unused/queued)
+  scenario     String    // Context/flavor text shown above the question
+  question     String    // The actual question
+  options      Json      // Array of 5 answer strings
+  correctIndex Int       // Index (0-4) of the correct answer
+  explanation  String    // Shown after answering
+  rewardSats   Int       @default(500)
+  imageUrl     String?   // Optional image for the puzzle
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   // Relations
   attempts PuzzleAttempt[]
