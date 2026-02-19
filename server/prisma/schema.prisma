@@ -74,6 +74,7 @@ model User {
   venueApplicationsReviewed  VenueApplication[] @relation("VenueApplicationReviewer")
   lastLongerEntries          LastLongerEntry[]
   lastLongerWins             Event[]            @relation("LastLongerWinner")
+  puzzleAttempts             PuzzleAttempt[]
 
   @@map("users")
 }
@@ -493,4 +494,47 @@ model PointsHistory {
   season Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
 
   @@map("points_history")
+}
+
+// ============================================
+// DAILY PUZZLES (Sats Faucet)
+// ============================================
+
+model DailyPuzzle {
+  id           String   @id @default(cuid())
+  date         DateTime @unique @db.Date
+  scenario     String   // Context/flavor text shown above the question
+  question     String   // The actual question
+  options      Json     // Array of 5 answer strings
+  correctIndex Int      // Index (0-4) of the correct answer
+  explanation  String   // Shown after answering
+  rewardSats   Int      @default(500)
+  imageUrl     String?  // Optional image for the puzzle
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  attempts PuzzleAttempt[]
+
+  @@map("daily_puzzles")
+}
+
+model PuzzleAttempt {
+  id                 String   @id @default(cuid())
+  puzzleId           String
+  userId             String
+  selectedIndex      Int      // Which option they chose
+  isCorrect          Boolean
+  satsAwarded        Int      @default(0)
+  satsPending        Boolean  @default(false) // True if sats earned but not yet credited (user hasn't attended an event)
+  isYesterdayAttempt Boolean  @default(false) // True if this was a catch-up attempt
+  createdAt          DateTime @default(now())
+
+  // Relations
+  puzzle DailyPuzzle @relation(fields: [puzzleId], references: [id], onDelete: Cascade)
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([puzzleId, userId])
+  @@map("puzzle_attempts")
 }

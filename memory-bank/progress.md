@@ -1,6 +1,6 @@
 # Progress — Roatan Poker League
 
-## Last Updated: February 15, 2026
+## Last Updated: February 19, 2026
 
 ---
 
@@ -122,6 +122,19 @@
 - [x] Migration: `20260215163000_add_last_longer_pool`
 - [x] "⚡ Last Longer" badge on events list page and homepage event cards
 
+### Daily Poker Puzzle (Sats Faucet)
+- [x] `DailyPuzzle` model: date, scenario, question, options (JSON), correctIndex, explanation, rewardSats
+- [x] `PuzzleAttempt` model: tracks user attempts with selectedIndex, isCorrect, satsAwarded
+- [x] Eligibility gate: only users with ≥1 EventResult can attempt (must have attended an event)
+- [x] One attempt per user per puzzle (unique constraint `[puzzleId, userId]`)
+- [x] 500 sats default reward for correct answers, credited to Lightning balance
+- [x] Backend service: `puzzle.service.ts` — getTodaysPuzzle, submitAttempt, admin CRUD, stats
+- [x] Routes: `GET /puzzles/today`, `POST /puzzles/attempt`, admin CRUD + stats
+- [x] Client: `/puzzle` page with scenario display, multiple choice, timer, result + explanation
+- [x] Admin: PuzzleTab component in admin panel for CRUD + stats
+- [x] Navigation: "🧩 Daily Puzzle" link in MobileNav
+- [x] Migration: `20260219164800_add_daily_puzzles`
+
 ### User Experience
 - [x] Mobile-responsive design (MobileNav hamburger menu)
 - [x] Home page with upcoming events and leaderboard preview
@@ -160,7 +173,7 @@
 
 ---
 
-## 🗄️ Database Schema (16 Models)
+## 🗄️ Database Schema (18 Models)
 
 | Model | Purpose |
 |-------|---------|
@@ -180,6 +193,8 @@
 | Withdrawal | Lightning withdrawal records (amount, status, LNURL data) |
 | PointsHistory | Audit trail for all point changes |
 | LastLongerEntry | Last Longer pool entries with Lightning invoice payment tracking |
+| DailyPuzzle | Daily poker puzzle (date, scenario, question, options, correctIndex, explanation, rewardSats) |
+| PuzzleAttempt | User puzzle attempts (selectedIndex, isCorrect, satsAwarded) |
 
 ---
 
@@ -196,6 +211,7 @@
 | withdrawal.routes | `/api/withdrawals` | create, list, my-withdrawals, cancel, stats |
 | lnurl.routes | `/api/lnurl` | withdraw (LNURL-withdraw protocol endpoints) |
 | balance.routes | `/api/balance` | user-balance, all-balances, credit, debit, set, stats |
+| puzzle.routes | `/api/puzzles` | today, attempt, admin CRUD (list, create, update, delete), stats |
 
 ---
 
@@ -219,3 +235,4 @@
 | `20260214160000` | Feb 14 | Add `profileImage` + `bio` to Profile |
 | `20260214170000` | Feb 14 | Add VenueApplication model |
 | `20260215163000` | Feb 15 | Add Last Longer Pool (Event fields + LastLongerEntry model) |
+| `20260219164800` | Feb 19 | Add DailyPuzzle + PuzzleAttempt models |

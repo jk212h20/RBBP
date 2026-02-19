@@ -17,6 +17,7 @@ import { cleanupExpiredChallenges } from './services/lightning.service';
 import balanceRoutes from './routes/balance.routes';
 import faqRoutes from './routes/faq.routes';
 import venueApplicationRoutes from './routes/venue-application.routes';
+import puzzleRoutes from './routes/puzzle.routes';
 
 // Load environment variables
 dotenv.config();
@@ -183,6 +184,9 @@ app.use('/api/faq', faqRoutes);
 
 // Venue Application routes (submit + admin review)
 app.use('/api/venue-applications', venueApplicationRoutes);
+
+// Daily Puzzle routes (sats faucet for event attendees)
+app.use('/api/puzzle', puzzleRoutes);
 
 // ============================================
 // ERROR HANDLING

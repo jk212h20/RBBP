@@ -611,6 +611,79 @@ export const venueApplicationsAPI = {
     fetchAPI<{ message: string }>(`/venue-applications/${id}`, { method: 'DELETE' }),
 };
 
+// ============================================
+// PUZZLE API (Daily Sats Faucet)
+// ============================================
+export const puzzleAPI = {
+  getToday: () =>
+    fetchAPI<{
+      puzzle: any;
+      attempt: any;
+      streak: number;
+      yesterdayAvailable: boolean;
+      eligible: boolean;
+      pendingSats: number;
+      satsReleased: number;
+    }>('/puzzle/today'),
+
+  getYesterday: () =>
+    fetchAPI<{
+      puzzle: any;
+      attempt: any;
+    }>('/puzzle/yesterday'),
+
+  submitAnswer: (data: { puzzleId: string; selectedIndex: number; isYesterdayAttempt?: boolean }) =>
+    fetchAPI<{
+      isCorrect: boolean;
+      satsAwarded: number;
+      satsPending: boolean;
+      correctIndex: number;
+      explanation: string;
+      streakBonus: number;
+    }>('/puzzle/answer', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getStreak: () => fetchAPI<{ streak: number }>('/puzzle/streak'),
+
+  // Admin
+  getAllAdmin: () => fetchAPI<any[]>('/puzzle/admin/all'),
+
+  getStats: () =>
+    fetchAPI<{
+      totalPuzzles: number;
+      totalAttempts: number;
+      correctAttempts: number;
+      accuracy: number;
+      totalSatsAwarded: number;
+    }>('/puzzle/admin/stats'),
+
+  create: (data: {
+    date: string;
+    scenario: string;
+    question: string;
+    options: string[];
+    correctIndex: number;
+    explanation: string;
+    rewardSats?: number;
+    imageUrl?: string;
+  }) =>
+    fetchAPI<any>('/puzzle/admin', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: any) =>
+    fetchAPI<any>(`/puzzle/admin/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string) =>
+    fetchAPI<{ message: string }>(`/puzzle/admin/${id}`, { method: 'DELETE' }),
+};
+
 // Players API (public profiles)
 export const playersAPI = {
   getProfile: (id: string) => fetchAPI<any>(`/auth/players/${id}`),

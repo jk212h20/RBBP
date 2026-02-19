@@ -11,6 +11,7 @@ import WithdrawalsTab from '@/components/WithdrawalsTab';
 import BalanceTab from '@/components/BalanceTab';
 import PointsTab from '@/components/PointsTab';
 import FaqTab from '@/components/FaqTab';
+import PuzzleTab from '@/components/PuzzleTab';
 import VenueApplicationsTab from '@/components/VenueApplicationsTab';
 import ExportsTab from '@/components/ExportsTab';
 
@@ -121,7 +122,7 @@ interface GuestUser {
 export default function AdminPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'overview' | 'venues' | 'seasons' | 'events' | 'users' | 'points' | 'balances' | 'withdrawals' | 'setup' | 'faq' | 'applications' | 'exports'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'venues' | 'seasons' | 'events' | 'users' | 'points' | 'balances' | 'withdrawals' | 'setup' | 'faq' | 'applications' | 'exports' | 'puzzles'>('overview');
   const [stats, setStats] = useState<Stats | null>(null);
   const [venues, setVenues] = useState<any[]>([]);
   const [seasons, setSeasons] = useState<any[]>([]);
@@ -572,7 +573,7 @@ export default function AdminPage() {
         {/* Tabs - Scrollable on mobile */}
         <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
           <div className="flex gap-2 mb-6 border-b border-gray-700 pb-4 min-w-max">
-            {['overview', 'users', 'points', 'venues', 'applications', 'seasons', 'events', 'balances', 'withdrawals', 'faq', 'exports'].map((tab) => (
+            {['overview', 'users', 'points', 'venues', 'applications', 'seasons', 'events', 'balances', 'withdrawals', 'faq', 'puzzles', 'exports'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => {
@@ -1432,6 +1433,11 @@ export default function AdminPage() {
         {/* Exports Tab */}
         {activeTab === 'exports' && (
           <ExportsTab setMessage={setMessage} setError={setError} />
+        )}
+
+        {/* Puzzles Tab */}
+        {activeTab === 'puzzles' && (
+          <PuzzleTab setMessage={setMessage} setError={setError} />
         )}
 
         {/* Events Tab */}

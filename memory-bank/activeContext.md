@@ -3,10 +3,25 @@
 ## Current Date: 2026-02-19
 
 ## Current Focus
-Timezone fix (all times in Roatan/CST), event editing in admin panel.
+Daily Poker Puzzle feature (sats faucet for event attendees).
 
 ## ⚠️ IMPORTANT: Timezone Rule
 **All event times are in Roatan time (America/Tegucigalpa, CST/UTC-6).** The server stores dates in UTC but creates/displays them assuming Roatan local time. The `createBulkEvents()` function in `event.service.ts` explicitly constructs dates in CST (UTC-6). When creating events, the `time` field (e.g., "19:00") is interpreted as Roatan time. This must NEVER be changed.
+
+## Recent Changes (2026-02-19 - Daily Poker Puzzle)
+- **New Feature**: Daily Poker Puzzle — a sats faucet. ALL logged-in users can play; sats are pending until first event attendance.
+- **DB**: New `DailyPuzzle` and `PuzzleAttempt` tables (migration `20260219164800_add_daily_puzzles`)
+- **DB**: `satsPending` Boolean on `PuzzleAttempt` (migration `20260219170000_add_pending_sats`) — tracks sats earned but not yet credited
+- **Server**: `puzzle.service.ts` — CRUD, attempt submission, pending sats logic, `releasePendingSats()`, `getPendingSats()`
+- **Server**: `puzzle.routes.ts` — `GET /today` (returns `eligible`, `pendingSats`, `satsReleased`), `POST /answer`, admin CRUD + stats
+- **Eligibility**: Users with ≥1 event result get sats credited immediately. Others earn sats as "pending" — auto-released when they first load `/today` after attending an event.
+- **Reward**: 500 sats default per correct answer, 250 for yesterday's catch-up. 7-day streak bonus: +1000 sats.
+- **One attempt per user per puzzle**: Enforced via unique constraint on `[puzzleId, userId]`
+- **Client**: `/puzzle` page — everyone can play; pending sats banner for non-attendees, celebration banner when sats released
+- **Client**: `PuzzleTab.tsx` admin component for CRUD + stats (total puzzles, attempts, accuracy, sats awarded)
+- **Navigation**: "🧩 Daily Puzzle" link added to MobileNav (both desktop and mobile)
+- **Admin**: "puzzles" tab added to admin page with full management UI
+- **API**: `puzzleAPI` in `client/src/lib/api.ts` — includes `eligible`, `pendingSats`, `satsReleased`, `satsPending` fields
 
 ## Recent Changes (2026-02-19 - Timezone Fix & Event Editing)
 - **Bug found**: Bulk event creation was using `getTimezoneOffset()` which returns the SERVER's timezone offset, not Roatan's. When the server runs in a different timezone (e.g., UTC on Railway), events got the wrong time.
