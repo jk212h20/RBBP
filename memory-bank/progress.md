@@ -123,17 +123,19 @@
 - [x] "⚡ Last Longer" badge on events list page and homepage event cards
 
 ### Daily Poker Puzzle (Sats Faucet)
-- [x] `DailyPuzzle` model: date, scenario, question, options (JSON), correctIndex, explanation, rewardSats
-- [x] `PuzzleAttempt` model: tracks user attempts with selectedIndex, isCorrect, satsAwarded
-- [x] Eligibility gate: only users with ≥1 EventResult can attempt (must have attended an event)
+- [x] `DailyPuzzle` model: sortOrder (queue position), usedAt (null=queued), scenario, question, options (JSON), correctIndex, explanation, rewardSats, imageUrl
+- [x] `PuzzleAttempt` model: selectedIndex, isCorrect, satsAwarded, satsPending (boolean), isYesterdayAttempt
+- [x] **Queue system**: Puzzles created without dates → ordered queue. First unused puzzle auto-assigned to today when requested. Admin reorders queue with ▲/▼ buttons.
+- [x] **Pending sats**: All users can play. Non-attendees earn "pending" sats → auto-released to balance when they attend first event.
+- [x] Eligibility check: users with ≥1 EventResult get sats credited immediately
 - [x] One attempt per user per puzzle (unique constraint `[puzzleId, userId]`)
-- [x] 500 sats default reward for correct answers, credited to Lightning balance
-- [x] Backend service: `puzzle.service.ts` — getTodaysPuzzle, submitAttempt, admin CRUD, stats
-- [x] Routes: `GET /puzzles/today`, `POST /puzzles/attempt`, admin CRUD + stats
-- [x] Client: `/puzzle` page with scenario display, multiple choice, timer, result + explanation
-- [x] Admin: PuzzleTab component in admin panel for CRUD + stats
+- [x] 500 sats default for correct, 250 for yesterday catch-up, +1000 for 7-day streak bonus
+- [x] Backend: `puzzle.service.ts` — getTodaysPuzzle (auto-pops queue), getYesterdaysPuzzle, submitAnswer, getStreak, isEligible, releasePendingSats, admin CRUD + reorderPuzzles
+- [x] Routes: `GET /puzzle/today`, `GET /puzzle/yesterday`, `POST /puzzle/answer`, `GET /puzzle/streak`, admin: all, stats, create, update, delete, reorder
+- [x] Client: `/puzzle` page — everyone can play, pending sats banner, celebration on release
+- [x] Admin: PuzzleTab — queue view with reordering, create/edit form (no date field), stats (queued/used/total/attempts/accuracy/sats), used puzzles section, inactive section
 - [x] Navigation: "🧩 Daily Puzzle" link in MobileNav
-- [x] Migration: `20260219164800_add_daily_puzzles`
+- [x] Migrations: `20260219164800_add_daily_puzzles`, `20260219170000_add_pending_sats`, `20260219180000_puzzle_queue_system`
 
 ### User Experience
 - [x] Mobile-responsive design (MobileNav hamburger menu)
@@ -193,8 +195,8 @@
 | Withdrawal | Lightning withdrawal records (amount, status, LNURL data) |
 | PointsHistory | Audit trail for all point changes |
 | LastLongerEntry | Last Longer pool entries with Lightning invoice payment tracking |
-| DailyPuzzle | Daily poker puzzle (date, scenario, question, options, correctIndex, explanation, rewardSats) |
-| PuzzleAttempt | User puzzle attempts (selectedIndex, isCorrect, satsAwarded) |
+| DailyPuzzle | Daily poker puzzle (sortOrder queue, usedAt, scenario, question, options, correctIndex, explanation, rewardSats) |
+| PuzzleAttempt | User puzzle attempts (selectedIndex, isCorrect, satsAwarded, satsPending) |
 
 ---
 
@@ -211,7 +213,7 @@
 | withdrawal.routes | `/api/withdrawals` | create, list, my-withdrawals, cancel, stats |
 | lnurl.routes | `/api/lnurl` | withdraw (LNURL-withdraw protocol endpoints) |
 | balance.routes | `/api/balance` | user-balance, all-balances, credit, debit, set, stats |
-| puzzle.routes | `/api/puzzles` | today, attempt, admin CRUD (list, create, update, delete), stats |
+| puzzle.routes | `/api/puzzle` | today, yesterday, answer, streak, admin (all, stats, create, update, delete, reorder) |
 
 ---
 
@@ -236,3 +238,5 @@
 | `20260214170000` | Feb 14 | Add VenueApplication model |
 | `20260215163000` | Feb 15 | Add Last Longer Pool (Event fields + LastLongerEntry model) |
 | `20260219164800` | Feb 19 | Add DailyPuzzle + PuzzleAttempt models |
+| `20260219170000` | Feb 19 | Add `satsPending` Boolean to PuzzleAttempt |
+| `20260219180000` | Feb 19 | Refactor puzzles: date→queue (sortOrder + usedAt), add reorder |

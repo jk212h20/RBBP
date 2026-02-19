@@ -10,18 +10,20 @@ Daily Poker Puzzle feature (sats faucet for event attendees).
 
 ## Recent Changes (2026-02-19 - Daily Poker Puzzle)
 - **New Feature**: Daily Poker Puzzle — a sats faucet. ALL logged-in users can play; sats are pending until first event attendance.
-- **DB**: New `DailyPuzzle` and `PuzzleAttempt` tables (migration `20260219164800_add_daily_puzzles`)
-- **DB**: `satsPending` Boolean on `PuzzleAttempt` (migration `20260219170000_add_pending_sats`) — tracks sats earned but not yet credited
-- **Server**: `puzzle.service.ts` — CRUD, attempt submission, pending sats logic, `releasePendingSats()`, `getPendingSats()`
-- **Server**: `puzzle.routes.ts` — `GET /today` (returns `eligible`, `pendingSats`, `satsReleased`), `POST /answer`, admin CRUD + stats
+- **DB**: `DailyPuzzle` table: `sortOrder` (queue position), `usedAt` (date shown, null=queued), `scenario`, `question`, `options` (JSON array), `correctIndex`, `explanation`, `rewardSats`, `imageUrl`
+- **DB**: `PuzzleAttempt` table: `selectedIndex`, `isCorrect`, `satsAwarded`, `satsPending` (boolean), `isYesterdayAttempt`
+- **Migrations**: `20260219164800_add_daily_puzzles`, `20260219170000_add_pending_sats`, `20260219180000_puzzle_queue_system` (refactored date→queue)
+- **Queue System**: Puzzles are created without a date — they go into a queue ordered by `sortOrder`. Each day, the first unused puzzle (lowest sortOrder with usedAt=null) is auto-assigned to today when any user requests `/today`. Admin can reorder the queue.
+- **Server**: `puzzle.service.ts` — `getTodaysPuzzle()` (auto-pops from queue), `getYesterdaysPuzzle()`, `submitAnswer()`, `getStreak()`, `isEligible()`, `releasePendingSats()`, admin CRUD + `reorderPuzzles()`
+- **Server**: `puzzle.routes.ts` — `GET /today`, `GET /yesterday`, `POST /answer`, `GET /streak`, admin: `GET /admin/all`, `GET /admin/stats`, `POST /admin` (create), `PUT /admin/:id`, `DELETE /admin/:id`, `POST /admin/reorder`
 - **Eligibility**: Users with ≥1 event result get sats credited immediately. Others earn sats as "pending" — auto-released when they first load `/today` after attending an event.
 - **Reward**: 500 sats default per correct answer, 250 for yesterday's catch-up. 7-day streak bonus: +1000 sats.
 - **One attempt per user per puzzle**: Enforced via unique constraint on `[puzzleId, userId]`
 - **Client**: `/puzzle` page — everyone can play; pending sats banner for non-attendees, celebration banner when sats released
-- **Client**: `PuzzleTab.tsx` admin component for CRUD + stats (total puzzles, attempts, accuracy, sats awarded)
+- **Client**: `PuzzleTab.tsx` admin component — queue management with ▲/▼ reordering, create/edit form (no date field), stats dashboard (queued/used/total), used puzzles section, inactive puzzles section
 - **Navigation**: "🧩 Daily Puzzle" link added to MobileNav (both desktop and mobile)
 - **Admin**: "puzzles" tab added to admin page with full management UI
-- **API**: `puzzleAPI` in `client/src/lib/api.ts` — includes `eligible`, `pendingSats`, `satsReleased`, `satsPending` fields
+- **API**: `puzzleAPI` in `client/src/lib/api.ts` — includes `reorder()`, `eligible`, `pendingSats`, `satsReleased`, `satsPending` fields
 
 ## Recent Changes (2026-02-19 - Timezone Fix & Event Editing)
 - **Bug found**: Bulk event creation was using `getTimezoneOffset()` which returns the SERVER's timezone offset, not Roatan's. When the server runs in a different timezone (e.g., UTC on Railway), events got the wrong time.
@@ -96,5 +98,5 @@ Daily Poker Puzzle feature (sats faucet for event attendees).
 - **Added logging**: `last-longer.service.ts` now logs payment check attempts and results for debugging
 
 ## Known Issues
-- Production deployment needs `prisma db push` or migration applied for Last Longer columns
 - Social links stored as JSON in Profile.socialLinks field
+- Daily Puzzle: Need to create initial puzzle content via admin panel before users can play
