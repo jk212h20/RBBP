@@ -1163,6 +1163,91 @@ router.post('/apply-migrations-key', async (req: Request, res: Response) => {
       results.push(`⚠️ Marking migration: ${e.message}`);
     }
 
+    // Migration 5: Daily Puzzles tables
+    try {
+      await prisma.$executeRaw`
+        CREATE TABLE IF NOT EXISTS "daily_puzzles" (
+          "id" TEXT NOT NULL,
+          "scenario" TEXT NOT NULL,
+          "question" TEXT NOT NULL,
+          "options" JSONB NOT NULL,
+          "correctIndex" INTEGER NOT NULL,
+          "explanation" TEXT NOT NULL,
+          "rewardSats" INTEGER NOT NULL DEFAULT 500,
+          "imageUrl" TEXT,
+          "isActive" BOOLEAN NOT NULL DEFAULT true,
+          "sort_order" INTEGER NOT NULL DEFAULT 0,
+          "used_at" DATE,
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          CONSTRAINT "daily_puzzles_pkey" PRIMARY KEY ("id")
+        )
+      `;
+      results.push('✅ daily_puzzles table created');
+    } catch (e: any) {
+      results.push(`⚠️ daily_puzzles table: ${e.message}`);
+    }
+
+    try {
+      await prisma.$executeRaw`
+        CREATE TABLE IF NOT EXISTS "puzzle_attempts" (
+          "id" TEXT NOT NULL,
+          "puzzleId" TEXT NOT NULL,
+          "userId" TEXT NOT NULL,
+          "selectedIndex" INTEGER NOT NULL,
+          "isCorrect" BOOLEAN NOT NULL,
+          "satsAwarded" INTEGER NOT NULL DEFAULT 0,
+          "satsPending" BOOLEAN NOT NULL DEFAULT false,
+          "isYesterdayAttempt" BOOLEAN NOT NULL DEFAULT false,
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          CONSTRAINT "puzzle_attempts_pkey" PRIMARY KEY ("id")
+        )
+      `;
+      results.push('✅ puzzle_attempts table created');
+    } catch (e: any) {
+      results.push(`⚠️ puzzle_attempts table: ${e.message}`);
+    }
+
+    try {
+      await prisma.$executeRaw`CREATE UNIQUE INDEX IF NOT EXISTS "puzzle_attempts_puzzleId_userId_key" ON "puzzle_attempts"("puzzleId", "userId")`;
+      results.push('✅ puzzle_attempts unique index created');
+    } catch (e: any) {
+      results.push(`⚠️ puzzle_attempts unique index: ${e.message}`);
+    }
+
+    try {
+      await prisma.$executeRaw`ALTER TABLE "puzzle_attempts" ADD CONSTRAINT "puzzle_attempts_puzzleId_fkey" FOREIGN KEY ("puzzleId") REFERENCES "daily_puzzles"("id") ON DELETE CASCADE ON UPDATE CASCADE`;
+      results.push('✅ puzzle_attempts FK puzzleId added');
+    } catch (e: any) {
+      results.push(`⚠️ puzzle_attempts FK puzzleId: ${e.message?.includes('already exists') ? 'already exists' : e.message}`);
+    }
+
+    try {
+      await prisma.$executeRaw`ALTER TABLE "puzzle_attempts" ADD CONSTRAINT "puzzle_attempts_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE`;
+      results.push('✅ puzzle_attempts FK userId added');
+    } catch (e: any) {
+      results.push(`⚠️ puzzle_attempts FK userId: ${e.message?.includes('already exists') ? 'already exists' : e.message}`);
+    }
+
+    // Mark puzzle migrations as applied in _prisma_migrations
+    const puzzleMigrations = [
+      '20260219164800_add_daily_puzzles',
+      '20260219170000_add_pending_sats',
+      '20260219180000_puzzle_queue_system',
+    ];
+    for (const migName of puzzleMigrations) {
+      try {
+        await prisma.$executeRaw`
+          INSERT INTO "_prisma_migrations" (id, checksum, migration_name, finished_at, applied_steps_count)
+          SELECT gen_random_uuid(), 'manual', ${migName}, NOW(), 1
+          WHERE NOT EXISTS (SELECT 1 FROM "_prisma_migrations" WHERE migration_name = ${migName})
+        `;
+      } catch (e: any) {
+        // Ignore
+      }
+    }
+    results.push('✅ Marked puzzle migrations as applied');
+
     res.json({ message: 'Pending migrations applied', results });
   } catch (error: any) {
     console.error('Error applying migrations:', error);
