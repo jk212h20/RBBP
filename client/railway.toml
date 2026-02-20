@@ -3,7 +3,7 @@ builder = "nixpacks"
 watchPatterns = ["client/**"]
 
 [deploy]
-  startCommand = "node .next/standalone/server.js"
+  startCommand = "HOSTNAME=0.0.0.0 node .next/standalone/server.js"
 healthcheckPath = "/"
 healthcheckTimeout = 100
 restartPolicyType = "on_failure"
