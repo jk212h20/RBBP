@@ -1422,12 +1422,18 @@ export default function EventDetailPage() {
           </div>
         )}
 
-        {/* Registered Players - hide for completed events since Results section shows point earners */}
-        {!isFinalized && <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 p-6">
+        {/* Players section - show registered players (or attendees for completed events) */}
+        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 p-6">
           <h2 className="text-xl font-bold text-white mb-4">
-            👥 Registered Players ({registeredCount})
-            {waitlistedCount > 0 && (
-              <span className="text-yellow-400 text-sm font-normal ml-2">+ {waitlistedCount} waitlisted</span>
+            {isFinalized ? (
+              <>👥 Players Who Attended ({event.signups.filter(s => s.status !== 'WAITLISTED' && s.status !== 'CANCELLED').length})</>
+            ) : (
+              <>
+                👥 Registered Players ({registeredCount})
+                {waitlistedCount > 0 && (
+                  <span className="text-yellow-400 text-sm font-normal ml-2">+ {waitlistedCount} waitlisted</span>
+                )}
+              </>
             )}
           </h2>
           {event.signups.length === 0 ? (
@@ -1544,7 +1550,7 @@ export default function EventDetailPage() {
               )}
             </div>
           )}
-        </div>}
+        </div>
       </main>
     </div>
   );

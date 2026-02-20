@@ -1143,6 +1143,10 @@ export default function ProfilePage() {
                     <div className="text-center text-xs text-gray-400 mt-2">
                       <p>If you don't complete the withdrawal, your balance will be refunded when it expires (24 hours).</p>
                     </div>
+                    <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-center max-w-xs">
+                      <p className="text-yellow-300 text-xs font-medium mb-1">📱 Using Phoenix Wallet?</p>
+                      <p className="text-yellow-200/70 text-xs">Tap <strong className="text-yellow-300">SEND</strong> first, then scan this QR code to receive your sats.</p>
+                    </div>
                     <button
                       onClick={() => {
                         setWithdrawalData(null);

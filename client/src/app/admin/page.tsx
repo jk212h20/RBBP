@@ -212,8 +212,6 @@ export default function AdminPage() {
   // Event edit state
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [editEventForm, setEditEventForm] = useState({ name: '', description: '', dateTime: '', maxPlayers: 50, buyIn: 0, venueId: '', seasonId: '' });
-  const [fixingEventTimes, setFixingEventTimes] = useState(false);
-  const [enablingLastLonger, setEnablingLastLonger] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -1449,48 +1447,6 @@ export default function AdminPage() {
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold">📅 All Events ({events.length})</h2>
                 <div className="flex gap-2">
-                  <button
-                    disabled={enablingLastLonger}
-                    onClick={async () => {
-                      if (!confirm('Enable Last Longer on all upcoming events?\n\nThis will set:\n• Seed: 10,000 sats\n• Entry: 25,000 sats\n\nOnly events without Last Longer already enabled will be updated.')) return;
-                      setEnablingLastLonger(true);
-                      setError('');
-                      setMessage('');
-                      try {
-                        const result = await adminAPI.enableLastLongerUpcoming();
-                        setMessage(result.message);
-                        fetchEvents();
-                      } catch (err: any) {
-                        setError(err.message || 'Failed to enable Last Longer');
-                      } finally {
-                        setEnablingLastLonger(false);
-                      }
-                    }}
-                    className="bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-600 text-white px-3 py-1 rounded text-sm font-semibold"
-                  >
-                    {enablingLastLonger ? '⏳ Enabling...' : '⚡ Add Last Longer to All'}
-                  </button>
-                  <button
-                    disabled={fixingEventTimes}
-                    onClick={async () => {
-                      if (!confirm('Fix all event times to 7:00 PM Roatan time (CST/UTC-6)?\n\nThis will update ALL events to start at 7pm on their existing date.')) return;
-                      setFixingEventTimes(true);
-                      setError('');
-                      setMessage('');
-                      try {
-                        const result = await adminAPI.fixEventTimes();
-                        setMessage(result.message || `Fixed ${result.updated} event times to 7pm Roatan time!`);
-                        fetchEvents();
-                      } catch (err: any) {
-                        setError(err.message || 'Failed to fix event times');
-                      } finally {
-                        setFixingEventTimes(false);
-                      }
-                    }}
-                    className="bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 text-white px-3 py-1 rounded text-sm font-semibold"
-                  >
-                    {fixingEventTimes ? '⏳ Fixing...' : '🕐 Fix All to 7pm'}
-                  </button>
                   <button onClick={fetchEvents} className="text-blue-300 hover:text-blue-200 text-sm">
                     🔄 Refresh
                   </button>
