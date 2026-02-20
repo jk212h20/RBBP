@@ -87,6 +87,8 @@ export default function ProfilePage() {
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [bio, setBio] = useState('');
   const [telegramUsername, setTelegramUsername] = useState('');
+  const [telegramVerified, setTelegramVerified] = useState(false);
+  const [verifyingTelegram, setVerifyingTelegram] = useState(false);
   const [editingDetails, setEditingDetails] = useState(false);
   const [editBio, setEditBio] = useState('');
   const [editProfileImage, setEditProfileImage] = useState<string | null>(null);
@@ -272,10 +274,11 @@ export default function ProfilePage() {
   const loadProfileDetails = async () => {
     setLoadingDetails(true);
     try {
-      const data = await authAPI.getProfileDetails() as any;
+      const data = await authAPI.getProfileDetails();
       setBio(data.profile?.bio || '');
       setProfileImage(data.profile?.profileImage || null);
       setTelegramUsername(data.profile?.telegramUsername || '');
+      setTelegramVerified(data.profile?.telegramVerified ?? false);
       // Load social links
       if (data.profile?.socialLinks) {
         const links = typeof data.profile.socialLinks === 'string' ? JSON.parse(data.profile.socialLinks) : data.profile.socialLinks;
@@ -293,16 +296,36 @@ export default function ProfilePage() {
     setSaveMessage(null);
     try {
       const tg = editTelegramUsername.replace(/^@/, '').trim() || null;
-      const data = await authAPI.updateProfileDetails({ bio: editBio, profileImage: editProfileImage, telegramUsername: tg } as any);
+      const data = await authAPI.updateProfileDetails({ bio: editBio, profileImage: editProfileImage, telegramUsername: tg });
       setBio(data.profile?.bio || '');
       setProfileImage(data.profile?.profileImage || null);
       setTelegramUsername(data.profile?.telegramUsername || '');
+      setTelegramVerified(data.profile?.telegramVerified ?? false);
       setEditingDetails(false);
       setSaveMessage({ type: 'success', text: 'Profile details updated!' });
     } catch (err: any) {
       setSaveMessage({ type: 'error', text: err.message || 'Failed to save profile details' });
     } finally {
       setSavingDetails(false);
+    }
+  };
+
+  const handleVerifyTelegram = async () => {
+    setVerifyingTelegram(true);
+    setSaveMessage(null);
+    try {
+      const result = await authAPI.verifyTelegram();
+      if (result.success) {
+        setSaveMessage({ type: 'success', text: result.message || 'Check your Telegram for a verification message!' });
+        // Reload profile details to pick up telegramVerified=true
+        await loadProfileDetails();
+      } else {
+        setSaveMessage({ type: 'error', text: result.error || 'Verification failed. Make sure you\'ve messaged the bot first.' });
+      }
+    } catch (err: any) {
+      setSaveMessage({ type: 'error', text: err.message || 'Verification failed' });
+    } finally {
+      setVerifyingTelegram(false);
     }
   };
 
@@ -751,17 +774,48 @@ export default function ProfilePage() {
                   <p className="text-gray-500 text-sm italic mb-2">No bio yet. Click Edit to add one!</p>
                 )}
                 {telegramUsername && (
-                  <p className="text-blue-300/70 text-sm flex items-center gap-1">
-                    <span>✈️</span>
-                    <a
-                      href={`https://t.me/${telegramUsername}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:text-blue-200 transition"
-                    >
-                      @{telegramUsername}
-                    </a>
-                  </p>
+                  <div className="mt-1">
+                    <p className="text-blue-300/70 text-sm flex items-center gap-1">
+                      <span>✈️</span>
+                      <a
+                        href={`https://t.me/${telegramUsername}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-blue-200 transition"
+                      >
+                        @{telegramUsername}
+                      </a>
+                      {telegramVerified ? (
+                        <span className="ml-1 text-green-400 text-xs font-medium">✓ Verified</span>
+                      ) : (
+                        <span className="ml-1 text-yellow-400/70 text-xs">⚠️ Not verified</span>
+                      )}
+                    </p>
+                    {!telegramVerified && (
+                      <div className="mt-2 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                        <p className="text-yellow-300/80 text-xs mb-2">
+                          To receive notifications, you must first message the bot on Telegram, then verify below.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <a
+                            href={`https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'RoatanPokerBot'}?start=verify`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 px-3 py-1.5 rounded-lg text-xs font-medium transition"
+                          >
+                            1️⃣ Message the Bot
+                          </a>
+                          <button
+                            onClick={handleVerifyTelegram}
+                            disabled={verifyingTelegram}
+                            className="inline-flex items-center gap-1 bg-green-600/20 hover:bg-green-600/30 disabled:opacity-50 text-green-300 px-3 py-1.5 rounded-lg text-xs font-medium transition"
+                          >
+                            {verifyingTelegram ? '⏳ Verifying…' : '2️⃣ Verify Now'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

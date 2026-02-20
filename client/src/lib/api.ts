@@ -93,14 +93,19 @@ export const authAPI = {
       body: JSON.stringify(data),
     }),
 
-  // Profile details (bio, profileImage)
+  // Profile details (bio, profileImage, telegramUsername, telegramVerified)
   getProfileDetails: () =>
-    fetchAPI<{ profile: { bio: string; profileImage: string | null } }>('/auth/profile/details'),
+    fetchAPI<{ profile: { bio: string; profileImage: string | null; telegramUsername: string | null; telegramVerified: boolean; socialLinks: any } }>('/auth/profile/details'),
 
   updateProfileDetails: (data: { bio?: string; profileImage?: string | null; telegramUsername?: string | null; socialLinks?: Record<string, string> | null }) =>
-    fetchAPI<{ message: string; profile: { bio: string; profileImage: string | null; telegramUsername: string | null } }>('/auth/profile/details', {
+    fetchAPI<{ message: string; profile: { bio: string; profileImage: string | null; telegramUsername: string | null; telegramVerified: boolean } }>('/auth/profile/details', {
       method: 'PUT',
       body: JSON.stringify(data),
+    }),
+
+  verifyTelegram: () =>
+    fetchAPI<{ success: boolean; message?: string; error?: string }>('/auth/telegram/verify', {
+      method: 'POST',
     }),
 };
 
@@ -421,6 +426,21 @@ export const adminAPI = {
     }>(`/admin/guest-users/${guestUserId}/claim-link`, {
       method: 'POST',
     }),
+
+  // Notification preferences
+  getNotificationPrefs: () =>
+    fetchAPI<{ newUser: boolean; withdrawal: boolean; venueApplication: boolean }>(
+      '/admin/notification-prefs'
+    ),
+
+  updateNotificationPrefs: (prefs: { newUser?: boolean; withdrawal?: boolean; venueApplication?: boolean }) =>
+    fetchAPI<{ newUser: boolean; withdrawal: boolean; venueApplication: boolean }>(
+      '/admin/notification-prefs',
+      {
+        method: 'PUT',
+        body: JSON.stringify(prefs),
+      }
+    ),
 };
 
 // ============================================

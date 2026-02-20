@@ -1,4 +1,5 @@
 import prisma from '../lib/prisma';
+import { notifyVenueApplication } from './telegram.service';
 
 // Submit a new venue application (any authenticated user)
 export async function submitApplication(data: {
@@ -13,12 +14,22 @@ export async function submitApplication(data: {
   contactPhone?: string;
   submittedById: string;
 }) {
-  return prisma.venueApplication.create({
+  const application = await prisma.venueApplication.create({
     data,
     include: {
       submittedBy: { select: { id: true, name: true, email: true } },
     },
   });
+
+  // Notify admins (non-blocking)
+  notifyVenueApplication({
+    venueName: data.name,
+    contactName: data.contactName,
+    contactEmail: data.contactEmail ?? null,
+    address: data.address,
+  }).catch(() => {});
+
+  return application;
 }
 
 // Get all applications (admin) with optional status filter

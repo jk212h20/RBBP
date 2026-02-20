@@ -24,6 +24,7 @@ import { authenticate } from '../middleware/auth.middleware';
 import { registerSchema, loginSchema, updateProfileSchema } from '../validators/auth.validator';
 import { isGoogleConfigured } from '../config/passport';
 import { loginLimiter, lightningChallengeLimiter, lightningStatusLimiter } from '../middleware/rateLimiter';
+import { verifyTelegramUsername } from '../services/telegram.service';
 
 const router = Router();
 
@@ -529,6 +530,37 @@ router.post('/add-email', authenticate, async (req: Request, res: Response) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to add email';
     res.status(400).json({ error: message });
+  }
+});
+
+// ============================================
+// TELEGRAM VERIFICATION
+// ============================================
+
+/**
+ * POST /api/auth/telegram/verify
+ * Send a test DM to the user's saved telegramUsername to verify they've started the bot.
+ * On success, sets telegramVerified=true on their profile.
+ */
+router.post('/telegram/verify', authenticate, async (req: Request, res: Response) => {
+  try {
+    const profile = await import('../services/auth.service').then(m => m.getProfileDetails(req.user!.userId));
+    
+    if (!profile.telegramUsername) {
+      res.status(400).json({ error: 'No Telegram username set. Please save your username first.' });
+      return;
+    }
+
+    const result = await verifyTelegramUsername(req.user!.userId, profile.telegramUsername);
+
+    if (result.success) {
+      res.json({ success: true, message: 'Verification message sent! Check your Telegram.' });
+    } else {
+      res.status(400).json({ success: false, error: result.error });
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Verification failed';
+    res.status(500).json({ error: message });
   }
 });
 

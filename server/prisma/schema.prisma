@@ -59,6 +59,10 @@ model User {
   // Admin-only notes (hidden from user)
   adminNotes    String?
 
+  // Telegram notification preferences (admin only)
+  // { newUser: true, withdrawal: true, venueApplication: true }
+  notificationPrefs Json?
+
   // Relations
   profile           Profile?
   managedVenues     Venue[]          @relation("VenueManager")
@@ -86,6 +90,7 @@ model Profile {
   profileImage    String?  // Base64 encoded profile photo
   phone           String?
   telegramUsername String? // Telegram @handle (without @)
+  telegramVerified Boolean @default(false) // True once a test DM was successfully delivered
   socialLinks     Json?    // { facebook, twitter, instagram }
   
   // Stats (denormalized for quick access)

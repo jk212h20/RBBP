@@ -16,6 +16,7 @@ import crypto from 'crypto';
 import { bech32 } from 'bech32';
 import prisma from '../lib/prisma';
 import { payInvoice, decodeInvoice, isVoltageConfigured, getChannelBalance } from './voltage.service';
+import { notifyWithdrawalProcessed } from './telegram.service';
 import { WithdrawalStatus } from '@prisma/client';
 
 const LNURL_BASE_URL = process.env.LNURL_BASE_URL || process.env.LIGHTNING_AUTH_URL?.replace('/auth/lightning', '') || 'http://localhost:3001/api';
@@ -227,16 +228,26 @@ export async function handleWithdrawCallback(
 
     if (paymentResult.success) {
       // Mark as paid
-      await prisma.withdrawal.update({
+      const paidWithdrawal = await prisma.withdrawal.update({
         where: { id: withdrawal.id },
         data: {
           status: 'PAID',
           paymentHash: paymentResult.paymentHash,
           paidAt: new Date(),
         },
+        include: { user: { select: { name: true, email: true } } },
       });
 
       console.log(`[Withdrawal] Successfully paid ${withdrawal.amountSats} sats to user ${withdrawal.userId}`);
+
+      // Notify admins (non-blocking)
+      notifyWithdrawalProcessed({
+        userName: paidWithdrawal.user.name,
+        userEmail: paidWithdrawal.user.email,
+        amountSats: withdrawal.amountSats,
+        description: withdrawal.description,
+      }).catch(() => {});
+
       return { status: 'OK' };
     } else {
       // Payment failed

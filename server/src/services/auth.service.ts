@@ -357,6 +357,7 @@ export async function getProfileDetails(userId: string) {
     bio: profile?.bio || '',
     profileImage: profile?.profileImage || null,
     telegramUsername: profile?.telegramUsername || null,
+    telegramVerified: profile?.telegramVerified ?? false,
     socialLinks: profile?.socialLinks || null,
   };
 }
@@ -371,6 +372,18 @@ export async function updateProfileDetails(userId: string, input: { bio?: string
   const telegramUsername = input.telegramUsername
     ? input.telegramUsername.replace(/^@/, '').trim() || null
     : input.telegramUsername;
+
+  // If telegram username is changing, reset verification status
+  let clearVerified = false;
+  if (input.telegramUsername !== undefined) {
+    const existing = await prisma.profile.findUnique({
+      where: { userId },
+      select: { telegramUsername: true },
+    });
+    if (existing?.telegramUsername !== telegramUsername) {
+      clearVerified = true;
+    }
+  }
   
   const profile = await prisma.profile.upsert({
     where: { userId },
@@ -378,6 +391,7 @@ export async function updateProfileDetails(userId: string, input: { bio?: string
       ...(input.bio !== undefined && { bio: input.bio }),
       ...(input.profileImage !== undefined && { profileImage: input.profileImage }),
       ...(input.telegramUsername !== undefined && { telegramUsername }),
+      ...(clearVerified && { telegramVerified: false }),
       ...(input.socialLinks !== undefined && { socialLinks: socialLinksValue }),
     },
     create: {
@@ -393,6 +407,7 @@ export async function updateProfileDetails(userId: string, input: { bio?: string
     bio: profile.bio,
     profileImage: profile.profileImage,
     telegramUsername: profile.telegramUsername,
+    telegramVerified: profile.telegramVerified,
     socialLinks: profile.socialLinks,
   };
 }

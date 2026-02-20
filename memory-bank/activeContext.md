@@ -1,34 +1,51 @@
 # Active Context
 
 ## Current Focus
-Telegram new-user notification + telegramUsername field across signup & profile.
+Per-admin Telegram notification preferences (multi-admin fan-out).
 
 ## Recent Changes (Feb 20, 2026)
-- **Added `telegramUsername` to `UserProfile` model** (migration: `20260220100000_add_telegram_username`)
-- **Created `telegram.service.ts`** — wraps CoraTelegramBot, sends "new user joined" alert with name + telegram if provided
-- **Auth service `register()`** — now accepts `telegramUsername`, saves to profile, fires Telegram notification
-- **Auth validator** — `telegramUsername` optional string, max 50 chars
-- **`updateProfileDetails` route/service** — now accepts + persists `telegramUsername`
-- **Register page** — optional `@username` field added to signup form
-- **Profile page** — Telegram field in "About Me" edit + display sections
-- **AuthContext** — `register()` accepts optional `telegramUsername`
-- **`api.ts`** — `updateProfileDetails` type updated to include `telegramUsername` + `socialLinks`
+### Telegram notification preferences
+- **Migration `20260220120000_add_notification_prefs`** — added `notificationPrefs` JSON column on `User` (default: `{"newUser":true,"withdrawal":true,"venueApplication":true}`)
+- **`telegram.service.ts` refactored** — now multi-admin fan-out:
+  - `notifyAdmins(event, msg)` — queries all ADMIN users with a `telegramUsername` in their profile where `notificationPrefs[event] === true`, sends DM to each
+  - Exported helpers: `notifyNewUser()`, `notifyWithdrawalProcessed()`, `notifyVenueApplication()`
+- **`withdrawal.service.ts`** — calls `notifyWithdrawalProcessed()` when a withdrawal is marked PAID
+- **`venue-application.service.ts`** — calls `notifyVenueApplication()` when an application is submitted
+- **`admin.routes.ts`** — GET/PUT `/api/admin/notification-prefs` — each admin reads/writes their own prefs
+- **`api.ts`** — `adminAPI.getNotificationPrefs()` and `adminAPI.updateNotificationPrefs()`
+- **`NotificationsTab.tsx`** — toggle UI for 3 notification types (newUser, withdrawal, venueApplication)
+- **`admin/page.tsx`** — "🔔 Notifications" tab added (13th tab)
+
+### Earlier (same session)
+- **`telegramUsername` on `UserProfile`** (migration `20260220100000_add_telegram_username`)
+- Auth register + profile update accept `telegramUsername`
+- Register page + Profile page have Telegram field
 
 ## Architecture Overview
 See `systemPatterns.md`. Key: Next.js client → Express server → Prisma/PostgreSQL.
 
 ## Environment Variables (server)
 - `TELEGRAM_BOT_TOKEN` — CoraTelegramBot token
-- `TELEGRAM_CHAT_ID` — your chat ID
 - `DATABASE_URL`, `JWT_SECRET`, `GOOGLE_CLIENT_ID/SECRET`, `VOLTAGE_*`
+- `TELEGRAM_CHAT_ID` — legacy fallback (no longer primary notification mechanism)
 
 ## Key Patterns
-- Profile details (bio, profileImage, telegramUsername, socialLinks) live on `UserProfile` model
-- `telegramUsername` stored WITHOUT the `@` prefix
-- Telegram notifications fire async (non-blocking) on new email/password registrations
-- Google OAuth users do NOT trigger Telegram notification (handled separately if needed)
+- `telegramUsername` stored on `UserProfile` WITHOUT the `@` prefix
+- `notificationPrefs` stored as JSON on `User` (not `UserProfile`)
+- Telegram notifications fire async (non-blocking)
+- Each admin manages their own prefs independently via `/admin/notification-prefs`
+- Fan-out: `notifyAdmins('newUser' | 'withdrawal' | 'venueApplication', message)` iterates all admins
+
+### Telegram verification flow (same session, later)
+- **Migration `20260220130000_add_telegram_verified`** — added `telegramVerified Boolean` on `UserProfile` (default false)
+- **`telegram.service.ts`** — `verifyTelegramUsername(username)` — sends `/getUpdates`, finds a `/start` message from user with matching username, marks `telegramVerified=true`
+- **`auth.routes.ts`** — `POST /api/auth/telegram/verify` — calls `verifyTelegramUsername` for the authenticated user
+- **`auth.service.ts`** — `updateUserProfile()` now resets `telegramVerified=false` when `telegramUsername` changes
+- **`api.ts`** — `authAPI.verifyTelegram()`, `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` env var used in bot links
+- **`profile/page.tsx`** — shows ✓ Verified / ⚠️ Not verified badge; unverified users see "Message the Bot → Verify Now" inline widget
+- **`NotificationsTab.tsx`** — shows admin's own Telegram status with same verify widget; redirects to profile if no username set
+- `notifyAdmins()` now **only** sends to admins where `telegramVerified=true`
 
 ## What's NOT Built Yet (prioritized)
 - Telegram notification on Google OAuth new user registration
-- Telegram opt-out / notification preferences
-- Admin view of users' telegram usernames
+- Admin view of users' telegram usernames in the users table

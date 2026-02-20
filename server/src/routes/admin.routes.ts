@@ -3,6 +3,7 @@ import { authenticate, requireAdmin } from '../middleware/auth.middleware';
 import prisma from '../lib/prisma';
 import { generateToken, generateClaimToken } from '../services/auth.service';
 import { pointsService } from '../services/points.service';
+import { getAdminNotificationPrefs, updateAdminNotificationPrefs } from '../services/telegram.service';
 
 const router = Router();
 
@@ -1381,6 +1382,39 @@ router.post('/fix-event-times', authenticate, requireAdmin, async (req: Request,
   } catch (error) {
     console.error('Error fixing event times:', error);
     res.status(500).json({ error: 'Failed to fix event times' });
+  }
+});
+
+// ============================================
+// NOTIFICATION PREFERENCES (Admin only)
+// ============================================
+
+// GET /api/admin/notification-prefs - Get current admin's notification preferences
+router.get('/notification-prefs', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const prefs = await getAdminNotificationPrefs(req.user!.userId);
+    res.json(prefs);
+  } catch (error) {
+    console.error('Error fetching notification prefs:', error);
+    res.status(500).json({ error: 'Failed to fetch notification preferences' });
+  }
+});
+
+// PUT /api/admin/notification-prefs - Update current admin's notification preferences
+router.put('/notification-prefs', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { newUser, withdrawal, venueApplication } = req.body;
+
+    const prefs = await updateAdminNotificationPrefs(req.user!.userId, {
+      newUser: typeof newUser === 'boolean' ? newUser : undefined,
+      withdrawal: typeof withdrawal === 'boolean' ? withdrawal : undefined,
+      venueApplication: typeof venueApplication === 'boolean' ? venueApplication : undefined,
+    });
+
+    res.json(prefs);
+  } catch (error) {
+    console.error('Error updating notification prefs:', error);
+    res.status(500).json({ error: 'Failed to update notification preferences' });
   }
 });
 
