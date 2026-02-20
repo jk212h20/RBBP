@@ -1,10 +1,6 @@
 [build]
 builder = "nixpacks"
 
-[build.nixpacks]
-installCmd = "npm ci && npx prisma generate"
-buildCmd = "npm run build"
-
 [deploy]
 startCommand = "npx prisma migrate deploy; npm start"
 healthcheckPath = "/api/health"

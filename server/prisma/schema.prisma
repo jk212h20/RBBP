@@ -89,9 +89,13 @@ model Profile {
   bio             String?
   profileImage    String?  // Base64 encoded profile photo
   phone           String?
-  telegramUsername String? // Telegram @handle (without @)
-  telegramVerified Boolean @default(false) // True once a test DM was successfully delivered
-  socialLinks     Json?    // { facebook, twitter, instagram }
+  telegramUsername   String?  // Telegram @handle (without @)
+  telegramVerified   Boolean  @default(false) // True once a test DM was successfully delivered
+  telegramVisibility String   @default("ADMIN_ONLY") // "PUBLIC" | "ADMIN_ONLY"
+  nostrPubkey        String?  // Nostr hex public key or npub
+  nostrVisibility    String   @default("ADMIN_ONLY") // "PUBLIC" | "ADMIN_ONLY"
+  socialLinks        Json?    // { facebook, twitter, instagram, hendonmob, website }
+  socialLinksVisibility String @default("ADMIN_ONLY") // "PUBLIC" | "ADMIN_ONLY"
   
   // Stats (denormalized for quick access)
   totalEvents     Int @default(0)

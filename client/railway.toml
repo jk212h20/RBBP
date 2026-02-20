@@ -2,11 +2,8 @@
 builder = "nixpacks"
 watchPatterns = ["client/**"]
 
-[build.nixpacks]
-nixPkgs = ["nodejs_20"]
-
 [deploy]
-startCommand = "npm start"
+  startCommand = "node .next/standalone/server.js"
 healthcheckPath = "/"
 healthcheckTimeout = 100
 restartPolicyType = "on_failure"

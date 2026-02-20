@@ -345,11 +345,11 @@ router.get('/profile/details', authenticate, async (req: Request, res: Response)
 
 /**
  * PUT /api/auth/profile/details
- * Update profile details (bio, profileImage, socialLinks)
+ * Update profile details (bio, profileImage, socialLinks, visibility)
  */
 router.put('/profile/details', authenticate, async (req: Request, res: Response) => {
   try {
-    const { bio, profileImage, telegramUsername, socialLinks } = req.body;
+    const { bio, profileImage, telegramUsername, telegramVisibility, nostrPubkey, nostrVisibility, socialLinks, socialLinksVisibility } = req.body;
 
     // Validate profileImage size (max ~500KB base64 string)
     if (profileImage && profileImage.length > 700000) {
@@ -384,7 +384,16 @@ router.put('/profile/details', authenticate, async (req: Request, res: Response)
       }
     }
 
-    const profile = await updateProfileDetails(req.user!.userId, { bio, profileImage, telegramUsername, socialLinks });
+    const profile = await updateProfileDetails(req.user!.userId, {
+      bio,
+      profileImage,
+      telegramUsername,
+      ...(telegramVisibility && { telegramVisibility }),
+      ...(nostrPubkey !== undefined && { nostrPubkey }),
+      ...(nostrVisibility && { nostrVisibility }),
+      socialLinks,
+      ...(socialLinksVisibility && { socialLinksVisibility }),
+    });
     res.json({ message: 'Profile details updated', profile });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to update profile details';
@@ -398,12 +407,26 @@ router.put('/profile/details', authenticate, async (req: Request, res: Response)
 
 /**
  * GET /api/auth/players/:id
- * Get public player profile (no auth required)
+ * Get public player profile. Auth optional — admins see hidden fields.
  */
 router.get('/players/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const profile = await getPublicPlayerProfile(id);
+
+    // Optionally authenticate to determine admin status
+    let isAdmin = false;
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      try {
+        const { verifyToken } = await import('../services/auth.service');
+        const payload = verifyToken(authHeader.slice(7));
+        isAdmin = payload.role === 'ADMIN';
+      } catch {
+        // Invalid token — treat as unauthenticated
+      }
+    }
+
+    const profile = await getPublicPlayerProfile(id, isAdmin);
     
     if (!profile) {
       res.status(404).json({ error: 'Player not found' });

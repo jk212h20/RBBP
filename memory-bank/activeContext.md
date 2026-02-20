@@ -36,6 +36,15 @@ See `systemPatterns.md`. Key: Next.js client → Express server → Prisma/Postg
 - Each admin manages their own prefs independently via `/admin/notification-prefs`
 - Fan-out: `notifyAdmins('newUser' | 'withdrawal' | 'venueApplication', message)` iterates all admins
 
+### Profile visibility (same session, latest)
+- **Migration `20260220140000_add_profile_visibility`** — added `telegramVisibility` and `socialLinksVisibility` (`PUBLIC`/`ADMIN_ONLY` enum, default `PUBLIC`) on `UserProfile`
+- **Migration `20260220150000_add_nostr_and_default_private`** — added `nostrPubkey String?` and `nostrVisibility` on `UserProfile`; changed defaults for all three visibility fields to `ADMIN_ONLY`
+- **`auth.service.ts`** — `getPublicPlayerProfile()` respects all visibility fields (telegram, nostr, socialLinks); admins see everything
+- **`auth.routes.ts`** — `PATCH /api/auth/profile/details` accepts `telegramVisibility`, `nostrPubkey`, `nostrVisibility`, `socialLinksVisibility`
+- **`api.ts`** — `updateProfileDetails()` includes all new fields
+- **`profile/page.tsx`** — toggle switches (on/off) for Telegram + Nostr visibility; Nostr pubkey input field; view mode shows visibility badges
+- **`players/[id]/page.tsx`** — shows `telegramUsername` and `nostrPubkey` on public profiles (omitted by server when `ADMIN_ONLY`)
+
 ### Telegram verification flow (same session, later)
 - **Migration `20260220130000_add_telegram_verified`** — added `telegramVerified Boolean` on `UserProfile` (default false)
 - **`telegram.service.ts`** — `verifyTelegramUsername(username)` — sends `/getUpdates`, finds a `/start` message from user with matching username, marks `telegramVerified=true`

@@ -1,6 +1,3 @@
-# Nixpacks configuration for Next.js
-# Railway will auto-detect Node.js from package.json
-
 [phases.setup]
 nixPkgs = ["nodejs_20"]
 
@@ -11,4 +8,4 @@ cmds = ["npm ci"]
 cmds = ["npm run build"]
 
 [start]
-cmd = "npm start"
+cmd = "node .next/standalone/server.js"

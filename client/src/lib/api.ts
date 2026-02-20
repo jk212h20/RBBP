@@ -93,12 +93,12 @@ export const authAPI = {
       body: JSON.stringify(data),
     }),
 
-  // Profile details (bio, profileImage, telegramUsername, telegramVerified)
+  // Profile details (bio, profileImage, telegramUsername, telegramVerified, nostrPubkey)
   getProfileDetails: () =>
-    fetchAPI<{ profile: { bio: string; profileImage: string | null; telegramUsername: string | null; telegramVerified: boolean; socialLinks: any } }>('/auth/profile/details'),
+    fetchAPI<{ profile: { bio: string; profileImage: string | null; telegramUsername: string | null; telegramVerified: boolean; telegramVisibility: 'PUBLIC' | 'ADMIN_ONLY'; nostrPubkey: string | null; nostrVisibility: 'PUBLIC' | 'ADMIN_ONLY'; socialLinks: any; socialLinksVisibility: 'PUBLIC' | 'ADMIN_ONLY' } }>('/auth/profile/details'),
 
-  updateProfileDetails: (data: { bio?: string; profileImage?: string | null; telegramUsername?: string | null; socialLinks?: Record<string, string> | null }) =>
-    fetchAPI<{ message: string; profile: { bio: string; profileImage: string | null; telegramUsername: string | null; telegramVerified: boolean } }>('/auth/profile/details', {
+  updateProfileDetails: (data: { bio?: string; profileImage?: string | null; telegramUsername?: string | null; telegramVisibility?: 'PUBLIC' | 'ADMIN_ONLY'; nostrPubkey?: string | null; nostrVisibility?: 'PUBLIC' | 'ADMIN_ONLY'; socialLinks?: Record<string, string> | null; socialLinksVisibility?: 'PUBLIC' | 'ADMIN_ONLY' }) =>
+    fetchAPI<{ message: string; profile: { bio: string; profileImage: string | null; telegramUsername: string | null; telegramVerified: boolean; telegramVisibility: 'PUBLIC' | 'ADMIN_ONLY'; nostrPubkey: string | null; nostrVisibility: 'PUBLIC' | 'ADMIN_ONLY'; socialLinksVisibility: 'PUBLIC' | 'ADMIN_ONLY' } }>('/auth/profile/details', {
       method: 'PUT',
       body: JSON.stringify(data),
     }),

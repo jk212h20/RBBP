@@ -12,6 +12,8 @@ interface PlayerProfile {
   avatar: string | null;
   profileImage: string | null;
   bio: string | null;
+  telegramUsername: string | null;
+  nostrPubkey: string | null;
   socialLinks: Record<string, string> | null;
   memberSince: string;
   currentSeason: {
@@ -148,6 +150,29 @@ export default function PlayerProfilePage() {
               </p>
               {profile.bio && (
                 <p className="text-blue-100 mt-3">{profile.bio}</p>
+              )}
+
+              {/* Telegram */}
+              {profile.telegramUsername && (
+                <p className="text-blue-300/70 text-sm mt-2 flex items-center gap-1">
+                  <span>✈️</span>
+                  <a
+                    href={`https://t.me/${profile.telegramUsername}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-blue-200 transition"
+                  >
+                    @{profile.telegramUsername}
+                  </a>
+                </p>
+              )}
+
+              {/* Nostr Public Key */}
+              {profile.nostrPubkey && (
+                <p className="text-purple-300/70 text-sm mt-2 flex items-center gap-2 flex-wrap">
+                  <span>🟣</span>
+                  <span className="font-mono text-xs text-purple-200/70 truncate max-w-[220px]">{profile.nostrPubkey}</span>
+                </p>
               )}
 
               {/* Social Links */}

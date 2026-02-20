@@ -88,18 +88,26 @@ export default function ProfilePage() {
   const [bio, setBio] = useState('');
   const [telegramUsername, setTelegramUsername] = useState('');
   const [telegramVerified, setTelegramVerified] = useState(false);
+  const [telegramVisibility, setTelegramVisibility] = useState<'PUBLIC' | 'ADMIN_ONLY'>('ADMIN_ONLY');
+  const [nostrPubkey, setNostrPubkey] = useState('');
+  const [nostrVisibility, setNostrVisibility] = useState<'PUBLIC' | 'ADMIN_ONLY'>('ADMIN_ONLY');
   const [verifyingTelegram, setVerifyingTelegram] = useState(false);
   const [editingDetails, setEditingDetails] = useState(false);
   const [editBio, setEditBio] = useState('');
   const [editProfileImage, setEditProfileImage] = useState<string | null>(null);
   const [editTelegramUsername, setEditTelegramUsername] = useState('');
+  const [editTelegramVisibility, setEditTelegramVisibility] = useState<'PUBLIC' | 'ADMIN_ONLY'>('ADMIN_ONLY');
+  const [editNostrPubkey, setEditNostrPubkey] = useState('');
+  const [editNostrVisibility, setEditNostrVisibility] = useState<'PUBLIC' | 'ADMIN_ONLY'>('ADMIN_ONLY');
   const [savingDetails, setSavingDetails] = useState(false);
   const [loadingDetails, setLoadingDetails] = useState(true);
 
   // Social links state
   const [socialLinks, setSocialLinks] = useState<Record<string, string>>({});
+  const [socialLinksVisibility, setSocialLinksVisibility] = useState<'PUBLIC' | 'ADMIN_ONLY'>('PUBLIC');
   const [editingSocialLinks, setEditingSocialLinks] = useState(false);
   const [editSocialLinks, setEditSocialLinks] = useState<Record<string, string>>({});
+  const [editSocialLinksVisibility, setEditSocialLinksVisibility] = useState<'PUBLIC' | 'ADMIN_ONLY'>('PUBLIC');
   const [savingSocialLinks, setSavingSocialLinks] = useState(false);
 
   // Check if name has been set (locked)
@@ -279,6 +287,10 @@ export default function ProfilePage() {
       setProfileImage(data.profile?.profileImage || null);
       setTelegramUsername(data.profile?.telegramUsername || '');
       setTelegramVerified(data.profile?.telegramVerified ?? false);
+      setTelegramVisibility(data.profile?.telegramVisibility || 'ADMIN_ONLY');
+      setNostrPubkey(data.profile?.nostrPubkey || '');
+      setNostrVisibility(data.profile?.nostrVisibility || 'ADMIN_ONLY');
+      setSocialLinksVisibility(data.profile?.socialLinksVisibility || 'ADMIN_ONLY');
       // Load social links
       if (data.profile?.socialLinks) {
         const links = typeof data.profile.socialLinks === 'string' ? JSON.parse(data.profile.socialLinks) : data.profile.socialLinks;
@@ -296,11 +308,22 @@ export default function ProfilePage() {
     setSaveMessage(null);
     try {
       const tg = editTelegramUsername.replace(/^@/, '').trim() || null;
-      const data = await authAPI.updateProfileDetails({ bio: editBio, profileImage: editProfileImage, telegramUsername: tg });
+      const nostr = editNostrPubkey.trim() || null;
+      const data = await authAPI.updateProfileDetails({
+        bio: editBio,
+        profileImage: editProfileImage,
+        telegramUsername: tg,
+        telegramVisibility: editTelegramVisibility,
+        nostrPubkey: nostr,
+        nostrVisibility: editNostrVisibility,
+      });
       setBio(data.profile?.bio || '');
       setProfileImage(data.profile?.profileImage || null);
       setTelegramUsername(data.profile?.telegramUsername || '');
       setTelegramVerified(data.profile?.telegramVerified ?? false);
+      setTelegramVisibility(data.profile?.telegramVisibility || 'ADMIN_ONLY');
+      setNostrPubkey(data.profile?.nostrPubkey || '');
+      setNostrVisibility(data.profile?.nostrVisibility || 'ADMIN_ONLY');
       setEditingDetails(false);
       setSaveMessage({ type: 'success', text: 'Profile details updated!' });
     } catch (err: any) {
@@ -628,6 +651,9 @@ export default function ProfilePage() {
                   setEditBio(bio);
                   setEditProfileImage(profileImage);
                   setEditTelegramUsername(telegramUsername);
+                  setEditTelegramVisibility(telegramVisibility);
+                  setEditNostrPubkey(nostrPubkey);
+                  setEditNostrVisibility(nostrVisibility);
                   setEditingDetails(true);
                   setSaveMessage(null);
                 }}
@@ -737,6 +763,70 @@ export default function ProfilePage() {
                 <p className="text-blue-300/50 text-xs mt-1">Used to send you event updates via Telegram.</p>
               </div>
 
+              {/* Telegram Visibility */}
+              <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                <div>
+                  <p className="text-blue-100 text-sm font-medium">Telegram Visibility</p>
+                  <p className="text-blue-300/50 text-xs mt-0.5">
+                    {editTelegramVisibility === 'PUBLIC' ? 'Visible to everyone on your public profile' : 'Only visible to admins'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditTelegramVisibility(v => v === 'PUBLIC' ? 'ADMIN_ONLY' : 'PUBLIC')}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    editTelegramVisibility === 'PUBLIC' ? 'bg-blue-600' : 'bg-gray-600'
+                  }`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    editTelegramVisibility === 'PUBLIC' ? 'translate-x-6' : 'translate-x-1'
+                  }`} />
+                </button>
+              </div>
+              {editTelegramVisibility === 'ADMIN_ONLY' && (
+                <p className="text-orange-400/80 text-xs -mt-1">🔒 Admin only — your Telegram won't show on your public profile</p>
+              )}
+
+              {/* Nostr Public Key */}
+              <div>
+                <label className="block text-blue-100 text-sm mb-1">
+                  Nostr Public Key <span className="text-blue-300/60 font-normal">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={editNostrPubkey}
+                  onChange={(e) => setEditNostrPubkey(e.target.value.trim())}
+                  className="w-full p-3 bg-white/10 border border-blue-600/50 rounded-lg text-white placeholder-blue-200/30 focus:outline-none focus:border-blue-500 font-mono text-xs"
+                  placeholder="npub1... or hex pubkey"
+                  maxLength={200}
+                />
+                <p className="text-blue-300/50 text-xs mt-1">Your Nostr npub or hex public key.</p>
+              </div>
+
+              {/* Nostr Visibility */}
+              <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                <div>
+                  <p className="text-blue-100 text-sm font-medium">Nostr Key Visibility</p>
+                  <p className="text-blue-300/50 text-xs mt-0.5">
+                    {editNostrVisibility === 'PUBLIC' ? 'Visible to everyone on your public profile' : 'Only visible to admins'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditNostrVisibility(v => v === 'PUBLIC' ? 'ADMIN_ONLY' : 'PUBLIC')}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    editNostrVisibility === 'PUBLIC' ? 'bg-blue-600' : 'bg-gray-600'
+                  }`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    editNostrVisibility === 'PUBLIC' ? 'translate-x-6' : 'translate-x-1'
+                  }`} />
+                </button>
+              </div>
+              {editNostrVisibility === 'ADMIN_ONLY' && (
+                <p className="text-orange-400/80 text-xs -mt-1">🔒 Admin only — your Nostr key won't show on your public profile</p>
+              )}
+
               <div className="flex gap-3">
                 <button
                   onClick={handleSaveDetails}
@@ -775,7 +865,7 @@ export default function ProfilePage() {
                 )}
                 {telegramUsername && (
                   <div className="mt-1">
-                    <p className="text-blue-300/70 text-sm flex items-center gap-1">
+                    <p className="text-blue-300/70 text-sm flex items-center gap-1 flex-wrap">
                       <span>✈️</span>
                       <a
                         href={`https://t.me/${telegramUsername}`}
@@ -790,6 +880,9 @@ export default function ProfilePage() {
                       ) : (
                         <span className="ml-1 text-yellow-400/70 text-xs">⚠️ Not verified</span>
                       )}
+                      <span className="ml-1 text-xs px-1.5 py-0.5 rounded bg-white/10 text-blue-300/60">
+                        {telegramVisibility === 'PUBLIC' ? '🌐 Public' : '🔒 Admin only'}
+                      </span>
                     </p>
                     {!telegramVerified && (
                       <div className="mt-2 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
@@ -817,6 +910,15 @@ export default function ProfilePage() {
                     )}
                   </div>
                 )}
+                {nostrPubkey && (
+                  <div className="mt-2 flex items-center gap-2 flex-wrap">
+                    <span className="text-purple-300/70 text-sm">⚡ Nostr:</span>
+                    <span className="text-purple-200/60 text-xs font-mono truncate max-w-[180px]">{nostrPubkey}</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-white/10 text-blue-300/60">
+                      {nostrVisibility === 'PUBLIC' ? '🌐 Public' : '🔒 Admin only'}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -830,6 +932,7 @@ export default function ProfilePage() {
               <button
                 onClick={() => {
                   setEditSocialLinks({ ...socialLinks });
+                  setEditSocialLinksVisibility(socialLinksVisibility);
                   setEditingSocialLinks(true);
                   setSaveMessage(null);
                 }}
@@ -860,6 +963,30 @@ export default function ProfilePage() {
                   />
                 </div>
               ))}
+              {/* Social Links Visibility */}
+              <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg mt-2">
+                <div>
+                  <p className="text-blue-100 text-sm font-medium">Social Links Visibility</p>
+                  <p className="text-blue-300/50 text-xs mt-0.5">
+                    {editSocialLinksVisibility === 'PUBLIC' ? 'Visible to everyone on your public profile' : 'Only visible to admins'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditSocialLinksVisibility(v => v === 'PUBLIC' ? 'ADMIN_ONLY' : 'PUBLIC')}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    editSocialLinksVisibility === 'PUBLIC' ? 'bg-blue-600' : 'bg-gray-600'
+                  }`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    editSocialLinksVisibility === 'PUBLIC' ? 'translate-x-6' : 'translate-x-1'
+                  }`} />
+                </button>
+              </div>
+              {editSocialLinksVisibility === 'ADMIN_ONLY' && (
+                <p className="text-orange-400/80 text-xs">🔒 Admin only — your social links won't show on your public profile</p>
+              )}
+
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={async () => {
@@ -871,8 +998,9 @@ export default function ProfilePage() {
                       Object.entries(editSocialLinks).forEach(([k, v]) => {
                         if (v && v.trim()) filtered[k] = v.trim();
                       });
-                      await authAPI.updateProfileDetails({ bio, profileImage, socialLinks: filtered } as any);
+                      await authAPI.updateProfileDetails({ bio, profileImage, socialLinks: filtered, socialLinksVisibility: editSocialLinksVisibility });
                       setSocialLinks(filtered);
+                      setSocialLinksVisibility(editSocialLinksVisibility);
                       setEditingSocialLinks(false);
                       setSaveMessage({ type: 'success', text: 'Social links updated!' });
                     } catch (err: any) {

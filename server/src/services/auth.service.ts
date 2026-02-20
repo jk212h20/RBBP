@@ -358,14 +358,27 @@ export async function getProfileDetails(userId: string) {
     profileImage: profile?.profileImage || null,
     telegramUsername: profile?.telegramUsername || null,
     telegramVerified: profile?.telegramVerified ?? false,
+    telegramVisibility: (profile?.telegramVisibility as 'PUBLIC' | 'ADMIN_ONLY') || 'ADMIN_ONLY',
+    nostrPubkey: (profile as any)?.nostrPubkey || null,
+    nostrVisibility: ((profile as any)?.nostrVisibility as 'PUBLIC' | 'ADMIN_ONLY') || 'ADMIN_ONLY',
     socialLinks: profile?.socialLinks || null,
+    socialLinksVisibility: (profile?.socialLinksVisibility as 'PUBLIC' | 'ADMIN_ONLY') || 'ADMIN_ONLY',
   };
 }
 
 /**
- * Update profile details (bio, profileImage, telegramUsername, socialLinks) for a user
+ * Update profile details (bio, profileImage, telegramUsername, socialLinks, visibility) for a user
  */
-export async function updateProfileDetails(userId: string, input: { bio?: string; profileImage?: string | null; telegramUsername?: string | null; socialLinks?: Record<string, string> | null }) {
+export async function updateProfileDetails(userId: string, input: {
+  bio?: string;
+  profileImage?: string | null;
+  telegramUsername?: string | null;
+  telegramVisibility?: 'PUBLIC' | 'ADMIN_ONLY';
+  nostrPubkey?: string | null;
+  nostrVisibility?: 'PUBLIC' | 'ADMIN_ONLY';
+  socialLinks?: Record<string, string> | null;
+  socialLinksVisibility?: 'PUBLIC' | 'ADMIN_ONLY';
+}) {
   const socialLinksValue = input.socialLinks === null ? Prisma.JsonNull : input.socialLinks;
 
   // Strip leading @ from telegram username if present
@@ -385,20 +398,25 @@ export async function updateProfileDetails(userId: string, input: { bio?: string
     }
   }
   
-  const profile = await prisma.profile.upsert({
+  const profile = await (prisma.profile.upsert as any)({
     where: { userId },
     update: {
       ...(input.bio !== undefined && { bio: input.bio }),
       ...(input.profileImage !== undefined && { profileImage: input.profileImage }),
       ...(input.telegramUsername !== undefined && { telegramUsername }),
       ...(clearVerified && { telegramVerified: false }),
+      ...(input.telegramVisibility !== undefined && { telegramVisibility: input.telegramVisibility }),
+      ...(input.nostrPubkey !== undefined && { nostrPubkey: input.nostrPubkey }),
+      ...(input.nostrVisibility !== undefined && { nostrVisibility: input.nostrVisibility }),
       ...(input.socialLinks !== undefined && { socialLinks: socialLinksValue }),
+      ...(input.socialLinksVisibility !== undefined && { socialLinksVisibility: input.socialLinksVisibility }),
     },
     create: {
       userId,
       bio: input.bio || '',
       profileImage: input.profileImage || null,
       telegramUsername: telegramUsername || null,
+      nostrPubkey: input.nostrPubkey || null,
       socialLinks: input.socialLinks ? input.socialLinks : Prisma.JsonNull,
     },
   });
@@ -408,15 +426,20 @@ export async function updateProfileDetails(userId: string, input: { bio?: string
     profileImage: profile.profileImage,
     telegramUsername: profile.telegramUsername,
     telegramVerified: profile.telegramVerified,
+    telegramVisibility: (profile.telegramVisibility || 'ADMIN_ONLY') as 'PUBLIC' | 'ADMIN_ONLY',
+    nostrPubkey: profile.nostrPubkey || null,
+    nostrVisibility: (profile.nostrVisibility || 'ADMIN_ONLY') as 'PUBLIC' | 'ADMIN_ONLY',
     socialLinks: profile.socialLinks,
+    socialLinksVisibility: (profile.socialLinksVisibility || 'ADMIN_ONLY') as 'PUBLIC' | 'ADMIN_ONLY',
   };
 }
 
 /**
  * Get a public player profile by user ID (for public profile pages)
+ * @param isAdmin - if true, visibility restrictions are bypassed
  */
-export async function getPublicPlayerProfile(userId: string) {
-  const user = await prisma.user.findUnique({
+export async function getPublicPlayerProfile(userId: string, isAdmin = false) {
+  const user = await (prisma.user.findUnique as any)({
     where: { id: userId },
     select: {
       id: true,
@@ -428,13 +451,26 @@ export async function getPublicPlayerProfile(userId: string) {
         select: {
           bio: true,
           profileImage: true,
+          telegramUsername: true,
+          telegramVerified: true,
+          telegramVisibility: true,
+          nostrPubkey: true,
+          nostrVisibility: true,
           socialLinks: true,
+          socialLinksVisibility: true,
         },
       },
     },
   });
 
   if (!user) return null;
+
+  const profile = user.profile as any;
+
+  // Respect visibility settings (admin bypasses them)
+  const telegramPublic = isAdmin || (profile?.telegramVisibility ?? 'ADMIN_ONLY') === 'PUBLIC';
+  const nostrPublic = isAdmin || (profile?.nostrVisibility ?? 'ADMIN_ONLY') === 'PUBLIC';
+  const socialLinksPublic = isAdmin || (profile?.socialLinksVisibility ?? 'ADMIN_ONLY') === 'PUBLIC';
 
   // Get current season standing
   const activeSeason = await prisma.season.findFirst({
@@ -510,9 +546,18 @@ export async function getPublicPlayerProfile(userId: string) {
     avatar: user.avatar,
     isGuest: user.isGuest,
     memberSince: user.createdAt.toISOString(),
-    bio: user.profile?.bio || '',
-    profileImage: user.profile?.profileImage || null,
-    socialLinks: user.profile?.socialLinks || null,
+    bio: profile?.bio || '',
+    profileImage: profile?.profileImage || null,
+    // Telegram: only include if PUBLIC (or admin)
+    telegramUsername: telegramPublic ? (profile?.telegramUsername || null) : null,
+    telegramVerified: telegramPublic ? (profile?.telegramVerified ?? false) : false,
+    telegramVisibility: (profile?.telegramVisibility || 'ADMIN_ONLY') as 'PUBLIC' | 'ADMIN_ONLY',
+    // Nostr: only include if PUBLIC (or admin)
+    nostrPubkey: nostrPublic ? (profile?.nostrPubkey || null) : null,
+    nostrVisibility: (profile?.nostrVisibility || 'ADMIN_ONLY') as 'PUBLIC' | 'ADMIN_ONLY',
+    // Social links: only include if PUBLIC (or admin)
+    socialLinks: socialLinksPublic ? (profile?.socialLinks || null) : null,
+    socialLinksVisibility: (profile?.socialLinksVisibility || 'ADMIN_ONLY') as 'PUBLIC' | 'ADMIN_ONLY',
     currentSeasonStanding,
     upcomingEvents: upcomingSignups.map(s => ({
       id: s.event.id,
