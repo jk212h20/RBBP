@@ -5,9 +5,10 @@ import prisma from '../lib/prisma';
 // ============================================
 
 // Get today's puzzle for a user
-// Logic: find puzzle with usedAt = today. If none, pop next from queue (lowest sortOrder with usedAt null)
+// Logic: find puzzle with usedAt = current puzzle period. If none, pop next from queue (lowest sortOrder with usedAt null)
+// Puzzles rotate at noon Central time (18:00 UTC). If no next puzzle in queue, current stays but can't be re-attempted.
 export async function getTodaysPuzzle(userId: string) {
-  const today = getDateOnly(new Date());
+  const today = getPuzzlePeriodDate();
 
   // Try to find puzzle already assigned to today
   let puzzle = await prisma.dailyPuzzle.findFirst({
@@ -75,9 +76,10 @@ export async function getTodaysPuzzle(userId: string) {
   };
 }
 
-// Get yesterday's puzzle for catch-up
+// Get yesterday's puzzle for catch-up (previous puzzle period)
 export async function getYesterdaysPuzzle(userId: string) {
-  const yesterday = getDateOnly(new Date(Date.now() - 86400000));
+  const today = getPuzzlePeriodDate();
+  const yesterday = new Date(today.getTime() - 86400000);
 
   const puzzle = await prisma.dailyPuzzle.findFirst({
     where: { usedAt: yesterday, isActive: true },
@@ -140,9 +142,9 @@ export async function submitAnswer(
     throw new Error('Puzzle not found or not yet active.');
   }
 
-  // Validate: must be today's or yesterday's puzzle
-  const today = getDateOnly(new Date());
-  const yesterday = getDateOnly(new Date(Date.now() - 86400000));
+  // Validate: must be today's or yesterday's puzzle (noon-based periods)
+  const today = getPuzzlePeriodDate();
+  const yesterday = new Date(today.getTime() - 86400000);
   const puzzleUsedAt = getDateOnly(new Date(puzzle.usedAt));
 
   if (puzzleUsedAt.getTime() !== today.getTime() && puzzleUsedAt.getTime() !== yesterday.getTime()) {
@@ -242,14 +244,14 @@ export async function getStreak(userId: string): Promise<number> {
   if (attempts.length === 0) return 0;
 
   let streak = 0;
-  let expectedDate = getDateOnly(new Date());
+  let expectedDate = getPuzzlePeriodDate();
 
   // If they haven't done today's puzzle yet, start from yesterday
   const latestDate = attempts[0].puzzle.usedAt ? getDateOnly(new Date(attempts[0].puzzle.usedAt)) : null;
   if (!latestDate) return 0;
 
   if (latestDate.getTime() !== expectedDate.getTime()) {
-    const yesterday = getDateOnly(new Date(Date.now() - 86400000));
+    const yesterday = new Date(expectedDate.getTime() - 86400000);
     if (latestDate.getTime() === yesterday.getTime()) {
       expectedDate = yesterday;
     } else {
@@ -279,8 +281,8 @@ async function getStreakIfCorrect(userId: string): Promise<number> {
 
 // Check if yesterday's catch-up puzzle is available
 async function isYesterdayAvailable(userId: string): Promise<boolean> {
-  const yesterday = getDateOnly(new Date(Date.now() - 86400000));
-  const today = getDateOnly(new Date());
+  const today = getPuzzlePeriodDate();
+  const yesterday = new Date(today.getTime() - 86400000);
 
   const yesterdayPuzzle = await prisma.dailyPuzzle.findFirst({
     where: { usedAt: yesterday, isActive: true },
@@ -451,6 +453,34 @@ export async function releasePendingSats(userId: string): Promise<number> {
 // HELPERS
 // ============================================
 
+/**
+ * Puzzle rotation happens at noon Central time (UTC-6) = 18:00 UTC.
+ * 
+ * getPuzzlePeriodDate() returns the "puzzle day" — the date the current puzzle belongs to.
+ * - Before 18:00 UTC (noon Central): returns yesterday's date
+ * - At/after 18:00 UTC (noon Central): returns today's date
+ * 
+ * This means a new puzzle goes live at noon Central every day.
+ */
+const PUZZLE_ROTATION_HOUR_UTC = 18; // noon Central = 18:00 UTC
+
+function getPuzzlePeriodDate(now?: Date): Date {
+  const d = now || new Date();
+  const utcYear = d.getUTCFullYear();
+  const utcMonth = d.getUTCMonth();
+  const utcDate = d.getUTCDate();
+  const utcHour = d.getUTCHours();
+
+  if (utcHour >= PUZZLE_ROTATION_HOUR_UTC) {
+    // After noon Central — this is a new puzzle day
+    return new Date(Date.UTC(utcYear, utcMonth, utcDate));
+  } else {
+    // Before noon Central — still on yesterday's puzzle
+    return new Date(Date.UTC(utcYear, utcMonth, utcDate - 1));
+  }
+}
+
 function getDateOnly(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  // Use UTC to avoid timezone issues on Railway
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 }
