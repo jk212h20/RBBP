@@ -1059,9 +1059,6 @@ export default function ProfilePage() {
                 <p className="text-3xl md:text-4xl font-bold text-yellow-400">
                   {lightningBalance.toLocaleString()} sats
                 </p>
-                <p className="text-yellow-200/60 text-sm">
-                  ≈ ${((lightningBalance / 100000000) * 100000).toFixed(2)} USD
-                </p>
               </div>
               
               {lightningBalance > 0 && !withdrawalData && (

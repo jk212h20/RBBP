@@ -364,6 +364,7 @@ export const adminAPI = {
   
   getDeletedUsers: () => fetchAPI<any[]>('/admin/deleted-users'),
   fixEventTimes: () => fetchAPI<any>('/admin/fix-event-times', { method: 'POST' }),
+  enableLastLongerUpcoming: () => fetchAPI<any>('/admin/enable-last-longer-upcoming', { method: 'POST' }),
   
   // Points management
   getMigrationStatus: () => fetchAPI<{ pointsHistoryEnabled: boolean }>('/admin/migration-status'),

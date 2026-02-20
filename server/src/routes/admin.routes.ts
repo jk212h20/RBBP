@@ -1280,6 +1280,51 @@ router.post('/apply-migrations-key', async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/admin/enable-last-longer-upcoming - Enable Last Longer with defaults on all upcoming events
+router.post('/enable-last-longer-upcoming', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const now = new Date();
+
+    // Find all upcoming events that don't already have Last Longer enabled
+    const upcomingEvents = await prisma.event.findMany({
+      where: {
+        dateTime: { gt: now },
+        status: { notIn: ['COMPLETED', 'CANCELLED'] },
+        lastLongerEnabled: false,
+      },
+      select: { id: true, name: true },
+    });
+
+    if (upcomingEvents.length === 0) {
+      return res.json({
+        message: 'All upcoming events already have Last Longer enabled!',
+        updatedCount: 0,
+      });
+    }
+
+    // Update all matching events with default Last Longer values
+    const result = await prisma.event.updateMany({
+      where: {
+        id: { in: upcomingEvents.map(e => e.id) },
+      },
+      data: {
+        lastLongerEnabled: true,
+        lastLongerSeedSats: 10000,
+        lastLongerEntrySats: 25000,
+      },
+    });
+
+    res.json({
+      message: `Enabled Last Longer on ${result.count} upcoming events (10,000 seed sats, 25,000 entry sats)`,
+      updatedCount: result.count,
+      events: upcomingEvents.map(e => e.name),
+    });
+  } catch (error) {
+    console.error('Error enabling Last Longer on upcoming events:', error);
+    res.status(500).json({ error: 'Failed to enable Last Longer on upcoming events' });
+  }
+});
+
 // POST /api/admin/fix-event-times - Fix all existing events to 7pm Roatan time (CST, UTC-6)
 // This is a one-time fix for events that were created with wrong timezone
 router.post('/fix-event-times', authenticate, requireAdmin, async (req: Request, res: Response) => {

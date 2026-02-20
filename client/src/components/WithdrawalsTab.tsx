@@ -263,9 +263,6 @@ export default function WithdrawalsTab({ users, fetchUsers, setMessage, setError
                   className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
                   placeholder="e.g., 10000"
                 />
-                <p className="text-gray-500 text-xs mt-1">
-                  ≈ ${((createForm.amountSats / 100000000) * 100000).toFixed(2)} USD (at $100k/BTC)
-                </p>
               </div>
               <div>
                 <label className="block text-gray-400 mb-1">Description</label>

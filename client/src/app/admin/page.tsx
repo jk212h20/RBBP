@@ -213,6 +213,7 @@ export default function AdminPage() {
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [editEventForm, setEditEventForm] = useState({ name: '', description: '', dateTime: '', maxPlayers: 50, buyIn: 0, venueId: '', seasonId: '' });
   const [fixingEventTimes, setFixingEventTimes] = useState(false);
+  const [enablingLastLonger, setEnablingLastLonger] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -1448,6 +1449,27 @@ export default function AdminPage() {
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold">📅 All Events ({events.length})</h2>
                 <div className="flex gap-2">
+                  <button
+                    disabled={enablingLastLonger}
+                    onClick={async () => {
+                      if (!confirm('Enable Last Longer on all upcoming events?\n\nThis will set:\n• Seed: 10,000 sats\n• Entry: 25,000 sats\n\nOnly events without Last Longer already enabled will be updated.')) return;
+                      setEnablingLastLonger(true);
+                      setError('');
+                      setMessage('');
+                      try {
+                        const result = await adminAPI.enableLastLongerUpcoming();
+                        setMessage(result.message);
+                        fetchEvents();
+                      } catch (err: any) {
+                        setError(err.message || 'Failed to enable Last Longer');
+                      } finally {
+                        setEnablingLastLonger(false);
+                      }
+                    }}
+                    className="bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-600 text-white px-3 py-1 rounded text-sm font-semibold"
+                  >
+                    {enablingLastLonger ? '⏳ Enabling...' : '⚡ Add Last Longer to All'}
+                  </button>
                   <button
                     disabled={fixingEventTimes}
                     onClick={async () => {

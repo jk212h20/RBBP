@@ -199,9 +199,6 @@ export default function BalanceTab({ users, fetchUsers, setMessage, setError }: 
                 className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
                 placeholder="e.g., 10000"
               />
-              <p className="text-gray-500 text-xs mt-1">
-                ≈ ${((creditForm.amountSats / 100000000) * 100000).toFixed(2)} USD (at $100k/BTC)
-              </p>
             </div>
             <div>
               <label className="block text-gray-400 mb-1">Reason (optional)</label>
@@ -250,9 +247,6 @@ export default function BalanceTab({ users, fetchUsers, setMessage, setError }: 
                     </div>
                     <div className="text-right">
                       <p className="text-yellow-400 font-bold">{u.lightningBalanceSats.toLocaleString()} sats</p>
-                      <p className="text-gray-500 text-xs">
-                        ≈ ${((u.lightningBalanceSats / 100000000) * 100000).toFixed(2)}
-                      </p>
                     </div>
                   </div>
                 ))
