@@ -9,6 +9,11 @@ export const registerSchema = z.object({
     .string()
     .min(2, 'Name must be at least 2 characters')
     .max(100, 'Name must be less than 100 characters'),
+  telegramUsername: z
+    .string()
+    .max(50, 'Telegram username must be less than 50 characters')
+    .transform((val) => val.replace(/^@/, '').trim()) // strip leading @
+    .optional(),
 });
 
 export const loginSchema = z.object({

@@ -80,12 +80,13 @@ model User {
 }
 
 model Profile {
-  id            String   @id @default(cuid())
-  userId        String   @unique
-  bio           String?
-  profileImage  String?  // Base64 encoded profile photo
-  phone         String?
-  socialLinks   Json?    // { facebook, twitter, instagram }
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  bio             String?
+  profileImage    String?  // Base64 encoded profile photo
+  phone           String?
+  telegramUsername String? // Telegram @handle (without @)
+  socialLinks     Json?    // { facebook, twitter, instagram }
   
   // Stats (denormalized for quick access)
   totalEvents     Int @default(0)

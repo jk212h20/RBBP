@@ -13,6 +13,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [telegramUsername, setTelegramUsername] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -43,7 +44,7 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      await register(email, password, name);
+      await register(email, password, name, telegramUsername.trim() || undefined);
       router.push('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
@@ -138,6 +139,27 @@ export default function RegisterPage() {
                 placeholder="••••••••"
                 required
               />
+            </div>
+
+            <div>
+              <label htmlFor="telegramUsername" className="block text-sm font-medium text-gray-700 mb-1">
+                Telegram Username <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 font-medium">@</span>
+                <input
+                  type="text"
+                  id="telegramUsername"
+                  value={telegramUsername}
+                  onChange={(e) => setTelegramUsername(e.target.value.replace(/^@/, ''))}
+                  className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  placeholder="yourusername"
+                  maxLength={50}
+                />
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                We use this to send you event updates and announcements via Telegram.
+              </p>
             </div>
 
             <button

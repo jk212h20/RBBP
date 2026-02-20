@@ -83,12 +83,14 @@ export default function ProfilePage() {
   const [addEmailData, setAddEmailData] = useState({ email: '', password: '', confirmPassword: '' });
   const [addingEmail, setAddingEmail] = useState(false);
 
-  // Profile details state (bio + profile image)
+  // Profile details state (bio + profile image + telegram)
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [bio, setBio] = useState('');
+  const [telegramUsername, setTelegramUsername] = useState('');
   const [editingDetails, setEditingDetails] = useState(false);
   const [editBio, setEditBio] = useState('');
   const [editProfileImage, setEditProfileImage] = useState<string | null>(null);
+  const [editTelegramUsername, setEditTelegramUsername] = useState('');
   const [savingDetails, setSavingDetails] = useState(false);
   const [loadingDetails, setLoadingDetails] = useState(true);
 
@@ -273,6 +275,7 @@ export default function ProfilePage() {
       const data = await authAPI.getProfileDetails() as any;
       setBio(data.profile?.bio || '');
       setProfileImage(data.profile?.profileImage || null);
+      setTelegramUsername(data.profile?.telegramUsername || '');
       // Load social links
       if (data.profile?.socialLinks) {
         const links = typeof data.profile.socialLinks === 'string' ? JSON.parse(data.profile.socialLinks) : data.profile.socialLinks;
@@ -289,9 +292,11 @@ export default function ProfilePage() {
     setSavingDetails(true);
     setSaveMessage(null);
     try {
-      const data = await authAPI.updateProfileDetails({ bio: editBio, profileImage: editProfileImage });
+      const tg = editTelegramUsername.replace(/^@/, '').trim() || null;
+      const data = await authAPI.updateProfileDetails({ bio: editBio, profileImage: editProfileImage, telegramUsername: tg } as any);
       setBio(data.profile?.bio || '');
       setProfileImage(data.profile?.profileImage || null);
+      setTelegramUsername(data.profile?.telegramUsername || '');
       setEditingDetails(false);
       setSaveMessage({ type: 'success', text: 'Profile details updated!' });
     } catch (err: any) {
@@ -599,6 +604,7 @@ export default function ProfilePage() {
                 onClick={() => {
                   setEditBio(bio);
                   setEditProfileImage(profileImage);
+                  setEditTelegramUsername(telegramUsername);
                   setEditingDetails(true);
                   setSaveMessage(null);
                 }}
@@ -689,6 +695,25 @@ export default function ProfilePage() {
                 <p className="text-gray-500 text-xs text-right">{editBio.length}/500</p>
               </div>
 
+              {/* Telegram Username */}
+              <div>
+                <label className="block text-blue-100 text-sm mb-1">
+                  Telegram Username <span className="text-blue-300/60 font-normal">(optional)</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-blue-300/60 font-medium">@</span>
+                  <input
+                    type="text"
+                    value={editTelegramUsername}
+                    onChange={(e) => setEditTelegramUsername(e.target.value.replace(/^@/, ''))}
+                    className="w-full pl-7 pr-3 py-3 bg-white/10 border border-blue-600/50 rounded-lg text-white placeholder-blue-200/30 focus:outline-none focus:border-blue-500"
+                    placeholder="yourusername"
+                    maxLength={50}
+                  />
+                </div>
+                <p className="text-blue-300/50 text-xs mt-1">Used to send you event updates via Telegram.</p>
+              </div>
+
               <div className="flex gap-3">
                 <button
                   onClick={handleSaveDetails}
@@ -721,9 +746,22 @@ export default function ProfilePage() {
               )}
               <div className="flex-1 min-w-0">
                 {bio ? (
-                  <p className="text-blue-100 text-sm whitespace-pre-wrap">{bio}</p>
+                  <p className="text-blue-100 text-sm whitespace-pre-wrap mb-2">{bio}</p>
                 ) : (
-                  <p className="text-gray-500 text-sm italic">No bio yet. Click Edit to add one!</p>
+                  <p className="text-gray-500 text-sm italic mb-2">No bio yet. Click Edit to add one!</p>
+                )}
+                {telegramUsername && (
+                  <p className="text-blue-300/70 text-sm flex items-center gap-1">
+                    <span>✈️</span>
+                    <a
+                      href={`https://t.me/${telegramUsername}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:text-blue-200 transition"
+                    >
+                      @{telegramUsername}
+                    </a>
+                  </p>
                 )}
               </div>
             </div>

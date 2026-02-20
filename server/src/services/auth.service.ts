@@ -5,6 +5,7 @@ import { User, AuthProvider } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { awardLightningBonusPoint } from './standings.service';
+import { notifyNewUser } from './telegram.service';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
@@ -20,6 +21,7 @@ export interface RegisterInput {
   email: string;
   password: string;
   name: string;
+  telegramUsername?: string;
 }
 
 export interface LoginInput {
@@ -65,7 +67,7 @@ export function verifyToken(token: string): JwtPayload {
 // ============================================
 
 export async function register(input: RegisterInput) {
-  const { email, password, name } = input;
+  const { email, password, name, telegramUsername } = input;
 
   // Check if user exists
   const existingUser = await prisma.user.findUnique({
@@ -88,10 +90,16 @@ export async function register(input: RegisterInput) {
     },
   });
 
-  // Create profile
+  // Create profile (with telegram if provided)
   await prisma.profile.create({
-    data: { userId: user.id },
+    data: {
+      userId: user.id,
+      ...(telegramUsername && { telegramUsername }),
+    },
   });
+
+  // Fire Telegram notification (non-blocking)
+  notifyNewUser({ name, email, telegramUsername, authProvider: 'EMAIL' }).catch(() => {});
 
   const token = generateToken(user);
 
@@ -182,6 +190,9 @@ export async function findOrCreateGoogleUser(profile: {
     data: { userId: user.id },
   });
 
+  // Fire Telegram notification (non-blocking)
+  notifyNewUser({ name: user.name, email: user.email, authProvider: 'GOOGLE' }).catch(() => {});
+
   return { user: sanitizeUser(user), token: generateToken(user), isNew: true };
 }
 
@@ -215,6 +226,9 @@ export async function findOrCreateLightningUser(pubkey: string) {
 
   // Award 1 bonus point for signing up with Lightning
   const bonusAwarded = await awardLightningBonusPoint(newUser.id);
+
+  // Fire Telegram notification (non-blocking)
+  notifyNewUser({ name: newUser.name, email: null, authProvider: 'LIGHTNING' }).catch(() => {});
 
   return { user: sanitizeUser(newUser), token: generateToken(newUser), isNew: true, lightningBonusAwarded: bonusAwarded };
 }
@@ -342,27 +356,35 @@ export async function getProfileDetails(userId: string) {
   return {
     bio: profile?.bio || '',
     profileImage: profile?.profileImage || null,
+    telegramUsername: profile?.telegramUsername || null,
     socialLinks: profile?.socialLinks || null,
   };
 }
 
 /**
- * Update profile details (bio, profileImage, socialLinks) for a user
+ * Update profile details (bio, profileImage, telegramUsername, socialLinks) for a user
  */
-export async function updateProfileDetails(userId: string, input: { bio?: string; profileImage?: string | null; socialLinks?: Record<string, string> | null }) {
+export async function updateProfileDetails(userId: string, input: { bio?: string; profileImage?: string | null; telegramUsername?: string | null; socialLinks?: Record<string, string> | null }) {
   const socialLinksValue = input.socialLinks === null ? Prisma.JsonNull : input.socialLinks;
+
+  // Strip leading @ from telegram username if present
+  const telegramUsername = input.telegramUsername
+    ? input.telegramUsername.replace(/^@/, '').trim() || null
+    : input.telegramUsername;
   
   const profile = await prisma.profile.upsert({
     where: { userId },
     update: {
       ...(input.bio !== undefined && { bio: input.bio }),
       ...(input.profileImage !== undefined && { profileImage: input.profileImage }),
+      ...(input.telegramUsername !== undefined && { telegramUsername }),
       ...(input.socialLinks !== undefined && { socialLinks: socialLinksValue }),
     },
     create: {
       userId,
       bio: input.bio || '',
       profileImage: input.profileImage || null,
+      telegramUsername: telegramUsername || null,
       socialLinks: input.socialLinks ? input.socialLinks : Prisma.JsonNull,
     },
   });
@@ -370,6 +392,7 @@ export async function updateProfileDetails(userId: string, input: { bio?: string
   return {
     bio: profile.bio,
     profileImage: profile.profileImage,
+    telegramUsername: profile.telegramUsername,
     socialLinks: profile.socialLinks,
   };
 }

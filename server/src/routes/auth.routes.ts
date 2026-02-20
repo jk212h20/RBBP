@@ -348,7 +348,7 @@ router.get('/profile/details', authenticate, async (req: Request, res: Response)
  */
 router.put('/profile/details', authenticate, async (req: Request, res: Response) => {
   try {
-    const { bio, profileImage, socialLinks } = req.body;
+    const { bio, profileImage, telegramUsername, socialLinks } = req.body;
 
     // Validate profileImage size (max ~500KB base64 string)
     if (profileImage && profileImage.length > 700000) {
@@ -359,6 +359,12 @@ router.put('/profile/details', authenticate, async (req: Request, res: Response)
     // Validate bio length
     if (bio && bio.length > 500) {
       res.status(400).json({ error: 'Bio must be 500 characters or less.' });
+      return;
+    }
+
+    // Validate telegramUsername length
+    if (telegramUsername && typeof telegramUsername === 'string' && telegramUsername.length > 50) {
+      res.status(400).json({ error: 'Telegram username must be 50 characters or less.' });
       return;
     }
 
@@ -377,7 +383,7 @@ router.put('/profile/details', authenticate, async (req: Request, res: Response)
       }
     }
 
-    const profile = await updateProfileDetails(req.user!.userId, { bio, profileImage, socialLinks });
+    const profile = await updateProfileDetails(req.user!.userId, { bio, profileImage, telegramUsername, socialLinks });
     res.json({ message: 'Profile details updated', profile });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to update profile details';

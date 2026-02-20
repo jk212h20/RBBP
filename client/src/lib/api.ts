@@ -97,8 +97,8 @@ export const authAPI = {
   getProfileDetails: () =>
     fetchAPI<{ profile: { bio: string; profileImage: string | null } }>('/auth/profile/details'),
 
-  updateProfileDetails: (data: { bio?: string; profileImage?: string | null }) =>
-    fetchAPI<{ message: string; profile: { bio: string; profileImage: string | null } }>('/auth/profile/details', {
+  updateProfileDetails: (data: { bio?: string; profileImage?: string | null; telegramUsername?: string | null; socialLinks?: Record<string, string> | null }) =>
+    fetchAPI<{ message: string; profile: { bio: string; profileImage: string | null; telegramUsername: string | null } }>('/auth/profile/details', {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
