@@ -6,6 +6,7 @@ import { Prisma } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { awardLightningBonusPoint } from './standings.service';
 import { notifyNewUser } from './telegram.service';
+import { findReferrerByCode, linkReferral, getOrCreateReferralCode } from './referral.service';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
@@ -66,8 +67,8 @@ export function verifyToken(token: string): JwtPayload {
 // USER FUNCTIONS
 // ============================================
 
-export async function register(input: RegisterInput) {
-  const { email, password, name, telegramUsername } = input;
+export async function register(input: RegisterInput & { referralCode?: string }) {
+  const { email, password, name, telegramUsername, referralCode } = input;
 
   // Check if user exists
   const existingUser = await prisma.user.findUnique({
@@ -78,17 +79,31 @@ export async function register(input: RegisterInput) {
     throw new Error('User with this email already exists');
   }
 
+  // Look up referrer if a referral code was provided
+  let referrerId: string | null = null;
+  if (referralCode) {
+    const referrer = await findReferrerByCode(referralCode);
+    if (referrer) {
+      referrerId = referrer.id;
+    }
+    // Silently ignore invalid codes — don't block registration
+  }
+
   // Hash password and create user
   const hashedPassword = await hashPassword(password);
 
-  const user = await prisma.user.create({
+  const user = await (prisma.user.create as any)({
     data: {
       email,
       password: hashedPassword,
       name,
       authProvider: AuthProvider.EMAIL,
+      ...(referrerId && { referredById: referrerId }),
     },
   });
+
+  // Generate a referral code for the new user (non-blocking)
+  getOrCreateReferralCode(user.id).catch(() => {});
 
   // Create profile (with telegram if provided)
   await prisma.profile.create({

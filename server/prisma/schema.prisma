@@ -63,7 +63,14 @@ model User {
   // { newUser: true, withdrawal: true, venueApplication: true }
   notificationPrefs Json?
 
+  // Referral system
+  referralCode       String?   @unique  // This user's unique referral code
+  referredById       String?            // Who referred this user
+  referralRewardPaid Boolean   @default(false) // Whether the referrer was paid for this user
+
   // Relations
+  referredBy         User?    @relation("Referral", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals          User[]   @relation("Referral")
   profile           Profile?
   managedVenues     Venue[]          @relation("VenueManager")
   directedEvents    Event[]          @relation("EventDirector")

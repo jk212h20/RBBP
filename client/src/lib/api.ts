@@ -36,7 +36,7 @@ async function fetchAPI<T>(
 
 // Auth API calls
 export const authAPI = {
-  register: (data: { email: string; password: string; name: string }) =>
+  register: (data: { email: string; password: string; name: string; referralCode?: string }) =>
     fetchAPI<{ user: any; token: string }>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -710,6 +710,29 @@ export const puzzleAPI = {
 
   delete: (id: string) =>
     fetchAPI<{ message: string }>(`/puzzle/admin/${id}`, { method: 'DELETE' }),
+};
+
+// ============================================
+// REFERRAL API
+// ============================================
+export const referralAPI = {
+  getStats: () =>
+    fetchAPI<{
+      referralCode: string;
+      totalReferred: number;
+      totalCheckedIn: number;
+      totalSatsEarned: number;
+      referrals: {
+        id: string;
+        name: string;
+        createdAt: string;
+        checkedIn: boolean;
+        rewardPaid: boolean;
+      }[];
+    }>('/auth/referral/stats'),
+
+  validateCode: (code: string) =>
+    fetchAPI<{ valid: boolean; referrerName?: string }>(`/auth/referral/validate/${code}`),
 };
 
 // Players API (public profiles)

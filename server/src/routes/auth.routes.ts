@@ -25,6 +25,7 @@ import { registerSchema, loginSchema, updateProfileSchema } from '../validators/
 import { isGoogleConfigured } from '../config/passport';
 import { loginLimiter, lightningChallengeLimiter, lightningStatusLimiter } from '../middleware/rateLimiter';
 import { verifyTelegramUsername } from '../services/telegram.service';
+import { getReferralStats, validateReferralCode } from '../services/referral.service';
 
 const router = Router();
 
@@ -640,6 +641,39 @@ router.post('/claim/:token', async (req: Request, res: Response) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to claim account';
     res.status(400).json({ error: message });
+  }
+});
+
+// ============================================
+// REFERRAL SYSTEM
+// ============================================
+
+/**
+ * GET /api/auth/referral/stats
+ * Get the current user's referral code, stats, and list of referrals
+ */
+router.get('/referral/stats', authenticate, async (req: Request, res: Response) => {
+  try {
+    const stats = await getReferralStats(req.user!.userId);
+    res.json(stats);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to get referral stats';
+    res.status(500).json({ error: message });
+  }
+});
+
+/**
+ * GET /api/auth/referral/validate/:code
+ * Validate a referral code (public — used on register page)
+ * Returns the referrer's name if the code is valid
+ */
+router.get('/referral/validate/:code', async (req: Request, res: Response) => {
+  try {
+    const { code } = req.params;
+    const result = await validateReferralCode(code);
+    res.json(result);
+  } catch (error) {
+    res.json({ valid: false });
   }
 });
 

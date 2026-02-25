@@ -3,6 +3,7 @@ import { CreateEventInput, UpdateEventInput, ResultEntry, BulkCreateEventsInput 
 import { EventStatus, SignupStatus } from '@prisma/client';
 import { seasonService } from './season.service';
 import { pointsService } from './points.service';
+import { processReferralReward } from './referral.service';
 
 // ============================================
 // ROATAN TIMEZONE HANDLING
@@ -608,9 +609,10 @@ export class EventService {
 
   /**
    * Check in a player
+   * Also processes referral rewards if this is a referred user's first check-in.
    */
   async checkInPlayer(eventId: string, userId: string) {
-    return prisma.eventSignup.update({
+    const result = await prisma.eventSignup.update({
       where: {
         eventId_userId: {
           eventId,
@@ -622,6 +624,13 @@ export class EventService {
         checkedInAt: new Date(),
       },
     });
+
+    // Process referral reward (non-blocking, idempotent — only pays once)
+    processReferralReward(userId).catch((err) => {
+      console.error(`[Referral] Error processing reward for user ${userId}:`, err);
+    });
+
+    return result;
   }
 
   /**

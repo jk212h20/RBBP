@@ -1,9 +1,24 @@
 # Active Context
 
 ## Current Focus
-Per-admin Telegram notification preferences (multi-admin fan-out).
+Referral system — invite friends, earn sats when they check in at events.
 
-## Recent Changes (Feb 20, 2026)
+## Recent Changes (Feb 25, 2026)
+### Referral System
+- **Migration `20260225000000_add_referral_system`** — added `referralCode String? @unique`, `referredById String?` (self-relation), `referralRewardPaid Boolean @default(false)` on `User`
+- **`referral.service.ts`** — new service: `getOrCreateReferralCode()`, `findReferrerByCode()`, `linkReferral()`, `processReferralReward()`, `getReferralStats()`, `validateReferralCode()`
+- **Reward: 10,000 sats** credited to referrer's Lightning balance when referred user gets checked in at first event
+- **`auth.service.ts`** — `registerUser()` accepts optional `referralCode`, validates it, links referral after registration
+- **`auth.validator.ts`** — register schema accepts optional `referralCode` string
+- **`event.service.ts`** — `checkInPlayer()` calls `processReferralReward()` after successful check-in
+- **`auth.routes.ts`** — 3 new endpoints: `GET /api/auth/referral/code`, `GET /api/auth/referral/stats`, `GET /api/auth/referral/validate/:code` (public)
+- **`api.ts`** — `referralAPI` object with `getCode()`, `getStats()`, `validateCode()`
+- **`AuthContext.tsx`** — `register()` accepts optional `referralCode` param
+- **`register/page.tsx`** — reads `?ref=` query param, validates code, shows "Referred by X" banner, passes code to register
+- **`ReferralTab.tsx`** — new component: shows referral link (copy button), stats cards (referred/checked-in/sats earned), "How It Works" steps, referral table with status
+- **`profile/page.tsx`** — ReferralTab embedded as "🎯 Referral Program" section between Withdrawal History and Season Points
+
+## Previous Changes (Feb 20, 2026)
 ### Telegram notification preferences
 - **Migration `20260220120000_add_notification_prefs`** — added `notificationPrefs` JSON column on `User` (default: `{"newUser":true,"withdrawal":true,"venueApplication":true}`)
 - **`telegram.service.ts` refactored** — now multi-admin fan-out:

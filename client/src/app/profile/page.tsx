@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import MobileNav from '@/components/MobileNav';
 import { eventsAPI, authAPI, standingsAPI, balanceAPI, withdrawalsAPI, playersAPI } from '@/lib/api';
+import ReferralTab from '@/components/ReferralTab';
 
 interface UserEvent {
   id: string;
@@ -1436,6 +1437,12 @@ export default function ProfilePage() {
               ))}
             </div>
           )}
+        </div>
+
+        {/* Referral Program */}
+        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 p-4 md:p-6 mb-6">
+          <h2 className="text-lg md:text-xl font-bold text-white mb-4">🎯 Referral Program</h2>
+          <ReferralTab />
         </div>
 
         {/* Season Points Card */}

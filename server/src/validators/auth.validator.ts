@@ -14,6 +14,10 @@ export const registerSchema = z.object({
     .max(50, 'Telegram username must be less than 50 characters')
     .transform((val) => val.replace(/^@/, '').trim()) // strip leading @
     .optional(),
+  referralCode: z
+    .string()
+    .max(20, 'Invalid referral code')
+    .optional(),
 });
 
 export const loginSchema = z.object({
