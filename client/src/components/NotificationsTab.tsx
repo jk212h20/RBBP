@@ -174,19 +174,19 @@ export default function NotificationsTab({ setMessage, setError }: Notifications
             {!telegramVerified && (
               <div className="flex gap-2 flex-wrap">
                 <a
-                  href={`https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'RoatanPokerBot'}?start=verify`}
+                  href={`https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'CoraTelegramBot'}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 px-3 py-1.5 rounded-lg text-xs font-medium transition"
                 >
-                  1️⃣ Message the Bot
+                  💬 Message @{process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'CoraTelegramBot'}
                 </a>
                 <button
                   onClick={handleVerifyTelegram}
                   disabled={verifyingTelegram}
                   className="inline-flex items-center gap-1 bg-green-600/20 hover:bg-green-600/30 disabled:opacity-50 text-green-300 px-3 py-1.5 rounded-lg text-xs font-medium transition"
                 >
-                  {verifyingTelegram ? '⏳ Verifying…' : '2️⃣ Verify Now'}
+                  {verifyingTelegram ? '⏳ Verifying…' : '✅ Verify Telegram'}
                 </button>
               </div>
             )}

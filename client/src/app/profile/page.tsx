@@ -507,7 +507,7 @@ export default function ProfilePage() {
         {needsRealName && (
           <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-xl p-4 mb-6">
             <h3 className="text-yellow-400 font-bold text-lg mb-2">👋 Welcome! Please set your real name</h3>
-            <p className="text-yellow-200/80 text-sm">
+            <p className="text-yellow-200 text-sm">
               Tournament directors need to identify players by name. Please enter your real name below - 
               <strong> this can only be set once</strong>, so make sure it's correct!
             </p>
@@ -529,11 +529,11 @@ export default function ProfilePage() {
                 <div className="flex-1 text-center sm:text-left">
                   <h1 className="text-2xl md:text-3xl font-bold text-white">{user.name}</h1>
                   <p className="text-blue-100">{user.email || 'No email set'}</p>
-                  <p className="text-blue-200/60 text-sm mt-1">
+                  <p className="text-blue-300 text-sm mt-1">
                     Logged in with {getAuthBadge()} • {user.role}
                   </p>
                   {nameIsLocked && (
-                    <p className="text-blue-300/60 text-xs mt-1">✓ Name verified</p>
+                    <p className="text-blue-300 text-xs mt-1">✓ Name verified</p>
                   )}
                 </div>
                 {!nameIsLocked && (
@@ -584,12 +584,12 @@ export default function ProfilePage() {
                     autoFocus={needsRealName}
                   />
                   {needsRealName && (
-                    <p className="text-yellow-400/80 text-sm mt-1">
+                    <p className="text-yellow-400 text-sm mt-1">
                       ⚠️ This can only be set once! Use your real name so tournament directors can identify you.
                     </p>
                   )}
                   {nameIsLocked && (
-                    <p className="text-blue-300/60 text-sm mt-1">
+                    <p className="text-blue-300 text-sm mt-1">
                       ✓ Your name has been set and cannot be changed.
                     </p>
                   )}
@@ -607,7 +607,7 @@ export default function ProfilePage() {
                     placeholder="your@email.com"
                   />
                   {user.authProvider === 'LIGHTNING' && !user.email && (
-                    <p className="text-yellow-400/80 text-sm mt-1">
+                    <p className="text-yellow-400 text-sm mt-1">
                       💡 Adding an email lets you recover your account and receive notifications
                     </p>
                   )}
@@ -693,7 +693,7 @@ export default function ProfilePage() {
                   ) : (
                     <label className="w-24 h-24 rounded-full border-2 border-dashed border-gray-500 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-white/5 transition">
                       <span className="text-2xl">📷</span>
-                      <span className="text-gray-400 text-[10px]">Upload</span>
+                      <span className="text-gray-300 text-[10px]">Upload</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -742,16 +742,16 @@ export default function ProfilePage() {
                   className="w-full p-3 bg-white/10 border border-blue-600/50 rounded-lg text-white placeholder-blue-200/50 focus:outline-none focus:border-blue-500 resize-none"
                   placeholder="Tell other players a bit about yourself..."
                 />
-                <p className="text-gray-500 text-xs text-right">{editBio.length}/500</p>
+                <p className="text-gray-400 text-xs text-right">{editBio.length}/500</p>
               </div>
 
               {/* Telegram Username */}
               <div>
                 <label className="block text-blue-100 text-sm mb-1">
-                  Telegram Username <span className="text-blue-300/60 font-normal">(optional)</span>
+                  Telegram Username <span className="text-blue-300 font-normal">(optional)</span>
                 </label>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-blue-300/60 font-medium">@</span>
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-blue-300 font-medium">@</span>
                   <input
                     type="text"
                     value={editTelegramUsername}
@@ -761,14 +761,14 @@ export default function ProfilePage() {
                     maxLength={50}
                   />
                 </div>
-                <p className="text-blue-300/50 text-xs mt-1">Used to send you event updates via Telegram.</p>
+                <p className="text-blue-300 text-xs mt-1">Used to send you event updates via Telegram.</p>
               </div>
 
               {/* Telegram Visibility */}
               <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
                 <div>
                   <p className="text-blue-100 text-sm font-medium">Telegram Visibility</p>
-                  <p className="text-blue-300/50 text-xs mt-0.5">
+                  <p className="text-blue-300 text-xs mt-0.5">
                     {editTelegramVisibility === 'PUBLIC' ? 'Visible to everyone on your public profile' : 'Only visible to admins'}
                   </p>
                 </div>
@@ -785,13 +785,13 @@ export default function ProfilePage() {
                 </button>
               </div>
               {editTelegramVisibility === 'ADMIN_ONLY' && (
-                <p className="text-orange-400/80 text-xs -mt-1">🔒 Admin only — your Telegram won't show on your public profile</p>
+                <p className="text-orange-400 text-xs -mt-1">🔒 Admin only — your Telegram won't show on your public profile</p>
               )}
 
               {/* Nostr Public Key */}
               <div>
                 <label className="block text-blue-100 text-sm mb-1">
-                  Nostr Public Key <span className="text-blue-300/60 font-normal">(optional)</span>
+                  Nostr Public Key <span className="text-blue-300 font-normal">(optional)</span>
                 </label>
                 <input
                   type="text"
@@ -801,14 +801,14 @@ export default function ProfilePage() {
                   placeholder="npub1... or hex pubkey"
                   maxLength={200}
                 />
-                <p className="text-blue-300/50 text-xs mt-1">Your Nostr npub or hex public key.</p>
+                <p className="text-blue-300 text-xs mt-1">Your Nostr npub or hex public key.</p>
               </div>
 
               {/* Nostr Visibility */}
               <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
                 <div>
                   <p className="text-blue-100 text-sm font-medium">Nostr Key Visibility</p>
-                  <p className="text-blue-300/50 text-xs mt-0.5">
+                  <p className="text-blue-300 text-xs mt-0.5">
                     {editNostrVisibility === 'PUBLIC' ? 'Visible to everyone on your public profile' : 'Only visible to admins'}
                   </p>
                 </div>
@@ -825,7 +825,7 @@ export default function ProfilePage() {
                 </button>
               </div>
               {editNostrVisibility === 'ADMIN_ONLY' && (
-                <p className="text-orange-400/80 text-xs -mt-1">🔒 Admin only — your Nostr key won't show on your public profile</p>
+                <p className="text-orange-400 text-xs -mt-1">🔒 Admin only — your Nostr key won't show on your public profile</p>
               )}
 
               <div className="flex gap-3">
@@ -855,18 +855,18 @@ export default function ProfilePage() {
                 />
               ) : (
                 <div className="w-20 h-20 rounded-full bg-white/5 border-2 border-dashed border-gray-600 flex items-center justify-center flex-shrink-0">
-                  <span className="text-gray-500 text-2xl">📷</span>
+                  <span className="text-gray-300 text-2xl">📷</span>
                 </div>
               )}
               <div className="flex-1 min-w-0">
                 {bio ? (
                   <p className="text-blue-100 text-sm whitespace-pre-wrap mb-2">{bio}</p>
                 ) : (
-                  <p className="text-gray-500 text-sm italic mb-2">No bio yet. Click Edit to add one!</p>
+                  <p className="text-gray-300 text-sm italic mb-2">No bio yet. Click Edit to add one!</p>
                 )}
                 {telegramUsername && (
                   <div className="mt-1">
-                    <p className="text-blue-300/70 text-sm flex items-center gap-1 flex-wrap">
+                    <p className="text-blue-300 text-sm flex items-center gap-1 flex-wrap">
                       <span>✈️</span>
                       <a
                         href={`https://t.me/${telegramUsername}`}
@@ -879,43 +879,33 @@ export default function ProfilePage() {
                       {telegramVerified ? (
                         <span className="ml-1 text-green-400 text-xs font-medium">✓ Verified</span>
                       ) : (
-                        <span className="ml-1 text-yellow-400/70 text-xs">⚠️ Not verified</span>
+                        <span className="ml-1 text-yellow-400 text-xs">⚠️ Not verified</span>
                       )}
-                      <span className="ml-1 text-xs px-1.5 py-0.5 rounded bg-white/10 text-blue-300/60">
+                      <span className="ml-1 text-xs px-1.5 py-0.5 rounded bg-white/10 text-blue-300">
                         {telegramVisibility === 'PUBLIC' ? '🌐 Public' : '🔒 Admin only'}
                       </span>
                     </p>
                     {!telegramVerified && (
                       <div className="mt-2 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-                        <p className="text-yellow-300/80 text-xs mb-2">
-                          To receive notifications, you must first message the bot on Telegram, then verify below.
+                        <p className="text-yellow-300 text-xs mb-2">
+                          To receive notifications, first message <a href={`https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'CoraTelegramBot'}`} target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:text-blue-200 underline">@{process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'CoraTelegramBot'}</a> on Telegram, then click verify.
                         </p>
-                        <div className="flex flex-wrap gap-2">
-                          <a
-                            href={`https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'RoatanPokerBot'}?start=verify`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 px-3 py-1.5 rounded-lg text-xs font-medium transition"
-                          >
-                            1️⃣ Message the Bot
-                          </a>
-                          <button
-                            onClick={handleVerifyTelegram}
-                            disabled={verifyingTelegram}
-                            className="inline-flex items-center gap-1 bg-green-600/20 hover:bg-green-600/30 disabled:opacity-50 text-green-300 px-3 py-1.5 rounded-lg text-xs font-medium transition"
-                          >
-                            {verifyingTelegram ? '⏳ Verifying…' : '2️⃣ Verify Now'}
-                          </button>
-                        </div>
+                        <button
+                          onClick={handleVerifyTelegram}
+                          disabled={verifyingTelegram}
+                          className="inline-flex items-center gap-1 bg-green-600/20 hover:bg-green-600/30 disabled:opacity-50 text-green-300 px-3 py-1.5 rounded-lg text-xs font-medium transition"
+                        >
+                          {verifyingTelegram ? '⏳ Verifying…' : '✅ Verify Telegram'}
+                        </button>
                       </div>
                     )}
                   </div>
                 )}
                 {nostrPubkey && (
                   <div className="mt-2 flex items-center gap-2 flex-wrap">
-                    <span className="text-purple-300/70 text-sm">⚡ Nostr:</span>
-                    <span className="text-purple-200/60 text-xs font-mono truncate max-w-[180px]">{nostrPubkey}</span>
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-white/10 text-blue-300/60">
+                    <span className="text-purple-300 text-sm">⚡ Nostr:</span>
+                    <span className="text-purple-200 text-xs font-mono truncate max-w-[180px]">{nostrPubkey}</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-white/10 text-blue-300">
                       {nostrVisibility === 'PUBLIC' ? '🌐 Public' : '🔒 Admin only'}
                     </span>
                   </div>
@@ -968,7 +958,7 @@ export default function ProfilePage() {
               <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg mt-2">
                 <div>
                   <p className="text-blue-100 text-sm font-medium">Social Links Visibility</p>
-                  <p className="text-blue-300/50 text-xs mt-0.5">
+                  <p className="text-blue-300 text-xs mt-0.5">
                     {editSocialLinksVisibility === 'PUBLIC' ? 'Visible to everyone on your public profile' : 'Only visible to admins'}
                   </p>
                 </div>
@@ -985,7 +975,7 @@ export default function ProfilePage() {
                 </button>
               </div>
               {editSocialLinksVisibility === 'ADMIN_ONLY' && (
-                <p className="text-orange-400/80 text-xs">🔒 Admin only — your social links won't show on your public profile</p>
+                <p className="text-orange-400 text-xs">🔒 Admin only — your social links won't show on your public profile</p>
               )}
 
               <div className="flex gap-3 pt-2">
@@ -1027,7 +1017,7 @@ export default function ProfilePage() {
           ) : (
             <div>
               {Object.keys(socialLinks).length === 0 ? (
-                <p className="text-gray-500 text-sm italic">No social links added yet. Click Edit to add yours!</p>
+                <p className="text-gray-300 text-sm italic">No social links added yet. Click Edit to add yours!</p>
               ) : (
                 <div className="flex flex-wrap gap-3">
                   {socialLinks.instagram && (
@@ -1072,7 +1062,7 @@ export default function ProfilePage() {
                 <span className="text-2xl">✉️</span>
                 <div>
                   <p className="text-white font-medium">Email & Password</p>
-                  <p className="text-blue-200/60 text-sm">
+                  <p className="text-blue-300 text-sm">
                     {user.email && user.authProvider !== 'LIGHTNING' ? user.email : 
                      user.email && user.authProvider === 'LIGHTNING' ? user.email : 'Not configured'}
                   </p>
@@ -1098,7 +1088,7 @@ export default function ProfilePage() {
                 <span className="text-2xl">🔵</span>
                 <div>
                   <p className="text-white font-medium">Google</p>
-                  <p className="text-blue-200/60 text-sm">
+                  <p className="text-blue-300 text-sm">
                     {user.googleId ? 'Connected' : 'Not connected'}
                   </p>
                 </div>
@@ -1106,7 +1096,7 @@ export default function ProfilePage() {
               {user.googleId ? (
                 <span className="text-blue-300 text-sm">✓ Linked</span>
               ) : (
-                <span className="text-gray-500 text-sm">Coming soon</span>
+                <span className="text-gray-300 text-sm">Coming soon</span>
               )}
             </div>
 
@@ -1116,7 +1106,7 @@ export default function ProfilePage() {
                 <span className="text-2xl">⚡</span>
                 <div>
                   <p className="text-white font-medium">Lightning Wallet</p>
-                  <p className="text-blue-200/60 text-sm">
+                  <p className="text-blue-300 text-sm">
                     {user.lightningPubkey ? `${user.lightningPubkey.slice(0, 8)}...${user.lightningPubkey.slice(-8)}` : 'Not connected'}
                   </p>
                 </div>
@@ -1151,7 +1141,7 @@ export default function ProfilePage() {
           {linkLightningData && linkLightningStatus === 'pending' && (
             <div className="mt-4 p-4 bg-black/30 rounded-lg">
               <h3 className="text-white font-bold mb-2 text-center">⚡ Scan to Link Lightning Wallet</h3>
-              <p className="text-yellow-400/80 text-xs text-center mb-4">
+              <p className="text-yellow-400 text-xs text-center mb-4">
                 Scan this QR code with your Lightning wallet to link it to your account.
               </p>
               <div className="flex flex-col items-center gap-4">
@@ -1293,7 +1283,7 @@ export default function ProfilePage() {
               )}
               
               {lightningBalance === 0 && (
-                <p className="text-yellow-200/60 text-sm">No balance to withdraw</p>
+                <p className="text-yellow-200 text-sm">No balance to withdraw</p>
               )}
             </div>
           )}
@@ -1308,7 +1298,7 @@ export default function ProfilePage() {
                   <h3 className="text-blue-300 font-bold text-xl text-center">
                     Withdrawal Complete!
                   </h3>
-                  <p className="text-blue-100/80 text-center">
+                  <p className="text-blue-100 text-center">
                     {withdrawalData.amountSats.toLocaleString()} sats sent to your wallet
                   </p>
                 </div>
@@ -1319,7 +1309,7 @@ export default function ProfilePage() {
                   <h3 className="text-red-400 font-bold text-xl text-center">
                     Withdrawal {withdrawalStatus === 'EXPIRED' ? 'Expired' : 'Failed'}
                   </h3>
-                  <p className="text-red-200/80 text-center">
+                  <p className="text-red-200 text-center">
                     Your balance has been refunded.
                   </p>
                   <button
@@ -1339,7 +1329,7 @@ export default function ProfilePage() {
                   <h3 className="text-white font-bold mb-2 text-center">
                     ⚡ Scan to Withdraw {withdrawalData.amountSats.toLocaleString()} sats
                   </h3>
-                  <p className="text-yellow-400/80 text-xs text-center mb-4">
+                  <p className="text-yellow-400 text-xs text-center mb-4">
                     Your balance has been reserved. Scan the QR code to complete the withdrawal.
                   </p>
                   <div className="flex flex-col items-center gap-4">
@@ -1351,7 +1341,7 @@ export default function ProfilePage() {
                       />
                     </div>
                     <div className="text-center">
-                      <p className="text-yellow-200/80 text-sm mb-2">
+                      <p className="text-yellow-200 text-sm mb-2">
                         Scan with your Lightning wallet or click below:
                       </p>
                       <a
@@ -1361,12 +1351,12 @@ export default function ProfilePage() {
                         📱 Open in Wallet
                       </a>
                     </div>
-                    <div className="text-center text-xs text-gray-400 mt-2">
+                    <div className="text-center text-xs text-gray-300 mt-2">
                       <p>If you don't complete the withdrawal, your balance will be refunded when it expires (24 hours).</p>
                     </div>
                     <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-center max-w-xs">
                       <p className="text-yellow-300 text-xs font-medium mb-1">📱 Using Phoenix Wallet?</p>
-                      <p className="text-yellow-200/70 text-xs">Tap <strong className="text-yellow-300">SEND</strong> first, then scan this QR code to receive your sats.</p>
+                      <p className="text-yellow-200 text-xs">Tap <strong className="text-yellow-300">SEND</strong> first, then scan this QR code to receive your sats.</p>
                     </div>
                     <button
                       onClick={() => {
@@ -1384,7 +1374,7 @@ export default function ProfilePage() {
             </div>
           )}
           
-          <p className="text-yellow-200/50 text-xs mt-4 text-center">
+          <p className="text-yellow-200 text-xs mt-4 text-center">
             💡 Winnings are credited to your balance. Withdraw anytime to your Lightning wallet!
           </p>
         </div>
@@ -1406,7 +1396,7 @@ export default function ProfilePage() {
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400"></div>
             </div>
           ) : myWithdrawals.length === 0 ? (
-            <p className="text-blue-200/60 text-center py-6 text-sm">No withdrawals yet</p>
+            <p className="text-blue-300 text-center py-6 text-sm">No withdrawals yet</p>
           ) : (
             <div className="space-y-2">
               {myWithdrawals.slice(0, 20).map((w: any) => (
@@ -1419,7 +1409,7 @@ export default function ProfilePage() {
                       <p className="text-white font-medium text-sm">
                         {w.amountSats?.toLocaleString() || '—'} sats
                       </p>
-                      <p className="text-blue-200/60 text-xs truncate">
+                      <p className="text-blue-300 text-xs truncate">
                         {new Date(w.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
                       </p>
                     </div>
@@ -1453,7 +1443,7 @@ export default function ProfilePage() {
                 🏆 Season Points
               </h2>
               {seasonStanding?.season && (
-                <p className="text-yellow-200/70 text-sm">{seasonStanding.season.name}</p>
+                <p className="text-yellow-200 text-sm">{seasonStanding.season.name}</p>
               )}
             </div>
             <Link href="/leaderboard" className="text-yellow-400 hover:text-yellow-300 text-sm">
@@ -1466,38 +1456,38 @@ export default function ProfilePage() {
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-400"></div>
             </div>
           ) : !seasonStanding?.season ? (
-            <p className="text-yellow-200/60 text-center py-4">No active season</p>
+            <p className="text-yellow-200 text-center py-4">No active season</p>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               <div className="bg-black/20 rounded-lg p-3 text-center">
                 <p className="text-2xl md:text-3xl font-bold text-yellow-400">
                   {seasonStanding.standing?.totalPoints || 0}
                 </p>
-                <p className="text-yellow-200/70 text-xs">Points</p>
+                <p className="text-yellow-200 text-xs">Points</p>
               </div>
               <div className="bg-black/20 rounded-lg p-3 text-center">
                 <p className="text-2xl md:text-3xl font-bold text-white">
                   {seasonStanding.standing?.rank ? `#${seasonStanding.standing.rank}` : '-'}
                 </p>
-                <p className="text-yellow-200/70 text-xs">Rank</p>
+                <p className="text-yellow-200 text-xs">Rank</p>
               </div>
               <div className="bg-black/20 rounded-lg p-3 text-center">
                 <p className="text-2xl md:text-3xl font-bold text-white">
                   {seasonStanding.standing?.eventsPlayed || 0}
                 </p>
-                <p className="text-yellow-200/70 text-xs">Events</p>
+                <p className="text-yellow-200 text-xs">Events</p>
               </div>
               <div className="bg-black/20 rounded-lg p-3 text-center">
                 <p className="text-2xl md:text-3xl font-bold text-blue-300">
                   {seasonStanding.standing?.wins || 0}
                 </p>
-                <p className="text-yellow-200/70 text-xs">Wins</p>
+                <p className="text-yellow-200 text-xs">Wins</p>
               </div>
               <div className="bg-black/20 rounded-lg p-3 text-center">
                 <p className="text-2xl md:text-3xl font-bold text-orange-400">
                   {seasonStanding.standing?.knockouts || 0}
                 </p>
-                <p className="text-yellow-200/70 text-xs">KOs</p>
+                <p className="text-yellow-200 text-xs">KOs</p>
               </div>
             </div>
           )}
@@ -1534,7 +1524,7 @@ export default function ProfilePage() {
             </div>
           ) : myEvents.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-blue-200/60">No events yet</p>
+              <p className="text-blue-300">No events yet</p>
               <Link href="/events" className="text-blue-300 hover:underline mt-2 inline-block">
                 Browse upcoming events →
               </Link>
@@ -1550,7 +1540,7 @@ export default function ProfilePage() {
                   <div className="flex justify-between items-start gap-2">
                     <div className="min-w-0 flex-1">
                       <h3 className="text-white font-medium text-sm md:text-base truncate">{event.name}</h3>
-                      <p className="text-blue-200/60 text-xs md:text-sm truncate">
+                      <p className="text-blue-300 text-xs md:text-sm truncate">
                         {event.venue.name} • {formatDate(event.dateTime)}
                       </p>
                     </div>
