@@ -503,14 +503,50 @@ export async function getPublicPlayerProfile(userId: string, isAdmin = false) {
       },
     });
     if (standing) {
+      // Compute actual points from PointsHistory (the audit trail)
+      const pointsHistoryAgg = await prisma.pointsHistory.aggregate({
+        where: { userId, seasonId: activeSeason.id },
+        _sum: { points: true },
+      });
+      const auditedPoints = pointsHistoryAgg._sum.points || 0;
+
+      // Also count registration points not tracked in PointsHistory
+      // Registration: adjustUserSeasonPoints (1-2 pts per event signup)
+      // These go directly to Standing without PointsHistory
+      const registrationSignups = await prisma.eventSignup.findMany({
+        where: {
+          userId,
+          event: { seasonId: activeSeason.id },
+          status: { notIn: ['CANCELLED', 'WAITLISTED'] },
+        },
+        orderBy: { registeredAt: 'asc' },
+        select: { id: true, eventId: true, registeredAt: true },
+      });
+
+      // Calculate registration points: need to know if each signup was early bird
+      let registrationPoints = 0;
+      for (const signup of registrationSignups) {
+        const signupsBefore = await prisma.eventSignup.count({
+          where: {
+            eventId: signup.eventId,
+            registeredAt: { lt: signup.registeredAt },
+            status: { notIn: ['CANCELLED'] },
+          },
+        });
+        registrationPoints += signupsBefore < 5 ? 2 : 1; // early bird = 2, regular = 1
+      }
+
+      const totalCalculatedPoints = auditedPoints + registrationPoints;
+
       currentSeasonStanding = {
         seasonName: activeSeason.name,
-        totalPoints: standing.totalPoints,
+        totalPoints: totalCalculatedPoints,
         eventsPlayed: standing.eventsPlayed,
         wins: standing.wins,
         topThrees: standing.topThrees,
         knockouts: standing.knockouts,
         rank: standing.rank,
+        registrationPoints,
       };
     }
   }

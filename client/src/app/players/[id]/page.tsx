@@ -53,6 +53,7 @@ interface PlayerProfile {
     topThrees: number;
     knockouts: number;
     rank: number | null;
+    registrationPoints?: number;
   } | null;
   recentResults: RecentResult[];
   pointsHistory: PointsHistoryEntry[];
@@ -269,10 +270,23 @@ export default function PlayerProfilePage() {
         )}
 
         {/* Points Breakdown */}
-        {profile.pointsHistory && profile.pointsHistory.length > 0 && (
+        {((profile.pointsHistory && profile.pointsHistory.length > 0) || (currentSeason?.registrationPoints && currentSeason.registrationPoints > 0)) && (
           <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 p-6 mb-6">
             <h2 className="text-xl font-bold text-white mb-4">⭐ Points Breakdown</h2>
             <div className="space-y-2">
+              {/* Registration points (not tracked in PointsHistory) */}
+              {currentSeason?.registrationPoints != null && currentSeason.registrationPoints > 0 && (
+                <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-sm font-medium">Event registration bonuses</p>
+                    <p className="text-blue-200/60 text-xs mt-0.5">Early bird & signup points</p>
+                  </div>
+                  <span className="text-sm font-bold ml-3 flex-shrink-0 text-green-400">
+                    +{currentSeason.registrationPoints} pts
+                  </span>
+                </div>
+              )}
+              {/* PointsHistory entries (check-in, placement, manual, etc.) */}
               {profile.pointsHistory.map((entry) => (
                 <div
                   key={entry.id}
@@ -294,13 +308,15 @@ export default function PlayerProfilePage() {
                 </div>
               ))}
             </div>
-            {/* Total from points history */}
-            <div className="mt-3 pt-3 border-t border-blue-600/30 flex items-center justify-between">
-              <p className="text-blue-200 text-sm font-medium">Total</p>
-              <span className="text-blue-300 font-bold text-lg">
-                {profile.pointsHistory.reduce((sum, e) => sum + e.points, 0)} pts
-              </span>
-            </div>
+            {/* Season Total (computed from PointsHistory + registration) */}
+            {currentSeason && (
+              <div className="mt-3 pt-3 border-t border-blue-600/30 flex items-center justify-between">
+                <p className="text-blue-200 text-sm font-medium">Season Total</p>
+                <span className="text-blue-300 font-bold text-lg">
+                  {currentSeason.totalPoints} pts
+                </span>
+              </div>
+            )}
           </div>
         )}
 
