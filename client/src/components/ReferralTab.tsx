@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { referralAPI } from '@/lib/api';
 
-const REWARD_SATS = 1000; // Must match server REFERRAL_REWARD_SATS
+const REWARD_SATS = 10_000; // Must match server REFERRAL_REWARD_SATS
 
 interface ReferralStats {
   referralCode: string;

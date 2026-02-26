@@ -1,21 +1,24 @@
 # Active Context
 
 ## Current Focus
-Referral system — invite friends, earn sats when they check in at events.
+Referral system — admin management, invite friends, earn sats when they check in at events.
 
 ## Recent Changes (Feb 25, 2026)
-### Referral System
+### Referral System + Admin Management
 - **Migration `20260225000000_add_referral_system`** — added `referralCode String? @unique`, `referredById String?` (self-relation), `referralRewardPaid Boolean @default(false)` on `User`
-- **`referral.service.ts`** — new service: `getOrCreateReferralCode()`, `findReferrerByCode()`, `linkReferral()`, `processReferralReward()`, `getReferralStats()`, `validateReferralCode()`
-- **Reward: 10,000 sats** credited to referrer's Lightning balance when referred user gets checked in at first event
+- **`referral.service.ts`** — service: `getOrCreateReferralCode()`, `findReferrerByCode()`, `linkReferral()`, `processReferralReward()`, `getReferralStats()`, `validateReferralCode()`, `getAdminReferralOverview()`, `getReferralRewardAmount()`, `setReferralRewardAmount()`
+- **Reward: 10,000 sats** (configurable via env `REFERRAL_REWARD_SATS` or admin UI) credited to referrer's Lightning balance when referred user gets checked in at first event
 - **`auth.service.ts`** — `registerUser()` accepts optional `referralCode`, validates it, links referral after registration
 - **`auth.validator.ts`** — register schema accepts optional `referralCode` string
 - **`event.service.ts`** — `checkInPlayer()` calls `processReferralReward()` after successful check-in
 - **`auth.routes.ts`** — 3 new endpoints: `GET /api/auth/referral/code`, `GET /api/auth/referral/stats`, `GET /api/auth/referral/validate/:code` (public)
-- **`api.ts`** — `referralAPI` object with `getCode()`, `getStats()`, `validateCode()`
+- **`admin.routes.ts`** — 3 new admin endpoints: `GET /api/admin/referrals` (overview), `GET /api/admin/referral-settings`, `PUT /api/admin/referral-settings`
+- **`api.ts`** — `referralAPI` object with `getStats()`, `validateCode()`; `adminAPI.getReferralOverview()`, `adminAPI.getReferralSettings()`, `adminAPI.updateReferralSettings()`
 - **`AuthContext.tsx`** — `register()` accepts optional `referralCode` param
 - **`register/page.tsx`** — reads `?ref=` query param, validates code, shows "Referred by X" banner, passes code to register
-- **`ReferralTab.tsx`** — new component: shows referral link (copy button), stats cards (referred/checked-in/sats earned), "How It Works" steps, referral table with status
+- **`ReferralTab.tsx`** — user-facing component: referral link, stats, "How It Works", referral table; **fixed reward display from 1000 to 10000 sats**
+- **`AdminReferralsTab.tsx`** — admin component: reward settings (editable), summary stats (total/pending/checked-in/sats paid), filter tabs (all/pending/checked-in/rewarded), expandable referrer list with referral details, color-coded status badges
+- **`admin/page.tsx`** — "🔗 Referrals" tab added (15th tab)
 - **`profile/page.tsx`** — ReferralTab embedded as "🎯 Referral Program" section between Withdrawal History and Season Points
 
 ## Previous Changes (Feb 20, 2026)

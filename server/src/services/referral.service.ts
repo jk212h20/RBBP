@@ -15,7 +15,15 @@ import crypto from 'crypto';
 import prisma from '../lib/prisma';
 import { creditBalance } from './balance.service';
 
-const REFERRAL_REWARD_SATS = 10_000;
+let REFERRAL_REWARD_SATS = parseInt(process.env.REFERRAL_REWARD_SATS || '10000', 10);
+
+export function getReferralRewardAmount(): number {
+  return REFERRAL_REWARD_SATS;
+}
+
+export function setReferralRewardAmount(sats: number): void {
+  REFERRAL_REWARD_SATS = sats;
+}
 
 // Helper: typed prisma.user with `as any` to bypass generated client lag
 const userModel = prisma.user as any;
@@ -181,4 +189,112 @@ export async function validateReferralCode(code: string): Promise<{ valid: boole
   const referrer = await findReferrerByCode(code);
   if (!referrer) return { valid: false };
   return { valid: true, referrerName: referrer.name };
+}
+
+// ============================================
+// ADMIN OVERVIEW
+// ============================================
+
+export async function getAdminReferralOverview(): Promise<{
+  rewardSats: number;
+  totalReferrals: number;
+  totalPending: number;
+  totalCheckedIn: number;
+  totalSatsPaid: number;
+  referrers: {
+    id: string;
+    name: string;
+    referralCode: string | null;
+    referralCount: number;
+    checkedInCount: number;
+    satsPaid: number;
+    referrals: {
+      id: string;
+      name: string;
+      createdAt: string;
+      checkedIn: boolean;
+      rewardPaid: boolean;
+    }[];
+  }[];
+}> {
+  // Get all users who were referred (have referredById set)
+  const referredUsers = await userModel.findMany({
+    where: { referredById: { not: null } },
+    select: {
+      id: true,
+      name: true,
+      createdAt: true,
+      referredById: true,
+      referralRewardPaid: true,
+      eventSignups: {
+        where: { status: 'CHECKED_IN' },
+        take: 1,
+        select: { id: true },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  // Get all referrers (users who have referred at least one person)
+  const referrerIds = [...new Set(referredUsers.map((u: any) => u.referredById))];
+  const referrerUsers = await userModel.findMany({
+    where: { id: { in: referrerIds } },
+    select: { id: true, name: true, referralCode: true },
+  });
+
+  const referrerMap = new Map<string, any>(referrerUsers.map((u: any) => [u.id, u]));
+
+  // Group referrals by referrer
+  const referrerGroups = new Map<string, any[]>();
+  for (const referred of referredUsers) {
+    const referrerId = referred.referredById;
+    if (!referrerGroups.has(referrerId)) {
+      referrerGroups.set(referrerId, []);
+    }
+    referrerGroups.get(referrerId)!.push(referred);
+  }
+
+  let totalPending = 0;
+  let totalCheckedIn = 0;
+  let totalSatsPaid = 0;
+
+  const referrers = Array.from(referrerGroups.entries()).map(([referrerId, referrals]) => {
+    const referrer = referrerMap.get(referrerId);
+    const checkedInCount = referrals.filter((r: any) => r.eventSignups.length > 0).length;
+    const paidCount = referrals.filter((r: any) => r.referralRewardPaid).length;
+    const pendingCount = referrals.length - checkedInCount;
+    const satsPaid = paidCount * REFERRAL_REWARD_SATS;
+
+    totalPending += pendingCount;
+    totalCheckedIn += checkedInCount;
+    totalSatsPaid += satsPaid;
+
+    return {
+      id: referrerId,
+      name: referrer?.name || 'Unknown',
+      referralCode: referrer?.referralCode || null,
+      referralCount: referrals.length,
+      checkedInCount,
+      satsPaid,
+      referrals: referrals.map((r: any) => ({
+        id: r.id,
+        name: r.name,
+        createdAt: r.createdAt.toISOString(),
+        checkedIn: r.eventSignups.length > 0,
+        rewardPaid: r.referralRewardPaid,
+      })),
+    };
+  });
+
+  // Sort referrers by referral count (most referrals first)
+  referrers.sort((a, b) => b.referralCount - a.referralCount);
+
+  return {
+    rewardSats: REFERRAL_REWARD_SATS,
+    totalReferrals: referredUsers.length,
+    totalPending,
+    totalCheckedIn,
+    totalSatsPaid,
+    referrers,
+  };
 }

@@ -15,6 +15,7 @@ import PuzzleTab from '@/components/PuzzleTab';
 import VenueApplicationsTab from '@/components/VenueApplicationsTab';
 import ExportsTab from '@/components/ExportsTab';
 import NotificationsTab from '@/components/NotificationsTab';
+import AdminReferralsTab from '@/components/AdminReferralsTab';
 
 interface Stats {
   users: number;
@@ -123,7 +124,7 @@ interface GuestUser {
 export default function AdminPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'overview' | 'venues' | 'seasons' | 'events' | 'users' | 'points' | 'balances' | 'withdrawals' | 'setup' | 'faq' | 'applications' | 'exports' | 'puzzles' | 'notifications'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'venues' | 'seasons' | 'events' | 'users' | 'points' | 'balances' | 'withdrawals' | 'setup' | 'faq' | 'applications' | 'exports' | 'puzzles' | 'notifications' | 'referrals'>('overview');
   const [stats, setStats] = useState<Stats | null>(null);
   const [venues, setVenues] = useState<any[]>([]);
   const [seasons, setSeasons] = useState<any[]>([]);
@@ -573,7 +574,7 @@ export default function AdminPage() {
         {/* Tabs - Scrollable on mobile */}
         <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
           <div className="flex gap-2 mb-6 border-b border-gray-700 pb-4 min-w-max">
-            {['overview', 'users', 'points', 'venues', 'applications', 'seasons', 'events', 'balances', 'withdrawals', 'faq', 'puzzles', 'exports', 'notifications'].map((tab) => (
+            {['overview', 'users', 'points', 'venues', 'applications', 'seasons', 'events', 'balances', 'withdrawals', 'referrals', 'faq', 'puzzles', 'exports', 'notifications'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => {
@@ -591,7 +592,7 @@ export default function AdminPage() {
                     : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
               >
-                {tab === 'points' ? '🎯 Points' : tab === 'faq' ? '❓ FAQ' : tab === 'applications' ? '🏢 Applications' : tab === 'exports' ? '📥 Exports' : tab === 'notifications' ? '🔔 Notifications' : tab}
+                {tab === 'points' ? '🎯 Points' : tab === 'faq' ? '❓ FAQ' : tab === 'applications' ? '🏢 Applications' : tab === 'exports' ? '📥 Exports' : tab === 'notifications' ? '🔔 Notifications' : tab === 'referrals' ? '🔗 Referrals' : tab}
               </button>
             ))}
           </div>
@@ -1443,6 +1444,11 @@ export default function AdminPage() {
         {/* Notifications Tab */}
         {activeTab === 'notifications' && (
           <NotificationsTab setMessage={setMessage} setError={setError} />
+        )}
+
+        {/* Referrals Tab */}
+        {activeTab === 'referrals' && (
+          <AdminReferralsTab />
         )}
 
         {/* Events Tab */}

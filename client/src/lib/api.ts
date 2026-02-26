@@ -441,6 +441,43 @@ export const adminAPI = {
         body: JSON.stringify(prefs),
       }
     ),
+
+  // Referral management
+  getReferralOverview: () =>
+    fetchAPI<{
+      rewardSats: number;
+      totalReferrals: number;
+      totalPending: number;
+      totalCheckedIn: number;
+      totalSatsPaid: number;
+      referrers: {
+        id: string;
+        name: string;
+        referralCode: string | null;
+        referralCount: number;
+        checkedInCount: number;
+        satsPaid: number;
+        referrals: {
+          id: string;
+          name: string;
+          createdAt: string;
+          checkedIn: boolean;
+          rewardPaid: boolean;
+        }[];
+      }[];
+    }>('/admin/referrals'),
+
+  getReferralSettings: () =>
+    fetchAPI<{ rewardSats: number }>('/admin/referral-settings'),
+
+  updateReferralSettings: (rewardSats: number) =>
+    fetchAPI<{ message: string; rewardSats: number }>(
+      '/admin/referral-settings',
+      {
+        method: 'PUT',
+        body: JSON.stringify({ rewardSats }),
+      }
+    ),
 };
 
 // ============================================

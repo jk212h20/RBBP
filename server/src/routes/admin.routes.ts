@@ -4,6 +4,7 @@ import prisma from '../lib/prisma';
 import { generateToken, generateClaimToken } from '../services/auth.service';
 import { pointsService } from '../services/points.service';
 import { getAdminNotificationPrefs, updateAdminNotificationPrefs } from '../services/telegram.service';
+import { getAdminReferralOverview, getReferralRewardAmount, setReferralRewardAmount } from '../services/referral.service';
 
 const router = Router();
 
@@ -1415,6 +1416,53 @@ router.put('/notification-prefs', authenticate, requireAdmin, async (req: Reques
   } catch (error) {
     console.error('Error updating notification prefs:', error);
     res.status(500).json({ error: 'Failed to update notification preferences' });
+  }
+});
+
+// ============================================
+// REFERRAL MANAGEMENT (Admin only)
+// ============================================
+
+// GET /api/admin/referrals - Get full referral overview for admin
+router.get('/referrals', authenticate, requireAdmin, async (_req: Request, res: Response) => {
+  try {
+    const overview = await getAdminReferralOverview();
+    res.json(overview);
+  } catch (error) {
+    console.error('Error fetching referral overview:', error);
+    res.status(500).json({ error: 'Failed to fetch referral overview' });
+  }
+});
+
+// GET /api/admin/referral-settings - Get current referral reward amount
+router.get('/referral-settings', authenticate, requireAdmin, async (_req: Request, res: Response) => {
+  try {
+    res.json({ rewardSats: getReferralRewardAmount() });
+  } catch (error) {
+    console.error('Error fetching referral settings:', error);
+    res.status(500).json({ error: 'Failed to fetch referral settings' });
+  }
+});
+
+// PUT /api/admin/referral-settings - Update referral reward amount
+router.put('/referral-settings', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { rewardSats } = req.body;
+
+    if (typeof rewardSats !== 'number' || rewardSats < 0) {
+      return res.status(400).json({ error: 'rewardSats must be a non-negative number' });
+    }
+
+    setReferralRewardAmount(rewardSats);
+    console.log(`[Admin] Referral reward updated to ${rewardSats} sats`);
+
+    res.json({ 
+      message: `Referral reward updated to ${rewardSats.toLocaleString()} sats`,
+      rewardSats 
+    });
+  } catch (error) {
+    console.error('Error updating referral settings:', error);
+    res.status(500).json({ error: 'Failed to update referral settings' });
   }
 });
 
