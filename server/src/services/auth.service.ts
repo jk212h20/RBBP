@@ -589,7 +589,55 @@ export async function getPublicPlayerProfile(userId: string, isAdmin = false) {
       pointsEarned: r.pointsEarned,
       knockouts: r.knockouts,
     })),
+    // Points history for the active season (breakdown of where points came from)
+    pointsHistory: activeSeason ? await getPlayerPointsHistory(userId, activeSeason.id) : [],
+    // All seasons standings
+    allSeasons: await getPlayerAllSeasons(userId),
   };
+}
+
+/**
+ * Get points history for a player in a specific season
+ */
+async function getPlayerPointsHistory(userId: string, seasonId: string) {
+  const history = await prisma.pointsHistory.findMany({
+    where: { userId, seasonId },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  return history.map(h => ({
+    id: h.id,
+    points: h.points,
+    reason: h.reason,
+    date: h.createdAt.toISOString(),
+  }));
+}
+
+/**
+ * Get all seasons standings for a player
+ */
+async function getPlayerAllSeasons(userId: string) {
+  const standings = await prisma.standing.findMany({
+    where: { userId },
+    include: {
+      season: {
+        select: { id: true, name: true, isActive: true },
+      },
+    },
+    orderBy: { season: { startDate: 'desc' } },
+  });
+
+  return standings.map(s => ({
+    seasonId: s.season.id,
+    seasonName: s.season.name,
+    isActive: s.season.isActive,
+    totalPoints: s.totalPoints,
+    eventsPlayed: s.eventsPlayed,
+    wins: s.wins,
+    topThrees: s.topThrees,
+    knockouts: s.knockouts,
+    rank: s.rank,
+  }));
 }
 
 // ============================================

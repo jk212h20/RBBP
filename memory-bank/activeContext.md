@@ -4,6 +4,14 @@
 Referral system — admin management, invite friends, earn sats when they check in at events.
 
 ## Recent Changes (Feb 25, 2026)
+### Player Profile — Points Breakdown
+- **`auth.service.ts` → `getPublicPlayerProfile()`** — now returns `pointsHistory` (array of `{id, points, reason, date}` from `PointsHistory` table for the active season) and `allSeasons` (array of standings across all seasons with `isActive` flag)
+- **`auth.service.ts`** — added `getPlayerPointsHistory()` and `getPlayerAllSeasons()` private helper functions
+- **`players/[id]/page.tsx`** — fully rewritten to match actual server response shape (`currentSeasonStanding`, `recentResults`, `pointsHistory`, `allSeasons`); added new sections:
+  - **⭐ Points Breakdown** — lists every point award with reason, date, and +/- amount; shows season total at bottom
+  - **🏆 Recent Results** — shows event results with ordinal position, knockouts, and points earned (clickable → event page)
+  - **📅 Season History** — now shows `(current)` badge on active season
+
 ### Referral System + Admin Management
 - **Migration `20260225000000_add_referral_system`** — added `referralCode String? @unique`, `referredById String?` (self-relation), `referralRewardPaid Boolean @default(false)` on `User`
 - **`referral.service.ts`** — service: `getOrCreateReferralCode()`, `findReferrerByCode()`, `linkReferral()`, `processReferralReward()`, `getReferralStats()`, `validateReferralCode()`, `getAdminReferralOverview()`, `getReferralRewardAmount()`, `setReferralRewardAmount()`

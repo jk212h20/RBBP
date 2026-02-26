@@ -6,6 +6,35 @@ import Link from 'next/link';
 import MobileNav from '@/components/MobileNav';
 import { playersAPI } from '@/lib/api';
 
+interface PointsHistoryEntry {
+  id: string;
+  points: number;
+  reason: string;
+  date: string;
+}
+
+interface RecentResult {
+  eventId: string;
+  eventName: string;
+  eventDate: string;
+  venue: string;
+  position: number;
+  pointsEarned: number;
+  knockouts: number;
+}
+
+interface SeasonStanding {
+  seasonId: string;
+  seasonName: string;
+  isActive?: boolean;
+  totalPoints: number;
+  eventsPlayed: number;
+  wins: number;
+  topThrees: number;
+  knockouts: number;
+  rank: number | null;
+}
+
 interface PlayerProfile {
   id: string;
   name: string;
@@ -16,8 +45,7 @@ interface PlayerProfile {
   nostrPubkey: string | null;
   socialLinks: Record<string, string> | null;
   memberSince: string;
-  currentSeason: {
-    seasonId: string;
+  currentSeasonStanding: {
     seasonName: string;
     totalPoints: number;
     eventsPlayed: number;
@@ -26,22 +54,14 @@ interface PlayerProfile {
     knockouts: number;
     rank: number | null;
   } | null;
-  recentEvents: {
-    eventId: string;
-    eventName: string;
-    eventDate: string;
-    venueName: string;
-    status: string;
-  }[];
-  allSeasons: {
-    seasonId: string;
-    seasonName: string;
-    totalPoints: number;
-    eventsPlayed: number;
-    wins: number;
-    topThrees: number;
-    knockouts: number;
-    rank: number | null;
+  recentResults: RecentResult[];
+  pointsHistory: PointsHistoryEntry[];
+  allSeasons: SeasonStanding[];
+  upcomingEvents: {
+    id: string;
+    name: string;
+    dateTime: string;
+    venue: string;
   }[];
 }
 
@@ -53,6 +73,12 @@ const SOCIAL_ICONS: Record<string, string> = {
   nostr: '🟣',
   linkedin: '💼',
 };
+
+function getOrdinal(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
 
 export default function PlayerProfilePage() {
   const params = useParams();
@@ -113,6 +139,7 @@ export default function PlayerProfilePage() {
   }
 
   const imageUrl = getProfileImageUrl();
+  const currentSeason = profile.currentSeasonStanding;
 
   return (
     <div className="min-h-screen">
@@ -199,10 +226,10 @@ export default function PlayerProfilePage() {
             </div>
 
             {/* Current Season Rank */}
-            {profile.currentSeason && profile.currentSeason.rank && (
+            {currentSeason && currentSeason.rank && (
               <div className="text-center">
                 <div className="text-4xl font-bold text-blue-300">
-                  #{profile.currentSeason.rank}
+                  #{currentSeason.rank}
                 </div>
                 <p className="text-blue-200 text-xs mt-1">Current Rank</p>
               </div>
@@ -211,64 +238,104 @@ export default function PlayerProfilePage() {
         </div>
 
         {/* Current Season Stats */}
-        {profile.currentSeason && (
+        {currentSeason && (
           <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 p-6 mb-6">
             <h2 className="text-xl font-bold text-white mb-4">
-              📊 {profile.currentSeason.seasonName}
+              📊 {currentSeason.seasonName}
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 text-center">
               <div className="bg-white/5 rounded-lg p-3">
-                <p className="text-2xl font-bold text-blue-300">{profile.currentSeason.totalPoints}</p>
+                <p className="text-2xl font-bold text-blue-300">{currentSeason.totalPoints}</p>
                 <p className="text-xs text-blue-200">Points</p>
               </div>
               <div className="bg-white/5 rounded-lg p-3">
-                <p className="text-2xl font-bold text-white">{profile.currentSeason.eventsPlayed}</p>
+                <p className="text-2xl font-bold text-white">{currentSeason.eventsPlayed}</p>
                 <p className="text-xs text-blue-200">Events</p>
               </div>
               <div className="bg-white/5 rounded-lg p-3">
-                <p className="text-2xl font-bold text-yellow-400">{profile.currentSeason.wins}</p>
+                <p className="text-2xl font-bold text-yellow-400">{currentSeason.wins}</p>
                 <p className="text-xs text-blue-200">Wins</p>
               </div>
               <div className="bg-white/5 rounded-lg p-3">
-                <p className="text-2xl font-bold text-orange-400">{profile.currentSeason.topThrees}</p>
+                <p className="text-2xl font-bold text-orange-400">{currentSeason.topThrees}</p>
                 <p className="text-xs text-blue-200">Top 3</p>
               </div>
               <div className="bg-white/5 rounded-lg p-3">
-                <p className="text-2xl font-bold text-red-400">{profile.currentSeason.knockouts}</p>
+                <p className="text-2xl font-bold text-red-400">{currentSeason.knockouts}</p>
                 <p className="text-xs text-blue-200">KOs</p>
               </div>
             </div>
           </div>
         )}
 
-        {/* Recent Events */}
-        {profile.recentEvents && profile.recentEvents.length > 0 && (
+        {/* Points Breakdown */}
+        {profile.pointsHistory && profile.pointsHistory.length > 0 && (
           <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 p-6 mb-6">
-            <h2 className="text-xl font-bold text-white mb-4">📅 Recent Events</h2>
+            <h2 className="text-xl font-bold text-white mb-4">⭐ Points Breakdown</h2>
             <div className="space-y-2">
-              {profile.recentEvents.map((event) => (
-                <Link
-                  key={event.eventId}
-                  href={`/events/${event.eventId}`}
-                  className="flex items-center justify-between p-3 bg-white/5 hover:bg-white/10 rounded-lg transition"
+              {profile.pointsHistory.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="flex items-center justify-between p-3 bg-white/5 rounded-lg"
                 >
-                  <div>
-                    <p className="text-white font-medium">{event.eventName}</p>
-                    <p className="text-blue-200 text-sm">
-                      {event.venueName} • {new Date(event.eventDate).toLocaleDateString()}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-sm font-medium truncate">{entry.reason}</p>
+                    <p className="text-blue-200/60 text-xs mt-0.5">
+                      {new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </p>
                   </div>
-                  <span className={`text-xs px-2 py-1 rounded ${
-                    event.status === 'CHECKED_IN' ? 'bg-green-600/30 text-green-300' :
-                    event.status === 'REGISTERED' ? 'bg-blue-600/30 text-blue-300' :
-                    event.status === 'NO_SHOW' ? 'bg-red-600/30 text-red-300' :
-                    'bg-gray-600/30 text-gray-300'
+                  <span className={`text-sm font-bold ml-3 flex-shrink-0 ${
+                    entry.points > 0 ? 'text-green-400' : entry.points < 0 ? 'text-red-400' : 'text-gray-400'
                   }`}>
-                    {event.status === 'CHECKED_IN' ? 'Attended' :
-                     event.status === 'REGISTERED' ? 'Registered' :
-                     event.status === 'NO_SHOW' ? 'No Show' :
-                     event.status}
+                    {entry.points > 0 ? '+' : ''}{entry.points} pts
                   </span>
+                </div>
+              ))}
+            </div>
+            {/* Total */}
+            <div className="mt-3 pt-3 border-t border-blue-600/30 flex items-center justify-between">
+              <p className="text-blue-200 text-sm font-medium">Season Total</p>
+              <span className="text-blue-300 font-bold text-lg">
+                {profile.pointsHistory.reduce((sum, e) => sum + e.points, 0)} pts
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Recent Results */}
+        {profile.recentResults && profile.recentResults.length > 0 && (
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 p-6 mb-6">
+            <h2 className="text-xl font-bold text-white mb-4">🏆 Recent Results</h2>
+            <div className="space-y-2">
+              {profile.recentResults.map((result) => (
+                <Link
+                  key={result.eventId}
+                  href={`/events/${result.eventId}`}
+                  className="flex items-center justify-between p-3 bg-white/5 hover:bg-white/10 rounded-lg transition"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-medium text-sm">{result.eventName}</p>
+                    <p className="text-blue-200/60 text-xs mt-0.5">
+                      {result.venue} • {new Date(result.eventDate).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 ml-3 flex-shrink-0">
+                    <span className={`text-xs px-2 py-1 rounded font-bold ${
+                      result.position === 1 ? 'bg-yellow-600/30 text-yellow-300' :
+                      result.position <= 3 ? 'bg-orange-600/30 text-orange-300' :
+                      'bg-blue-600/30 text-blue-300'
+                    }`}>
+                      {getOrdinal(result.position)}
+                    </span>
+                    {result.knockouts > 0 && (
+                      <span className="text-xs text-red-400" title="Knockouts">
+                        💥{result.knockouts}
+                      </span>
+                    )}
+                    <span className="text-green-400 text-sm font-bold">
+                      +{result.pointsEarned}
+                    </span>
+                  </div>
                 </Link>
               ))}
             </div>
@@ -278,7 +345,7 @@ export default function PlayerProfilePage() {
         {/* All Seasons History */}
         {profile.allSeasons && profile.allSeasons.length > 1 && (
           <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 p-6">
-            <h2 className="text-xl font-bold text-white mb-4">🏆 Season History</h2>
+            <h2 className="text-xl font-bold text-white mb-4">📅 Season History</h2>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -294,7 +361,12 @@ export default function PlayerProfilePage() {
                 <tbody>
                   {profile.allSeasons.map((season) => (
                     <tr key={season.seasonId} className="border-b border-blue-600/10 hover:bg-white/5">
-                      <td className="py-2 px-3 text-white">{season.seasonName}</td>
+                      <td className="py-2 px-3 text-white">
+                        {season.seasonName}
+                        {season.isActive && (
+                          <span className="ml-2 text-xs text-green-400">(current)</span>
+                        )}
+                      </td>
                       <td className="py-2 px-3 text-center text-blue-300 font-bold">
                         {season.rank ? `#${season.rank}` : '-'}
                       </td>
