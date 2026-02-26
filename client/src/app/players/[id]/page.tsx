@@ -294,15 +294,13 @@ export default function PlayerProfilePage() {
                 </div>
               ))}
             </div>
-            {/* Total — use the authoritative Standing total */}
-            {currentSeason && (
-              <div className="mt-3 pt-3 border-t border-blue-600/30 flex items-center justify-between">
-                <p className="text-blue-200 text-sm font-medium">Season Total</p>
-                <span className="text-blue-300 font-bold text-lg">
-                  {currentSeason.totalPoints} pts
-                </span>
-              </div>
-            )}
+            {/* Total from points history */}
+            <div className="mt-3 pt-3 border-t border-blue-600/30 flex items-center justify-between">
+              <p className="text-blue-200 text-sm font-medium">Total</p>
+              <span className="text-blue-300 font-bold text-lg">
+                {profile.pointsHistory.reduce((sum, e) => sum + e.points, 0)} pts
+              </span>
+            </div>
           </div>
         )}
 

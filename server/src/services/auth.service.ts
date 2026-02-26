@@ -598,63 +598,20 @@ export async function getPublicPlayerProfile(userId: string, isAdmin = false) {
 
 /**
  * Get points breakdown for a player in a specific season.
- * Uses PointsHistory (which includes result points, check-in points, manual adjustments, etc.)
- * and also includes registration points which are tracked only in Standing (not PointsHistory).
+ * Uses PointsHistory as the authoritative audit trail of all point changes.
  */
 async function getPlayerPointsHistory(userId: string, seasonId: string) {
-  // Get points history entries (result placements, check-in, manual, Lightning, etc.)
   const history = await prisma.pointsHistory.findMany({
     where: { userId, seasonId },
     orderBy: { createdAt: 'desc' },
   });
 
-  const entries = history.map(h => ({
+  return history.map(h => ({
     id: h.id,
     points: h.points,
     reason: h.reason,
     date: h.createdAt.toISOString(),
   }));
-
-  // Calculate sum of tracked points
-  const trackedSum = entries.reduce((sum, e) => sum + e.points, 0);
-
-  // Get the standing total to find any untracked points (registration points, etc.)
-  const standing = await prisma.standing.findUnique({
-    where: { seasonId_userId: { seasonId, userId } },
-    select: { totalPoints: true },
-  });
-
-  const standingTotal = standing?.totalPoints || 0;
-  const untrackedPoints = standingTotal - trackedSum;
-
-  // If there are untracked points (from registration bonuses, etc.), add a summary entry
-  if (untrackedPoints > 0) {
-    // Count event registrations to give a meaningful label
-    const registrationCount = await prisma.eventSignup.count({
-      where: {
-        userId,
-        event: { seasonId },
-        status: { notIn: ['CANCELLED'] },
-      },
-    });
-
-    entries.push({
-      id: 'registration-points',
-      points: untrackedPoints,
-      reason: `Registration points (${registrationCount} event${registrationCount !== 1 ? 's' : ''})`,
-      date: '', // Will be shown differently
-    });
-  } else if (untrackedPoints < 0) {
-    // Penalties brought the standing below the tracked sum (can happen with cancellation/no-show penalties)
-    entries.push({
-      id: 'penalty-adjustment',
-      points: untrackedPoints,
-      reason: 'Cancellation / no-show penalties',
-      date: '',
-    });
-  }
-
-  return entries;
 }
 
 /**
