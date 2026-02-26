@@ -625,6 +625,24 @@ export class EventService {
       },
     });
 
+    // Award 1 check-in point for the season
+    try {
+      const event = await prisma.event.findUnique({
+        where: { id: eventId },
+        select: { seasonId: true, name: true },
+      });
+      if (event) {
+        await pointsService.adjustPoints({
+          userId,
+          seasonId: event.seasonId,
+          points: 1,
+          reason: `Check-in point: ${event.name}`,
+        });
+      }
+    } catch (err) {
+      console.error(`[CheckIn] Error awarding check-in point for user ${userId}:`, err);
+    }
+
     // Process referral reward (non-blocking, idempotent — only pays once)
     processReferralReward(userId).catch((err) => {
       console.error(`[Referral] Error processing reward for user ${userId}:`, err);

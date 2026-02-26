@@ -423,8 +423,9 @@ export const adminAPI = {
       token: string;
       expiresAt: string;
       guestName: string;
-    }>(`/admin/guest-users/${guestUserId}/claim-link`, {
+    }>(`/admin/generate-claim-link`, {
       method: 'POST',
+      body: JSON.stringify({ guestUserId }),
     }),
 
   // Notification preferences

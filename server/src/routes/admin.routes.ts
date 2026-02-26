@@ -1466,6 +1466,82 @@ router.put('/referral-settings', authenticate, requireAdmin, async (req: Request
   }
 });
 
+// POST /api/admin/retroactive-checkin-points - Award 1 point per check-in for all past events
+router.post('/retroactive-checkin-points', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    // Find all checked-in signups with their event info
+    const checkedInSignups = await prisma.eventSignup.findMany({
+      where: {
+        status: 'CHECKED_IN',
+      },
+      include: {
+        event: {
+          select: { id: true, name: true, seasonId: true },
+        },
+        user: {
+          select: { id: true, name: true },
+        },
+      },
+    });
+
+    let awarded = 0;
+    let skipped = 0;
+
+    for (const signup of checkedInSignups) {
+      // Check if this check-in point was already awarded (prevent double-awarding)
+      const reason = `Check-in point: ${signup.event.name}`;
+      const existing = await prisma.pointsHistory.findFirst({
+        where: {
+          userId: signup.userId,
+          seasonId: signup.event.seasonId,
+          reason,
+        },
+      });
+
+      if (existing) {
+        skipped++;
+        continue;
+      }
+
+      // Award 1 point
+      await pointsService.adjustPoints({
+        userId: signup.userId,
+        seasonId: signup.event.seasonId,
+        points: 1,
+        reason,
+        createdById: req.user!.userId,
+      });
+      awarded++;
+    }
+
+    // Recalculate ranks for all affected seasons
+    const affectedSeasonIds = [...new Set(checkedInSignups.map(s => s.event.seasonId))];
+    for (const seasonId of affectedSeasonIds) {
+      const allStandings = await prisma.standing.findMany({
+        where: { seasonId },
+        orderBy: { totalPoints: 'desc' },
+      });
+      for (let i = 0; i < allStandings.length; i++) {
+        await prisma.standing.update({
+          where: { id: allStandings[i].id },
+          data: { rank: i + 1 },
+        });
+      }
+    }
+
+    res.json({
+      message: `Retroactive check-in points applied. ${awarded} points awarded, ${skipped} already existed (skipped). Ranks recalculated for ${affectedSeasonIds.length} season(s).`,
+      awarded,
+      skipped,
+      totalCheckins: checkedInSignups.length,
+      seasonsUpdated: affectedSeasonIds.length,
+    });
+  } catch (error: any) {
+    console.error('Error applying retroactive check-in points:', error);
+    res.status(500).json({ error: error.message || 'Failed to apply retroactive check-in points' });
+  }
+});
+
 // GET /api/admin/migration-status - Check if points migration has been applied
 router.get('/migration-status', authenticate, requireAdmin, async (req: Request, res: Response) => {
   try {

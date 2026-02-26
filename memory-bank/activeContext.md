@@ -76,3 +76,8 @@ See `systemPatterns.md`. Key: Next.js client → Express server → Prisma/Postg
 ## What's NOT Built Yet (prioritized)
 - Telegram notification on Google OAuth new user registration
 - Admin view of users' telegram usernames in the users table
+
+## Recent Changes (Feb 25, 2026) — Check-in Points
+- **`event.service.ts` → `checkInPlayer()`** — now awards 1 point via `pointsService.adjustPoints()` with reason `"Check-in point: {event name}"` on every check-in going forward
+- **`admin.routes.ts` → `POST /api/admin/retroactive-checkin-points`** — one-time endpoint to retroactively award 1 point per past check-in; skips duplicates (checks `pointsHistory` by reason string), recalculates ranks after
+- **`api.ts` fix** — `generateClaimLink()` now correctly calls `POST /admin/generate-claim-link` with `{ guestUserId }` in body (was incorrectly using `/admin/guest-users/:id/claim-link`)
