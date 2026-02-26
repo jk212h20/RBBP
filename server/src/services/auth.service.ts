@@ -597,70 +597,64 @@ export async function getPublicPlayerProfile(userId: string, isAdmin = false) {
 }
 
 /**
- * Get a unified points breakdown for a player in a specific season.
- * Merges:
- *  - Result records (event placement/knockout points)
- *  - PointsHistory records (manual adjustments, check-in points, Lightning bonus, etc.)
- * Deduplicates so we don't double-count entries that appear in both.
+ * Get points breakdown for a player in a specific season.
+ * Uses PointsHistory (which includes result points, check-in points, manual adjustments, etc.)
+ * and also includes registration points which are tracked only in Standing (not PointsHistory).
  */
 async function getPlayerPointsHistory(userId: string, seasonId: string) {
-  // 1. Get event results for this season (placement points)
-  const results = await prisma.result.findMany({
-    where: {
-      userId,
-      event: { seasonId },
-    },
-    include: {
-      event: {
-        select: { name: true, dateTime: true },
-      },
-    },
-    orderBy: { event: { dateTime: 'desc' } },
-  });
-
-  // 2. Get points history entries (manual, check-in, Lightning, etc.)
+  // Get points history entries (result placements, check-in, manual, Lightning, etc.)
   const history = await prisma.pointsHistory.findMany({
     where: { userId, seasonId },
     orderBy: { createdAt: 'desc' },
   });
 
-  // Build unified list
-  const entries: { id: string; points: number; reason: string; date: string; source: string }[] = [];
+  const entries = history.map(h => ({
+    id: h.id,
+    points: h.points,
+    reason: h.reason,
+    date: h.createdAt.toISOString(),
+  }));
 
-  // Add result-based entries
-  for (const r of results) {
-    if (r.pointsEarned > 0) {
-      entries.push({
-        id: `result-${r.id}`,
-        points: r.pointsEarned,
-        reason: `${getOrdinalServer(r.position)} place at ${r.event.name}${r.knockouts > 0 ? ` (${r.knockouts} KO${r.knockouts > 1 ? 's' : ''})` : ''}`,
-        date: r.event.dateTime.toISOString(),
-        source: 'result',
-      });
-    }
-  }
+  // Calculate sum of tracked points
+  const trackedSum = entries.reduce((sum, e) => sum + e.points, 0);
 
-  // Add history entries (but skip any that look like they duplicate a result entry)
-  for (const h of history) {
+  // Get the standing total to find any untracked points (registration points, etc.)
+  const standing = await prisma.standing.findUnique({
+    where: { seasonId_userId: { seasonId, userId } },
+    select: { totalPoints: true },
+  });
+
+  const standingTotal = standing?.totalPoints || 0;
+  const untrackedPoints = standingTotal - trackedSum;
+
+  // If there are untracked points (from registration bonuses, etc.), add a summary entry
+  if (untrackedPoints > 0) {
+    // Count event registrations to give a meaningful label
+    const registrationCount = await prisma.eventSignup.count({
+      where: {
+        userId,
+        event: { seasonId },
+        status: { notIn: ['CANCELLED'] },
+      },
+    });
+
     entries.push({
-      id: h.id,
-      points: h.points,
-      reason: h.reason,
-      date: h.createdAt.toISOString(),
-      source: 'history',
+      id: 'registration-points',
+      points: untrackedPoints,
+      reason: `Registration points (${registrationCount} event${registrationCount !== 1 ? 's' : ''})`,
+      date: '', // Will be shown differently
+    });
+  } else if (untrackedPoints < 0) {
+    // Penalties brought the standing below the tracked sum (can happen with cancellation/no-show penalties)
+    entries.push({
+      id: 'penalty-adjustment',
+      points: untrackedPoints,
+      reason: 'Cancellation / no-show penalties',
+      date: '',
     });
   }
 
-  // Sort by date descending
-  entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
   return entries;
-}
-
-function getOrdinalServer(n: number): string {
-  const s = ['th', 'st', 'nd', 'rd'];
-  const v = n % 100;
-  return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
 /**

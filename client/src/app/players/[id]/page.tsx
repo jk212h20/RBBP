@@ -280,9 +280,11 @@ export default function PlayerProfilePage() {
                 >
                   <div className="flex-1 min-w-0">
                     <p className="text-white text-sm font-medium truncate">{entry.reason}</p>
-                    <p className="text-blue-200/60 text-xs mt-0.5">
-                      {new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </p>
+                    {entry.date && (
+                      <p className="text-blue-200/60 text-xs mt-0.5">
+                        {new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </p>
+                    )}
                   </div>
                   <span className={`text-sm font-bold ml-3 flex-shrink-0 ${
                     entry.points > 0 ? 'text-green-400' : entry.points < 0 ? 'text-red-400' : 'text-gray-400'
@@ -292,13 +294,15 @@ export default function PlayerProfilePage() {
                 </div>
               ))}
             </div>
-            {/* Total */}
-            <div className="mt-3 pt-3 border-t border-blue-600/30 flex items-center justify-between">
-              <p className="text-blue-200 text-sm font-medium">Season Total</p>
-              <span className="text-blue-300 font-bold text-lg">
-                {profile.pointsHistory.reduce((sum, e) => sum + e.points, 0)} pts
-              </span>
-            </div>
+            {/* Total — use the authoritative Standing total */}
+            {currentSeason && (
+              <div className="mt-3 pt-3 border-t border-blue-600/30 flex items-center justify-between">
+                <p className="text-blue-200 text-sm font-medium">Season Total</p>
+                <span className="text-blue-300 font-bold text-lg">
+                  {currentSeason.totalPoints} pts
+                </span>
+              </div>
+            )}
           </div>
         )}
 
