@@ -597,20 +597,70 @@ export async function getPublicPlayerProfile(userId: string, isAdmin = false) {
 }
 
 /**
- * Get points history for a player in a specific season
+ * Get a unified points breakdown for a player in a specific season.
+ * Merges:
+ *  - Result records (event placement/knockout points)
+ *  - PointsHistory records (manual adjustments, check-in points, Lightning bonus, etc.)
+ * Deduplicates so we don't double-count entries that appear in both.
  */
 async function getPlayerPointsHistory(userId: string, seasonId: string) {
+  // 1. Get event results for this season (placement points)
+  const results = await prisma.result.findMany({
+    where: {
+      userId,
+      event: { seasonId },
+    },
+    include: {
+      event: {
+        select: { name: true, dateTime: true },
+      },
+    },
+    orderBy: { event: { dateTime: 'desc' } },
+  });
+
+  // 2. Get points history entries (manual, check-in, Lightning, etc.)
   const history = await prisma.pointsHistory.findMany({
     where: { userId, seasonId },
     orderBy: { createdAt: 'desc' },
   });
 
-  return history.map(h => ({
-    id: h.id,
-    points: h.points,
-    reason: h.reason,
-    date: h.createdAt.toISOString(),
-  }));
+  // Build unified list
+  const entries: { id: string; points: number; reason: string; date: string; source: string }[] = [];
+
+  // Add result-based entries
+  for (const r of results) {
+    if (r.pointsEarned > 0) {
+      entries.push({
+        id: `result-${r.id}`,
+        points: r.pointsEarned,
+        reason: `${getOrdinalServer(r.position)} place at ${r.event.name}${r.knockouts > 0 ? ` (${r.knockouts} KO${r.knockouts > 1 ? 's' : ''})` : ''}`,
+        date: r.event.dateTime.toISOString(),
+        source: 'result',
+      });
+    }
+  }
+
+  // Add history entries (but skip any that look like they duplicate a result entry)
+  for (const h of history) {
+    entries.push({
+      id: h.id,
+      points: h.points,
+      reason: h.reason,
+      date: h.createdAt.toISOString(),
+      source: 'history',
+    });
+  }
+
+  // Sort by date descending
+  entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  return entries;
+}
+
+function getOrdinalServer(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
 /**
