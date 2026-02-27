@@ -188,14 +188,13 @@ export class SeasonService {
 
   /**
    * Get season standings/leaderboard
+   * Computes accurate totalPoints from PointsHistory + registration points
+   * rather than trusting the cached Standing.totalPoints value.
    */
   async getSeasonStandings(seasonId: string, limit = 50) {
-    return prisma.standing.findMany({
+    // 1. Fetch standings with user info
+    const standings = await prisma.standing.findMany({
       where: { seasonId },
-      orderBy: {
-        totalPoints: 'desc',
-      },
-      take: limit,
       include: {
         user: {
           select: {
@@ -212,6 +211,77 @@ export class SeasonService {
         },
       },
     });
+
+    if (standings.length === 0) return [];
+
+    // 2. Bulk query: sum PointsHistory per user for this season
+    const pointsSums = await prisma.pointsHistory.groupBy({
+      by: ['userId'],
+      where: { seasonId },
+      _sum: { points: true },
+    });
+    const pointsByUser = new Map(pointsSums.map(p => [p.userId, p._sum.points || 0]));
+
+    // 3. Bulk query: all non-cancelled/non-waitlisted signups for events in this season
+    const allSignups = await prisma.eventSignup.findMany({
+      where: {
+        event: { seasonId },
+        status: { notIn: ['CANCELLED', 'WAITLISTED'] },
+      },
+      select: { userId: true, eventId: true, registeredAt: true },
+      orderBy: { registeredAt: 'asc' },
+    });
+
+    // 4. Compute registration points per user
+    // Group signups by event to determine early bird status
+    const signupsByEvent = new Map<string, typeof allSignups>();
+    for (const s of allSignups) {
+      const list = signupsByEvent.get(s.eventId) || [];
+      list.push(s);
+      signupsByEvent.set(s.eventId, list);
+    }
+
+    const regPointsByUser = new Map<string, number>();
+    for (const [, eventSignups] of signupsByEvent) {
+      // Signups are already ordered by registeredAt (asc)
+      for (let i = 0; i < eventSignups.length; i++) {
+        const userId = eventSignups[i].userId;
+        const pts = i < 5 ? 2 : 1; // early bird (first 5) = 2, regular = 1
+        regPointsByUser.set(userId, (regPointsByUser.get(userId) || 0) + pts);
+      }
+    }
+
+    // 5. Compute accurate total for each standing
+    const accurateStandings = standings.map(s => {
+      const auditedPoints = pointsByUser.get(s.userId) || 0;
+      const registrationPoints = regPointsByUser.get(s.userId) || 0;
+      const accurateTotal = auditedPoints + registrationPoints;
+      return { ...s, totalPoints: accurateTotal };
+    });
+
+    // 6. Sort by accurate points descending, then re-rank
+    accurateStandings.sort((a, b) => b.totalPoints - a.totalPoints);
+
+    // 7. Also update Standing.totalPoints in the DB so it self-heals (fire and forget)
+    const updates = accurateStandings
+      .filter(s => {
+        const original = standings.find(o => o.id === s.id);
+        return original && original.totalPoints !== s.totalPoints;
+      })
+      .map((s, index) =>
+        prisma.standing.update({
+          where: { id: s.id },
+          data: { totalPoints: s.totalPoints, rank: index + 1 },
+        })
+      );
+    if (updates.length > 0) {
+      prisma.$transaction(updates).catch(err => {
+        console.error('[Standings] Self-heal update failed:', err);
+      });
+    }
+
+    // Return limited results
+    return accurateStandings.slice(0, limit);
   }
 
   /**
