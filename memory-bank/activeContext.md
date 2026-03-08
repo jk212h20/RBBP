@@ -1,7 +1,7 @@
 # Active Context
 
 ## Current Focus
-Email service added (Resend). Referral system complete.
+Admin-customizable email templates with send rules. Referral system complete.
 
 ## Recent Changes (Feb 25, 2026)
 ### Player Profile — Points Breakdown
@@ -50,20 +50,25 @@ Email service added (Resend). Referral system complete.
 ## Architecture Overview
 See `systemPatterns.md`. Key: Next.js client → Express server → Prisma/PostgreSQL.
 
-## Recent Changes (Mar 8, 2026) — Email Service
-- **Replaced `nodemailer` with `resend`** — Resend API for transactional emails
-- **`email.service.ts`** — new service with themed HTML email templates (dark poker theme):
-  - `sendWelcomeEmail()` — sent on email/Google registration
-  - `sendEventSignupEmail()` — sent when player registers for a tournament
-  - `sendWithdrawalReadyEmail()` — sent when admin creates a withdrawal (sats ready)
-  - `sendClaimLinkEmail()` — for guest account claim links
-  - `sendEventReminderEmail()` — for day-before reminders (not yet wired to a cron/scheduler)
-  - Gracefully degrades when `RESEND_API_KEY` not set (logs warning, skips sends)
-- **`auth.service.ts`** — `register()` and `findOrCreateGoogleUser()` call `sendWelcomeEmail()` (non-blocking)
-- **`event.service.ts`** — `signupForEvent()` calls `sendEventSignupEmail()` (non-blocking, fetches user email + event venue)
-- **`withdrawal.service.ts`** — `createWithdrawal()` calls `sendWithdrawalReadyEmail()` (non-blocking)
-- **`.env.example`** updated: `RESEND_API_KEY`, `EMAIL_FROM` (replaced SendGrid references)
-- **`.vscode/project-url.json`** created for status bar link
+## Recent Changes (Mar 8, 2026) — Email Templates Admin
+- **`EmailTemplate` Prisma model** — stores admin-customized email templates in DB (type, subject, body HTML, enabled, sendRules JSON)
+- **Migration `20260308000000_add_email_templates`** — `email_templates` table with unique `type` column
+- **`email.service.ts`** — completely rewritten with admin template system:
+  - 5 template types: `welcome`, `event_signup`, `event_reminder`, `withdrawal_ready`, `claim_link`
+  - `{{variable}}` placeholder system with `replaceVariables()` and `{{button:Text:URL}}` shorthand
+  - `getTemplate(type)` — loads from DB, falls back to hardcoded defaults
+  - `getAllEmailTemplates()`, `updateEmailTemplate()`, `resetEmailTemplate()`, `sendTestEmail()` — admin CRUD
+  - Each template has `variableHelp` array for admin UI
+  - `sendRules` JSON (e.g., `{ reminderHoursBefore: 24 }` for event_reminder)
+  - Gracefully degrades when `RESEND_API_KEY` not set
+- **`admin.routes.ts`** — 3 new endpoints: `GET /api/admin/email-templates`, `PUT /api/admin/email-templates/:type`, `POST /api/admin/email-templates/:type/test`
+- **`api.ts`** — `adminAPI.getEmailTemplates()`, `adminAPI.updateEmailTemplate()`, `adminAPI.sendTestEmail()`
+- **`EmailTemplatesTab.tsx`** — admin UI: edit subject/body per template, enable/disable toggle, send rules config, variable help, test email sender, reset to defaults
+- **`admin/page.tsx`** — "📧 Emails" tab added (16th tab)
+
+### Railway Linkage Fix
+- Fixed Railway CLI linkage: `server/` → service `88b52535` (RBBP), `client/` → service `2157daaa` (client)
+- Previously both dirs were deploying to client service due to stale config
 
 ## Environment Variables (server)
 - `RESEND_API_KEY` — Resend email API key (optional, emails disabled without it)
