@@ -600,7 +600,7 @@ export async function updateEmailTemplate(type: EmailTemplateType, data: {
         subject: data.subject !== undefined ? data.subject : existing.subject,
         body: data.body !== undefined ? data.body : existing.body,
         enabled: data.enabled !== undefined ? data.enabled : existing.enabled,
-        sendRules: data.sendRules !== undefined ? data.sendRules : existing.sendRules,
+        sendRules: data.sendRules !== undefined ? (data.sendRules ?? undefined) : (existing.sendRules ?? undefined),
       },
     });
   }
@@ -612,7 +612,7 @@ export async function updateEmailTemplate(type: EmailTemplateType, data: {
       subject: data.subject ?? def.subject,
       body: data.body ?? def.body,
       enabled: data.enabled ?? true,
-      sendRules: data.sendRules !== undefined ? data.sendRules : def.sendRules,
+      sendRules: data.sendRules !== undefined ? (data.sendRules ?? undefined) : (def.sendRules ?? undefined),
     },
   });
 }
