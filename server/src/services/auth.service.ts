@@ -7,6 +7,7 @@ import prisma from '../lib/prisma';
 import { awardLightningBonusPoint } from './standings.service';
 import { notifyNewUser } from './telegram.service';
 import { findReferrerByCode, linkReferral, getOrCreateReferralCode } from './referral.service';
+import { sendWelcomeEmail } from './email.service';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
@@ -116,6 +117,9 @@ export async function register(input: RegisterInput & { referralCode?: string })
   // Fire Telegram notification (non-blocking)
   notifyNewUser({ name, email, telegramUsername, authProvider: 'EMAIL' }).catch(() => {});
 
+  // Send welcome email (non-blocking)
+  sendWelcomeEmail({ to: email, name }).catch(() => {});
+
   const token = generateToken(user);
 
   return {
@@ -207,6 +211,11 @@ export async function findOrCreateGoogleUser(profile: {
 
   // Fire Telegram notification (non-blocking)
   notifyNewUser({ name: user.name, email: user.email, authProvider: 'GOOGLE' }).catch(() => {});
+
+  // Send welcome email (non-blocking)
+  if (user.email) {
+    sendWelcomeEmail({ to: user.email, name: user.name }).catch(() => {});
+  }
 
   return { user: sanitizeUser(user), token: generateToken(user), isNew: true };
 }

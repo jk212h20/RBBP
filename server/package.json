@@ -21,7 +21,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-"@noble/secp256k1": "^1.7.1",
+    "@noble/secp256k1": "^1.7.1",
     "@prisma/client": "^5.9.0",
     "bcryptjs": "^2.4.3",
     "bech32": "^2.0.0",
@@ -32,10 +32,10 @@
     "express-session": "^1.19.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
-    "nodemailer": "^6.9.8",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "qrcode": "^1.5.4",
+    "resend": "^6.9.3",
     "zod": "^3.22.4"
   },
   "devDependencies": {
@@ -45,7 +45,6 @@
     "@types/express-session": "^1.18.2",
     "@types/jsonwebtoken": "^9.0.5",
     "@types/node": "^20.11.5",
-    "@types/nodemailer": "^6.4.14",
     "@types/passport": "^1.0.17",
     "@types/passport-google-oauth20": "^2.0.17",
     "@types/qrcode": "^1.5.6",

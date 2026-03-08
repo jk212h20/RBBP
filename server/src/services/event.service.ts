@@ -4,6 +4,7 @@ import { EventStatus, SignupStatus } from '@prisma/client';
 import { seasonService } from './season.service';
 import { pointsService } from './points.service';
 import { processReferralReward } from './referral.service';
+import { sendEventSignupEmail } from './email.service';
 
 // ============================================
 // ROATAN TIMEZONE HANDLING
@@ -456,6 +457,28 @@ export class EventService {
 
     // Award registration points for the season
     await this.adjustUserSeasonPoints(userId, event.seasonId, pointsToAward);
+
+    // Send signup confirmation email (non-blocking)
+    prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true } })
+      .then(async (user) => {
+        if (user?.email) {
+          const eventWithVenue = await prisma.event.findUnique({
+            where: { id: eventId },
+            include: { venue: { select: { name: true } } },
+          });
+          if (eventWithVenue) {
+            sendEventSignupEmail({
+              to: user.email,
+              playerName: user.name || 'Player',
+              eventName: eventWithVenue.name,
+              eventDate: eventWithVenue.dateTime,
+              venueName: eventWithVenue.venue.name,
+              eventId,
+            }).catch(() => {});
+          }
+        }
+      })
+      .catch(() => {});
 
     return signup;
   }

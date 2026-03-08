@@ -479,6 +479,27 @@ export const adminAPI = {
         body: JSON.stringify({ rewardSats }),
       }
     ),
+
+  // Email templates
+  getEmailTemplates: () =>
+    fetchAPI<{ templates: any[]; emailConfigured: boolean }>('/admin/email-templates'),
+
+  updateEmailTemplate: (type: string, data: { subject?: string; body?: string; enabled?: boolean; sendRules?: any }) =>
+    fetchAPI<{ message: string; template: any }>(`/admin/email-templates/${type}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  resetEmailTemplate: (type: string) =>
+    fetchAPI<{ message: string; template: any }>(`/admin/email-templates/${type}/reset`, {
+      method: 'POST',
+    }),
+
+  sendTestEmail: (type: string, email: string) =>
+    fetchAPI<{ message: string }>(`/admin/email-templates/${type}/test`, {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
 };
 
 // ============================================

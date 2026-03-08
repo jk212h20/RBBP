@@ -5,6 +5,7 @@ import { generateToken, generateClaimToken } from '../services/auth.service';
 import { pointsService } from '../services/points.service';
 import { getAdminNotificationPrefs, updateAdminNotificationPrefs } from '../services/telegram.service';
 import { getAdminReferralOverview, getReferralRewardAmount, setReferralRewardAmount } from '../services/referral.service';
+import { getAllEmailTemplates, getEmailTemplate, updateEmailTemplate, resetEmailTemplate, sendTestEmail, isEmailConfigured, EmailTemplateType } from '../services/email.service';
 
 const router = Router();
 
@@ -1539,6 +1540,79 @@ router.post('/retroactive-checkin-points', authenticate, requireAdmin, async (re
   } catch (error: any) {
     console.error('Error applying retroactive check-in points:', error);
     res.status(500).json({ error: error.message || 'Failed to apply retroactive check-in points' });
+  }
+});
+
+// ============================================
+// EMAIL TEMPLATES (Admin only)
+// ============================================
+
+// GET /api/admin/email-templates - Get all email templates
+router.get('/email-templates', authenticate, requireAdmin, async (_req: Request, res: Response) => {
+  try {
+    const templates = await getAllEmailTemplates();
+    res.json({ templates, emailConfigured: isEmailConfigured() });
+  } catch (error) {
+    console.error('Error fetching email templates:', error);
+    res.status(500).json({ error: 'Failed to fetch email templates' });
+  }
+});
+
+// GET /api/admin/email-templates/:type - Get a single email template
+router.get('/email-templates/:type', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const template = await getEmailTemplate(req.params.type as EmailTemplateType);
+    if (!template) {
+      return res.status(404).json({ error: 'Template not found' });
+    }
+    res.json(template);
+  } catch (error) {
+    console.error('Error fetching email template:', error);
+    res.status(500).json({ error: 'Failed to fetch email template' });
+  }
+});
+
+// PUT /api/admin/email-templates/:type - Update an email template
+router.put('/email-templates/:type', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { subject, body, enabled, sendRules } = req.body;
+    const template = await updateEmailTemplate(req.params.type as EmailTemplateType, {
+      subject, body, enabled, sendRules,
+    });
+    res.json({ message: 'Template updated', template });
+  } catch (error: any) {
+    console.error('Error updating email template:', error);
+    res.status(400).json({ error: error.message || 'Failed to update email template' });
+  }
+});
+
+// POST /api/admin/email-templates/:type/reset - Reset a template to defaults
+router.post('/email-templates/:type/reset', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const template = await resetEmailTemplate(req.params.type as EmailTemplateType);
+    res.json({ message: 'Template reset to default', template });
+  } catch (error: any) {
+    console.error('Error resetting email template:', error);
+    res.status(400).json({ error: error.message || 'Failed to reset email template' });
+  }
+});
+
+// POST /api/admin/email-templates/:type/test - Send a test email
+router.post('/email-templates/:type/test', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'email is required' });
+    }
+    const sent = await sendTestEmail(req.params.type as EmailTemplateType, email);
+    if (sent) {
+      res.json({ message: `Test email sent to ${email}` });
+    } else {
+      res.status(500).json({ error: 'Failed to send test email. Is RESEND_API_KEY configured?' });
+    }
+  } catch (error: any) {
+    console.error('Error sending test email:', error);
+    res.status(500).json({ error: error.message || 'Failed to send test email' });
   }
 });
 

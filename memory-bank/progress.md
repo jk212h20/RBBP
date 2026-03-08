@@ -154,7 +154,7 @@
 
 ### High Priority
 - [ ] **Google OAuth activation** — UI and callback exist, just needs Google Cloud credentials
-- [ ] **Email notifications** — Nodemailer + SendGrid dependency installed, no service built
+- [x] **Email notifications** — Resend API; welcome, event signup, withdrawal ready, claim link, event reminder templates
 - [ ] **Achievement/Badge system** — Schema exists (Achievement, UserAchievement models), no awarding logic or UI
 - [ ] **Event comments** — Schema exists (Comment model), no routes or UI
 

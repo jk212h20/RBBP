@@ -17,6 +17,7 @@ import { bech32 } from 'bech32';
 import prisma from '../lib/prisma';
 import { payInvoice, decodeInvoice, isVoltageConfigured, getChannelBalance } from './voltage.service';
 import { notifyWithdrawalProcessed } from './telegram.service';
+import { sendWithdrawalReadyEmail } from './email.service';
 import { WithdrawalStatus } from '@prisma/client';
 
 const LNURL_BASE_URL = process.env.LNURL_BASE_URL || process.env.LIGHTNING_AUTH_URL?.replace('/auth/lightning', '') || 'http://localhost:3001/api';
@@ -101,6 +102,16 @@ export async function createWithdrawal(
   const callbackUrl = `${LNURL_BASE_URL}/lnurl/withdraw?k1=${k1}`;
   const lnurl = encodeLnurl(callbackUrl);
   const lightningUri = `lightning:${lnurl}`;
+
+  // Notify user by email that sats are ready (non-blocking)
+  if (user.email) {
+    sendWithdrawalReadyEmail({
+      to: user.email,
+      playerName: user.name || 'Player',
+      amountSats,
+      description,
+    }).catch(() => {});
+  }
 
   return {
     withdrawal: {

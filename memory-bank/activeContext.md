@@ -1,7 +1,7 @@
 # Active Context
 
 ## Current Focus
-Referral system — admin management, invite friends, earn sats when they check in at events.
+Email service added (Resend). Referral system complete.
 
 ## Recent Changes (Feb 25, 2026)
 ### Player Profile — Points Breakdown
@@ -50,7 +50,24 @@ Referral system — admin management, invite friends, earn sats when they check 
 ## Architecture Overview
 See `systemPatterns.md`. Key: Next.js client → Express server → Prisma/PostgreSQL.
 
+## Recent Changes (Mar 8, 2026) — Email Service
+- **Replaced `nodemailer` with `resend`** — Resend API for transactional emails
+- **`email.service.ts`** — new service with themed HTML email templates (dark poker theme):
+  - `sendWelcomeEmail()` — sent on email/Google registration
+  - `sendEventSignupEmail()` — sent when player registers for a tournament
+  - `sendWithdrawalReadyEmail()` — sent when admin creates a withdrawal (sats ready)
+  - `sendClaimLinkEmail()` — for guest account claim links
+  - `sendEventReminderEmail()` — for day-before reminders (not yet wired to a cron/scheduler)
+  - Gracefully degrades when `RESEND_API_KEY` not set (logs warning, skips sends)
+- **`auth.service.ts`** — `register()` and `findOrCreateGoogleUser()` call `sendWelcomeEmail()` (non-blocking)
+- **`event.service.ts`** — `signupForEvent()` calls `sendEventSignupEmail()` (non-blocking, fetches user email + event venue)
+- **`withdrawal.service.ts`** — `createWithdrawal()` calls `sendWithdrawalReadyEmail()` (non-blocking)
+- **`.env.example`** updated: `RESEND_API_KEY`, `EMAIL_FROM` (replaced SendGrid references)
+- **`.vscode/project-url.json`** created for status bar link
+
 ## Environment Variables (server)
+- `RESEND_API_KEY` — Resend email API key (optional, emails disabled without it)
+- `EMAIL_FROM` — sender address (default: `Roatan Poker <noreply@roatanpoker.com>`)
 - `TELEGRAM_BOT_TOKEN` — CoraTelegramBot token
 - `DATABASE_URL`, `JWT_SECRET`, `GOOGLE_CLIENT_ID/SECRET`, `VOLTAGE_*`
 - `TELEGRAM_CHAT_ID` — legacy fallback (no longer primary notification mechanism)

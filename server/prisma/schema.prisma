@@ -514,6 +514,22 @@ model PointsHistory {
 }
 
 // ============================================
+// EMAIL TEMPLATES (Admin-configurable)
+// ============================================
+
+model EmailTemplate {
+  id        String   @id @default(cuid())
+  type      String   @unique // "welcome", "event_signup", "event_reminder", "withdrawal_ready", "claim_link"
+  subject   String   // Email subject line (supports {{variables}})
+  body      String   // HTML body content (inner content, supports {{variables}})
+  enabled   Boolean  @default(true)
+  sendRules Json?    // Type-specific rules, e.g. { "reminderHoursBefore": 24 } for event_reminder
+  updatedAt DateTime @updatedAt
+
+  @@map("email_templates")
+}
+
+// ============================================
 // DAILY PUZZLES (Sats Faucet)
 // ============================================
 
