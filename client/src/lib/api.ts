@@ -618,8 +618,51 @@ export const balanceAPI = {
       body: JSON.stringify(data),
     }),
   
+  debit: (data: { userId: string; amountSats: number; reason: string }) =>
+    fetchAPI<{ userId: string; newBalance: number; debited: number }>('/balance/admin/debit', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  
   getUserBalance: (userId: string) =>
     fetchAPI<{ userId: string; balanceSats: number }>(`/balance/admin/user/${userId}`),
+  
+  getUserTransactions: (userId: string, limit?: number) => {
+    const query = limit ? `?limit=${limit}` : '';
+    return fetchAPI<{
+      id: string;
+      userId: string;
+      type: string;
+      amountSats: number;
+      note: string | null;
+      adminId: string | null;
+      balanceAfter: number;
+      createdAt: string;
+      user: { id: string; name: string; email: string | null };
+    }[]>(`/balance/admin/user/${userId}/transactions${query}`);
+  },
+  
+  getTransactions: (limit?: number, offset?: number, type?: string) => {
+    const params = new URLSearchParams();
+    if (limit) params.append('limit', limit.toString());
+    if (offset) params.append('offset', offset.toString());
+    if (type) params.append('type', type);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return fetchAPI<{
+      transactions: {
+        id: string;
+        userId: string;
+        type: string;
+        amountSats: number;
+        note: string | null;
+        adminId: string | null;
+        balanceAfter: number;
+        createdAt: string;
+        user: { id: string; name: string; email: string | null };
+      }[];
+      total: number;
+    }>(`/balance/admin/transactions${query}`);
+  },
 };
 
 // ============================================

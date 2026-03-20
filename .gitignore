@@ -44,3 +44,4 @@ server/prisma/*.db-journal
 # Misc
 *.log
 *.tsbuildinfo
+.deploy-trigger

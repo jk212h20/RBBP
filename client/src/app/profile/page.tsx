@@ -1294,7 +1294,7 @@ export default function ProfilePage() {
               {withdrawalStatus === 'PAID' ? (
                 // Success state
                 <div className="flex flex-col items-center gap-4 py-8">
-                  <div className="text-6xl">✅</div>
+                  <div className="text-4xl">✅</div>
                   <h3 className="text-blue-300 font-bold text-xl text-center">
                     Withdrawal Complete!
                   </h3>
@@ -1305,7 +1305,7 @@ export default function ProfilePage() {
               ) : withdrawalStatus === 'FAILED' || withdrawalStatus === 'EXPIRED' ? (
                 // Failed/Expired state
                 <div className="flex flex-col items-center gap-4 py-8">
-                  <div className="text-6xl">❌</div>
+                  <div className="text-4xl">❌</div>
                   <h3 className="text-red-400 font-bold text-xl text-center">
                     Withdrawal {withdrawalStatus === 'EXPIRED' ? 'Expired' : 'Failed'}
                   </h3>

@@ -295,11 +295,11 @@ export default function EventsPage() {
             )}
           </div>
 
-          {/* Player count (large) + Points row */}
+          {/* Player count + Points row */}
           <div className="mt-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">👥</span>
-              <span className="text-2xl font-bold text-white">
+            <div className="flex items-center gap-1.5">
+              <span className="text-base">👥</span>
+              <span className="text-base font-bold text-white">
                 {signupCount} / {event.maxPlayers}
               </span>
             </div>

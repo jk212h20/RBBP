@@ -1,7 +1,7 @@
 /**
  * Balance Service
  * 
- * Manages user Lightning balances - credit, debit, and withdrawal operations.
+ * Manages user Lightning balances - credit, debit, withdrawal, and transaction history.
  */
 
 import prisma from '../lib/prisma';
@@ -69,12 +69,14 @@ export async function getUsersWithBalances() {
  * @param userId - User to credit
  * @param amountSats - Amount to add
  * @param reason - Optional reason for the credit
+ * @param adminId - Admin performing the action (optional, null for system actions)
  * @returns Updated balance
  */
 export async function creditBalance(
   userId: string,
   amountSats: number,
-  reason?: string
+  reason?: string,
+  adminId?: string
 ): Promise<{ userId: string; newBalance: number; credited: number }> {
   if (amountSats <= 0) {
     throw new Error('Amount must be positive');
@@ -86,14 +88,26 @@ export async function creditBalance(
     throw new Error('User not found');
   }
 
-  // Credit the balance
-  const updated = await prisma.user.update({
-    where: { id: userId },
-    data: {
-      lightningBalanceSats: { increment: amountSats },
-    },
-    select: { id: true, name: true, lightningBalanceSats: true },
-  });
+  // Credit the balance and create transaction record in a single transaction
+  const [updated, _tx] = await prisma.$transaction([
+    prisma.user.update({
+      where: { id: userId },
+      data: {
+        lightningBalanceSats: { increment: amountSats },
+      },
+      select: { id: true, name: true, lightningBalanceSats: true },
+    }),
+    prisma.balanceTransaction.create({
+      data: {
+        userId,
+        type: 'CREDIT',
+        amountSats,
+        note: reason || null,
+        adminId: adminId || null,
+        balanceAfter: user.lightningBalanceSats + amountSats,
+      },
+    }),
+  ]);
 
   console.log(`[Balance] Credited ${amountSats} sats to ${user.name} (${userId}). Reason: ${reason || 'N/A'}. New balance: ${updated.lightningBalanceSats}`);
 
@@ -105,15 +119,19 @@ export async function creditBalance(
 }
 
 /**
- * Debit sats from a user's balance (internal operation)
+ * Debit sats from a user's balance (admin or internal operation)
  * 
  * @param userId - User to debit
  * @param amountSats - Amount to subtract
+ * @param reason - Optional reason for the debit
+ * @param adminId - Admin performing the action (optional, null for system actions)
  * @returns Updated balance
  */
 export async function debitBalance(
   userId: string,
-  amountSats: number
+  amountSats: number,
+  reason?: string,
+  adminId?: string
 ): Promise<{ userId: string; newBalance: number; debited: number }> {
   if (amountSats <= 0) {
     throw new Error('Amount must be positive');
@@ -133,16 +151,28 @@ export async function debitBalance(
     throw new Error(`Insufficient balance. Have ${user.lightningBalanceSats} sats, need ${amountSats} sats.`);
   }
 
-  // Debit the balance
-  const updated = await prisma.user.update({
-    where: { id: userId },
-    data: {
-      lightningBalanceSats: { decrement: amountSats },
-    },
-    select: { id: true, lightningBalanceSats: true },
-  });
+  // Debit the balance and create transaction record
+  const [updated, _tx] = await prisma.$transaction([
+    prisma.user.update({
+      where: { id: userId },
+      data: {
+        lightningBalanceSats: { decrement: amountSats },
+      },
+      select: { id: true, lightningBalanceSats: true },
+    }),
+    prisma.balanceTransaction.create({
+      data: {
+        userId,
+        type: 'DEBIT',
+        amountSats,
+        note: reason || null,
+        adminId: adminId || null,
+        balanceAfter: user.lightningBalanceSats - amountSats,
+      },
+    }),
+  ]);
 
-  console.log(`[Balance] Debited ${amountSats} sats from ${user.name} (${userId}). New balance: ${updated.lightningBalanceSats}`);
+  console.log(`[Balance] Debited ${amountSats} sats from ${user.name} (${userId}). Reason: ${reason || 'N/A'}. New balance: ${updated.lightningBalanceSats}`);
 
   return {
     userId: updated.id,
@@ -228,7 +258,7 @@ export async function initiateWithdrawal(
   }
 
   // Debit the balance first (optimistic - we'll refund if withdrawal fails)
-  await debitBalance(userId, withdrawAmount);
+  await debitBalance(userId, withdrawAmount, 'Balance withdrawal');
 
   try {
     // Create the withdrawal
@@ -276,6 +306,57 @@ export async function handleWithdrawalComplete(
     );
     console.log(`[Balance] Refunded ${withdrawal.amountSats} sats to user ${withdrawal.userId} (withdrawal ${status})`);
   }
+}
+
+// ============================================
+// TRANSACTION HISTORY
+// ============================================
+
+/**
+ * Get transaction history for a specific user (admin)
+ */
+export async function getUserTransactions(
+  userId: string,
+  limit: number = 50
+) {
+  return prisma.balanceTransaction.findMany({
+    where: { userId },
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+    include: {
+      user: {
+        select: { id: true, name: true, email: true },
+      },
+    },
+  });
+}
+
+/**
+ * Get all transactions across all users (admin) — paginated
+ */
+export async function getAllTransactions(
+  limit: number = 50,
+  offset: number = 0,
+  type?: string
+) {
+  const where = type ? { type } : {};
+  
+  const [transactions, total] = await Promise.all([
+    prisma.balanceTransaction.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      skip: offset,
+      include: {
+        user: {
+          select: { id: true, name: true, email: true },
+        },
+      },
+    }),
+    prisma.balanceTransaction.count({ where }),
+  ]);
+
+  return { transactions, total };
 }
 
 // ============================================

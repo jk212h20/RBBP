@@ -181,11 +181,11 @@ export default function HomePage() {
                         <p className="text-blue-300 text-sm mt-2">{formatDate(event.dateTime)}</p>
 
                         {/* Players & Points row */}
-                        <div className="flex justify-between items-center mt-3">
-                          {/* Player count - larger font */}
-                          <span className="text-white font-bold text-xl">
-                            👥 {event._count.signups}/{event.maxPlayers}
-                          </span>
+                          <div className="flex justify-between items-center mt-3">
+                            {/* Player count */}
+                            <span className="text-white font-bold text-base flex items-center gap-1">
+                              👥 {event._count.signups}/{event.maxPlayers}
+                            </span>
                           {/* Treasure chest with possible points */}
                           <span className="flex items-center gap-1 bg-yellow-600/20 text-yellow-300 font-bold text-sm px-3 py-1 rounded-lg">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
@@ -250,21 +250,21 @@ export default function HomePage() {
         {/* Features */}
         <div className="grid md:grid-cols-3 gap-8 mb-16">
           <div className="bg-white/10 backdrop-blur rounded-2xl p-8 border border-white/10">
-            <div className="text-4xl mb-4">🏆</div>
+            <div className="text-2xl mb-3">🏆</div>
             <h3 className="text-white font-bold text-xl mb-2">Leaderboards</h3>
             <p className="text-white/70">
               Track your ranking across seasons and compete for the top spot.
             </p>
           </div>
           <div className="bg-white/10 backdrop-blur rounded-2xl p-8 border border-white/10">
-            <div className="text-4xl mb-4">📅</div>
+            <div className="text-2xl mb-3">📅</div>
             <h3 className="text-white font-bold text-xl mb-2">Events</h3>
             <p className="text-white/70">
               Find poker nights at venues across Roatan and sign up instantly.
             </p>
           </div>
           <div className="bg-white/10 backdrop-blur rounded-2xl p-8 border border-white/10">
-            <div className="text-4xl mb-4">⚡</div>
+            <div className="text-2xl mb-3">⚡</div>
             <h3 className="text-white font-bold text-xl mb-2">Lightning Login</h3>
             <p className="text-white/70">
               Sign in with your Bitcoin Lightning wallet - no password needed!

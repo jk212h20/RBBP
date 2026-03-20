@@ -48,7 +48,7 @@ function AuthCallbackContent() {
       <div className="min-h-screen flex items-center justify-center ">
         <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md mx-4">
           <div className="text-center">
-            <div className="text-5xl mb-4">❌</div>
+            <div className="text-4xl mb-4">❌</div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
               Authentication Failed
             </h1>

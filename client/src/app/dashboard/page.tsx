@@ -177,31 +177,31 @@ function DashboardContent() {
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <div className="bg-black/20 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-yellow-400">
+                <p className="text-2xl font-bold text-yellow-400">
                   {seasonStanding.standing?.totalPoints || 0}
                 </p>
                 <p className="text-yellow-200/70 text-sm">Points</p>
               </div>
               <div className="bg-black/20 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-white">
+                <p className="text-2xl font-bold text-white">
                   {seasonStanding.standing?.rank ? `#${seasonStanding.standing.rank}` : '-'}
                 </p>
                 <p className="text-yellow-200/70 text-sm">Rank</p>
               </div>
               <div className="bg-black/20 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-white">
+                <p className="text-2xl font-bold text-white">
                   {seasonStanding.standing?.eventsPlayed || 0}
                 </p>
                 <p className="text-yellow-200/70 text-sm">Events</p>
               </div>
               <div className="bg-black/20 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-blue-300">
+                <p className="text-2xl font-bold text-blue-300">
                   {seasonStanding.standing?.wins || 0}
                 </p>
                 <p className="text-yellow-200/70 text-sm">Wins</p>
               </div>
               <div className="bg-black/20 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-orange-400">
+                <p className="text-2xl font-bold text-orange-400">
                   {seasonStanding.standing?.knockouts || 0}
                 </p>
                 <p className="text-yellow-200/70 text-sm">Knockouts</p>
@@ -218,22 +218,22 @@ function DashboardContent() {
         <h2 className="text-white text-xl font-bold mb-4">Quick Actions</h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Link href="/leaderboard" className="bg-white/10 backdrop-blur rounded-xl p-6 hover:bg-white/20 transition">
-            <div className="text-3xl mb-2">🏆</div>
+            <div className="text-xl mb-2">🏆</div>
             <h3 className="text-white font-semibold">Leaderboard</h3>
             <p className="text-white/60 text-sm">View current standings</p>
           </Link>
           <Link href="/events" className="bg-white/10 backdrop-blur rounded-xl p-6 hover:bg-white/20 transition">
-            <div className="text-3xl mb-2">📅</div>
+            <div className="text-xl mb-2">📅</div>
             <h3 className="text-white font-semibold">Events</h3>
             <p className="text-white/60 text-sm">Browse upcoming games</p>
           </Link>
           <Link href="/venues" className="bg-white/10 backdrop-blur rounded-xl p-6 hover:bg-white/20 transition">
-            <div className="text-3xl mb-2">📍</div>
+            <div className="text-xl mb-2">📍</div>
             <h3 className="text-white font-semibold">Venues</h3>
             <p className="text-white/60 text-sm">Find poker nights</p>
           </Link>
           <Link href="/profile" className="bg-white/10 backdrop-blur rounded-xl p-6 hover:bg-white/20 transition">
-            <div className="text-3xl mb-2">👤</div>
+            <div className="text-xl mb-2">👤</div>
             <h3 className="text-white font-semibold">Profile</h3>
             <p className="text-white/60 text-sm">Edit your details</p>
           </Link>
@@ -245,7 +245,7 @@ function DashboardContent() {
             <h2 className="text-white text-xl font-bold mb-4 mt-8">Admin</h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Link href="/admin" className="bg-purple-600/20 backdrop-blur rounded-xl p-6 hover:bg-purple-600/30 transition border border-purple-500/30">
-                <div className="text-3xl mb-2">👑</div>
+                <div className="text-xl mb-2">👑</div>
                 <h3 className="text-purple-300 font-semibold">Admin Panel</h3>
                 <p className="text-purple-300/60 text-sm">Manage everything</p>
               </Link>

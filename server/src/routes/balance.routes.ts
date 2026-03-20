@@ -11,8 +11,11 @@ import {
   getAllUsersWithBalances,
   getUsersWithBalances,
   creditBalance,
+  debitBalance,
   getBalanceStats,
   initiateWithdrawal,
+  getUserTransactions,
+  getAllTransactions,
 } from '../services/balance.service';
 import { getWithdrawalWithLnurl } from '../services/withdrawal.service';
 
@@ -159,6 +162,7 @@ router.get('/admin/stats', authenticate, requireAdmin, async (req: Request, res:
 router.post('/admin/credit', authenticate, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { userId, amountSats, reason } = req.body;
+    const adminId = req.user?.userId;
 
     if (!userId || !amountSats) {
       return res.status(400).json({ error: 'userId and amountSats are required' });
@@ -168,12 +172,44 @@ router.post('/admin/credit', authenticate, requireAdmin, async (req: Request, re
       return res.status(400).json({ error: 'Amount must be at least 1 sat' });
     }
 
-    const result = await creditBalance(userId, amountSats, reason);
+    const result = await creditBalance(userId, amountSats, reason, adminId);
     return res.json(result);
   } catch (error) {
     console.error('[Balance] Credit error:', error);
     return res.status(400).json({ 
       error: error instanceof Error ? error.message : 'Failed to credit balance' 
+    });
+  }
+});
+
+/**
+ * POST /api/balance/admin/debit
+ * 
+ * Debit sats from a user's balance (admin only)
+ */
+router.post('/admin/debit', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { userId, amountSats, reason } = req.body;
+    const adminId = req.user?.userId;
+
+    if (!userId || !amountSats) {
+      return res.status(400).json({ error: 'userId and amountSats are required' });
+    }
+
+    if (amountSats < 1) {
+      return res.status(400).json({ error: 'Amount must be at least 1 sat' });
+    }
+
+    if (!reason || reason.trim().length === 0) {
+      return res.status(400).json({ error: 'A reason/note is required for debits' });
+    }
+
+    const result = await debitBalance(userId, amountSats, reason, adminId);
+    return res.json(result);
+  } catch (error) {
+    console.error('[Balance] Debit error:', error);
+    return res.status(400).json({ 
+      error: error instanceof Error ? error.message : 'Failed to debit balance' 
     });
   }
 });
@@ -190,6 +226,41 @@ router.get('/admin/user/:userId', authenticate, requireAdmin, async (req: Reques
   } catch (error) {
     console.error('[Balance] Get user balance error:', error);
     return res.status(500).json({ error: 'Failed to get balance' });
+  }
+});
+
+/**
+ * GET /api/balance/admin/user/:userId/transactions
+ * 
+ * Get transaction history for a specific user (admin only)
+ */
+router.get('/admin/user/:userId/transactions', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 50;
+    const transactions = await getUserTransactions(req.params.userId, limit);
+    return res.json(transactions);
+  } catch (error) {
+    console.error('[Balance] Get user transactions error:', error);
+    return res.status(500).json({ error: 'Failed to get transactions' });
+  }
+});
+
+/**
+ * GET /api/balance/admin/transactions
+ * 
+ * Get all transactions across all users (admin only) — paginated
+ */
+router.get('/admin/transactions', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 50;
+    const offset = parseInt(req.query.offset as string) || 0;
+    const type = req.query.type as string | undefined;
+
+    const result = await getAllTransactions(limit, offset, type);
+    return res.json(result);
+  } catch (error) {
+    console.error('[Balance] Get all transactions error:', error);
+    return res.status(500).json({ error: 'Failed to get transactions' });
   }
 });
 

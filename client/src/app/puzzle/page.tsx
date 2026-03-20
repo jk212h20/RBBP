@@ -143,7 +143,7 @@ export default function PuzzlePage() {
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900">
         <MobileNav currentPage="puzzle" />
         <div className="max-w-2xl mx-auto px-4 py-12 text-center">
-          <div className="text-6xl mb-4">🧩</div>
+          <div className="text-4xl mb-4">🧩</div>
           <h1 className="text-3xl font-bold text-white mb-4">Daily Poker Puzzle</h1>
           <p className="text-white/70 mb-6">
             Solve a daily poker puzzle and earn <span className="text-yellow-400 font-bold">500 sats</span> for each correct answer!
@@ -224,7 +224,7 @@ export default function PuzzlePage() {
           </div>
         ) : !puzzle ? (
           <div className="text-center py-12">
-            <div className="text-6xl mb-4">📅</div>
+            <div className="text-4xl mb-4">📅</div>
             <p className="text-white/70 text-lg">No puzzle available today.</p>
             <p className="text-white/50 mt-2">Check back tomorrow!</p>
           </div>
