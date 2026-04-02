@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import MobileNav from '@/components/MobileNav';
-import { playersAPI } from '@/lib/api';
+import { playersAPI, sideBetsAPI } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
 
 interface PointsHistoryEntry {
   id: string;
@@ -79,6 +80,89 @@ function getOrdinal(n: number): string {
   const s = ['th', 'st', 'nd', 'rd'];
   const v = n % 100;
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+function PlayerSideBets({ playerId }: { playerId: string }) {
+  const { isAuthenticated } = useAuth();
+  const [bets, setBets] = useState<any[]>([]);
+  const [loadingBets, setLoadingBets] = useState(true);
+
+  useEffect(() => {
+    sideBetsAPI.getPlayerBets(playerId)
+      .then((data: any[]) => setBets(data))
+      .catch(() => {})
+      .finally(() => setLoadingBets(false));
+  }, [playerId]);
+
+  if (loadingBets) return null;
+
+  const activeBets = bets.filter(b => b.status === 'OPEN');
+  const completedBets = bets.filter(b => b.status !== 'OPEN');
+
+  if (bets.length === 0) {
+    // Show discrete create link if viewing own profile or authenticated
+    if (isAuthenticated) {
+      return (
+        <div className="flex justify-center mb-6">
+          <Link href="/bets/create" className="text-white/40 hover:text-white/70 text-sm transition">
+            🎲 Create a Side Bet
+          </Link>
+        </div>
+      );
+    }
+    return null;
+  }
+
+  return (
+    <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 p-6 mb-6">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold text-white">🎲 Side Bets</h2>
+        {isAuthenticated && (
+          <Link href="/bets/create" className="text-blue-300 hover:text-blue-200 text-sm">+ New Bet</Link>
+        )}
+      </div>
+      {activeBets.length > 0 && (
+        <div className="mb-3">
+          <h3 className="text-blue-200 text-xs font-medium uppercase mb-2">Active</h3>
+          <div className="space-y-2">
+            {activeBets.map((bet: any) => (
+              <Link key={bet.id} href={`/bets/${bet.id}`} className="block p-3 bg-white/5 rounded-lg hover:bg-white/10 transition">
+                <div className="flex justify-between items-center">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-white font-medium text-sm truncate">{bet.label}</p>
+                    <p className="text-blue-300 text-xs">{bet._count?.entries || 0} entries · ⚡ {bet.entrySats} sats</p>
+                  </div>
+                  <span className="bg-green-500/20 text-green-300 text-xs px-2 py-0.5 rounded-full font-medium ml-2">OPEN</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+      {completedBets.length > 0 && (
+        <div>
+          <h3 className="text-blue-200 text-xs font-medium uppercase mb-2">Completed</h3>
+          <div className="space-y-2">
+            {completedBets.slice(0, 5).map((bet: any) => (
+              <Link key={bet.id} href={`/bets/${bet.id}`} className="block p-3 bg-white/5 rounded-lg hover:bg-white/10 transition">
+                <div className="flex justify-between items-center">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-white/70 font-medium text-sm truncate">{bet.label}</p>
+                    <p className="text-blue-300/60 text-xs">
+                      {bet.winner ? `🏆 ${bet.winner.name}` : bet.status === 'CANCELLED' ? 'Cancelled' : ''}
+                    </p>
+                  </div>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ml-2 ${
+                    bet.status === 'SETTLED' ? 'bg-blue-500/20 text-blue-300' : 'bg-red-500/20 text-red-300'
+                  }`}>{bet.status}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function PlayerProfilePage() {
@@ -359,6 +443,9 @@ export default function PlayerProfilePage() {
             </div>
           </div>
         )}
+
+        {/* Side Bets */}
+        <PlayerSideBets playerId={playerId} />
 
         {/* All Seasons History */}
         {profile.allSeasons && profile.allSeasons.length > 1 && (

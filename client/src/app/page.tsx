@@ -275,6 +275,18 @@ export default function HomePage() {
           </div>
         </div>
 
+        {/* Side Bets — discrete link for logged-in users */}
+        {isAuthenticated && (
+          <div className="flex justify-center mb-8">
+            <Link
+              href="/bets/create"
+              className="text-white/50 hover:text-white/80 text-sm flex items-center gap-1.5 transition"
+            >
+              🎲 Create a Side Bet
+            </Link>
+          </div>
+        )}
+
         {/* CTA */}
         {!isAuthenticated && (
           <div className="text-center bg-white/5 backdrop-blur rounded-2xl p-8 border border-white/10">

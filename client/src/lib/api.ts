@@ -842,6 +842,58 @@ export const playersAPI = {
   getProfile: (id: string) => fetchAPI<any>(`/auth/players/${id}`),
 };
 
+// ============================================
+// SIDE BETS API (User-Created Betting Pools)
+// ============================================
+export const sideBetsAPI = {
+  listOpen: (eventId?: string) => {
+    const query = eventId ? `?eventId=${eventId}` : '';
+    return fetchAPI<any[]>(`/side-bets${query}`);
+  },
+
+  getById: (id: string) => fetchAPI<any>(`/side-bets/${id}`),
+
+  getMy: () => fetchAPI<{ created: any[]; entered: any[] }>('/side-bets/my/all'),
+
+  getPlayerBets: (playerId: string) => fetchAPI<any[]>(`/side-bets/player/${playerId}`),
+
+  create: (data: { label: string; entrySats: number; eventId?: string }) =>
+    fetchAPI<{ sideBet: any; invoice: { paymentRequest: string; paymentHash: string; amountSats: number } }>(
+      '/side-bets',
+      { method: 'POST', body: JSON.stringify(data) }
+    ),
+
+  enter: (id: string) =>
+    fetchAPI<{ invoice: { paymentRequest: string; paymentHash: string; amountSats: number } }>(
+      `/side-bets/${id}/enter`,
+      { method: 'POST' }
+    ),
+
+  checkPayment: (id: string) =>
+    fetchAPI<{ paid: boolean; paidAt?: string }>(`/side-bets/${id}/check-payment`),
+
+  settle: (id: string, winnerId: string) =>
+    fetchAPI<{ message: string; winnerId: string; winnerName: string; prizeAmount: number; feeAmount: number }>(
+      `/side-bets/${id}/settle`,
+      { method: 'POST', body: JSON.stringify({ winnerId }) }
+    ),
+
+  cancel: (id: string) =>
+    fetchAPI<{ message: string; refundedCount: number }>(
+      `/side-bets/${id}/cancel`,
+      { method: 'POST' }
+    ),
+
+  // Admin
+  getSettings: () => fetchAPI<{ feePct: number }>('/side-bets/admin/settings'),
+
+  updateSettings: (feePct: number) =>
+    fetchAPI<{ message: string; feePct: number }>('/side-bets/admin/settings', {
+      method: 'PUT',
+      body: JSON.stringify({ feePct }),
+    }),
+};
+
 // Profile API (authenticated user's own profile)
 export const profileAPI = {
   updateSocialLinks: (socialLinks: Record<string, string>) =>

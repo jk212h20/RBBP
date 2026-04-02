@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import MobileNav from '@/components/MobileNav';
-import { eventsAPI, authAPI, standingsAPI, balanceAPI, withdrawalsAPI, playersAPI } from '@/lib/api';
+import { eventsAPI, authAPI, standingsAPI, balanceAPI, withdrawalsAPI, playersAPI, sideBetsAPI } from '@/lib/api';
 import ReferralTab from '@/components/ReferralTab';
 
 interface UserEvent {
@@ -32,6 +32,79 @@ interface SeasonStanding {
     knockouts: number;
     rank: number | null;
   } | null;
+}
+
+function SideBetsSection() {
+  const [myBets, setMyBets] = useState<{ created: any[]; entered: any[] } | null>(null);
+  const [loadingBets, setLoadingBets] = useState(true);
+
+  useEffect(() => {
+    sideBetsAPI.getMy().then(setMyBets).catch(() => {}).finally(() => setLoadingBets(false));
+  }, []);
+
+  const allBets = myBets ? [...myBets.created, ...myBets.entered.filter(e => !myBets.created.some((c: any) => c.id === e.id))] : [];
+  const activeBets = allBets.filter((b: any) => b.status === 'OPEN');
+  const completedBets = allBets.filter((b: any) => b.status !== 'OPEN');
+
+  if (loadingBets) return null;
+  if (allBets.length === 0 && activeBets.length === 0) {
+    return (
+      <div className="flex justify-center mb-6">
+        <Link href="/bets/create" className="text-white/50 hover:text-white/80 text-sm flex items-center gap-1.5 transition">
+          🎲 Create a Side Bet
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 p-4 md:p-6 mb-6">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg md:text-xl font-bold text-white">🎲 Side Bets</h2>
+        <Link href="/bets/create" className="text-blue-300 hover:text-blue-200 text-sm">+ New Bet</Link>
+      </div>
+      {activeBets.length > 0 && (
+        <div className="mb-3">
+          <h3 className="text-blue-200 text-xs font-medium uppercase mb-2">Active</h3>
+          <div className="space-y-2">
+            {activeBets.map((bet: any) => (
+              <Link key={bet.id} href={`/bets/${bet.id}`} className="block p-3 bg-white/5 rounded-lg hover:bg-white/10 transition">
+                <div className="flex justify-between items-center">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-white font-medium text-sm truncate">{bet.label}</p>
+                    <p className="text-blue-300 text-xs">{bet.entryCount || bet._count?.entries || 0} entries · ⚡ {bet.entrySats} sats each</p>
+                  </div>
+                  <span className="bg-green-500/20 text-green-300 text-xs px-2 py-0.5 rounded-full font-medium ml-2">OPEN</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+      {completedBets.length > 0 && (
+        <div>
+          <h3 className="text-blue-200 text-xs font-medium uppercase mb-2">Completed</h3>
+          <div className="space-y-2">
+            {completedBets.slice(0, 5).map((bet: any) => (
+              <Link key={bet.id} href={`/bets/${bet.id}`} className="block p-3 bg-white/5 rounded-lg hover:bg-white/10 transition">
+                <div className="flex justify-between items-center">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-white/70 font-medium text-sm truncate">{bet.label}</p>
+                    <p className="text-blue-300/60 text-xs">
+                      {bet.winner ? `🏆 ${bet.winner.name}` : bet.status === 'CANCELLED' ? 'Cancelled' : ''}
+                    </p>
+                  </div>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ml-2 ${
+                    bet.status === 'SETTLED' ? 'bg-blue-500/20 text-blue-300' : 'bg-red-500/20 text-red-300'
+                  }`}>{bet.status}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function ProfilePage() {
@@ -1434,6 +1507,9 @@ export default function ProfilePage() {
           <h2 className="text-lg md:text-xl font-bold text-white mb-4">🎯 Referral Program</h2>
           <ReferralTab />
         </div>
+
+        {/* My Side Bets */}
+        <SideBetsSection />
 
         {/* Season Points Card */}
         <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 backdrop-blur rounded-xl border border-yellow-500/30 p-4 md:p-6 mb-6">

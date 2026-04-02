@@ -1,7 +1,15 @@
 # Active Context
 
 ## Current Focus
-Admin-customizable email templates with send rules. Referral system complete.
+Admin balance management with credit/debit + transaction audit trail. Email templates and referral system complete.
+
+## Recent Changes (Mar 20, 2026) — Balance Transactions
+- **`BalanceTransaction` Prisma model** — audit trail for every Lightning balance change (type: CREDIT/DEBIT/WITHDRAWAL/REFUND, amountSats, note, adminId, balanceAfter)
+- **Migration `20260320000000_add_balance_transactions`** — `balance_transactions` table with userId and createdAt indexes
+- **`balance.service.ts`** — `creditBalance()` and `debitBalance()` now accept optional `adminId` param and create a `BalanceTransaction` record atomically; added `getUserTransactions()` and `getAllTransactions()` (paginated, filterable)
+- **`balance.routes.ts`** — new `POST /api/balance/admin/debit` (reason required), `GET /api/balance/admin/transactions` (paginated, filterable by type), `GET /api/balance/admin/user/:userId/transactions`; credit endpoint now passes adminId
+- **`api.ts`** — `balanceAPI.debit()`, `balanceAPI.getTransactions()`, `balanceAPI.getUserTransactions()`
+- **`BalanceTab.tsx`** — debit form (red, reason required) alongside credit form (green); user balances list is clickable → per-user transaction drill-down; global transaction history table with type filter and pagination
 
 ## Recent Changes (Feb 25, 2026)
 ### Player Profile — Points Breakdown

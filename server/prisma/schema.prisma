@@ -87,6 +87,9 @@ model User {
   lastLongerWins             Event[]            @relation("LastLongerWinner")
   puzzleAttempts             PuzzleAttempt[]
   balanceTransactions        BalanceTransaction[]
+  sideBetsCreated            SideBet[]          @relation("SideBetCreator")
+  sideBetsWon                SideBet[]          @relation("SideBetWinner")
+  sideBetEntries             SideBetEntry[]
 
   @@map("users")
 }
@@ -222,6 +225,7 @@ model Event {
   results            Result[]
   comments           Comment[]
   lastLongerEntries  LastLongerEntry[]
+  sideBets           SideBet[]
 
   @@map("events")
 }
@@ -548,6 +552,55 @@ model BalanceTransaction {
   user  User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("balance_transactions")
+}
+
+// ============================================
+// SIDE BETS (User-Created Betting Pools)
+// ============================================
+
+enum SideBetStatus {
+  OPEN
+  SETTLED
+  CANCELLED
+}
+
+model SideBet {
+  id          String        @id @default(cuid())
+  label       String        // User-chosen name (e.g., "Most Bluffs")
+  creatorId   String        // Who created & decides winner
+  eventId     String?       // Optional link to an event
+  entrySats   Int           // Cost per entry
+  feePct      Float         @default(0) // Platform fee % at time of creation
+  status      SideBetStatus @default(OPEN)
+  winnerId    String?       // Set when creator settles
+  settledAt   DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  creator  User          @relation("SideBetCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  event    Event?        @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  winner   User?         @relation("SideBetWinner", fields: [winnerId], references: [id], onDelete: SetNull)
+  entries  SideBetEntry[]
+
+  @@map("side_bets")
+}
+
+model SideBetEntry {
+  id          String    @id @default(cuid())
+  sideBetId   String
+  userId      String
+  amountSats  Int
+  paymentHash String?   // Lightning invoice payment hash
+  paidAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  sideBet SideBet @relation(fields: [sideBetId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sideBetId, userId])
+  @@map("side_bet_entries")
 }
 
 // ============================================

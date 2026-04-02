@@ -18,6 +18,7 @@ import balanceRoutes from './routes/balance.routes';
 import faqRoutes from './routes/faq.routes';
 import venueApplicationRoutes from './routes/venue-application.routes';
 import puzzleRoutes from './routes/puzzle.routes';
+import sideBetRoutes from './routes/side-bet.routes';
 
 // Load environment variables
 dotenv.config();
@@ -187,6 +188,9 @@ app.use('/api/venue-applications', venueApplicationRoutes);
 
 // Daily Puzzle routes (sats faucet for event attendees)
 app.use('/api/puzzle', puzzleRoutes);
+
+// Side Bet routes (user-created betting pools)
+app.use('/api/side-bets', sideBetRoutes);
 
 // ============================================
 // ERROR HANDLING
