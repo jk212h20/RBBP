@@ -1,7 +1,21 @@
 # Active Context
 
 ## Current Focus
-Admin balance management with credit/debit + transaction audit trail. Email templates and referral system complete.
+User-created side bets system (Apr 1, 2026). Admin balance management, email templates, and referral system complete.
+
+## Recent Changes (Apr 1, 2026) — User-Created Side Bets
+- **`SideBet` + `SideBetEntry` Prisma models** — `SideBet` has label, entrySats, status (OPEN/SETTLED/CANCELLED), feePct, creatorId, winnerId, optional eventId; `SideBetEntry` links user to bet
+- **`SideBetSettings` model** — admin-configurable `sideBetFeePct` (default 0)
+- **Migration `20260401000000_add_side_bets`** — 3 new tables: `side_bets`, `side_bet_entries`, `side_bet_settings`
+- **`side-bet.service.ts`** — full service: `create()`, `enter()`, `leave()`, `settle()` (deducts fee, credits winner), `cancel()` (refunds all), `refund()` (refunds all from settled), `getSettings()`, `updateSettings()`
+- **`side-bet.routes.ts`** — REST API: `GET /api/side-bets` (open, optional eventId filter), `GET /api/side-bets/:id`, `GET /api/side-bets/my` (created + entered), `GET /api/side-bets/player/:userId`, `POST /api/side-bets` (create), `POST /:id/enter`, `POST /:id/leave`, `POST /:id/settle`, `POST /:id/cancel`, `POST /:id/refund`, `GET /settings`, `PUT /settings` (admin)
+- **`api.ts`** — `sideBetsAPI` object with all endpoints
+- **`/bets/create` page** — form: label, entry amount (sats), optional event link
+- **`/bets/[id]` page** — bet detail: entries list, enter/leave, creator can settle (pick winner) or cancel, admin can refund
+- **`/page.tsx` (home)** — discrete "🎲 Create a Side Bet" link in hero section
+- **`/profile/page.tsx`** — `SideBetsSection` component showing active/completed bets with "Create" link
+- **`/players/[id]/page.tsx`** — `PlayerSideBets` component showing a player's public bets
+- **Key pattern:** Creator decides the single winner. Fee (default 0%) deducted from pool on settle. All entries funded from Lightning balance; winner credited pool minus fee.
 
 ## Recent Changes (Mar 20, 2026) — Balance Transactions
 - **`BalanceTransaction` Prisma model** — audit trail for every Lightning balance change (type: CREDIT/DEBIT/WITHDRAWAL/REFUND, amountSats, note, adminId, balanceAfter)
