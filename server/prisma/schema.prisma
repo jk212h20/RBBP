@@ -567,6 +567,7 @@ enum SideBetStatus {
 model SideBet {
   id          String        @id @default(cuid())
   label       String        // User-chosen name (e.g., "Most Bluffs")
+  description String?       // Optional details about the bet
   creatorId   String        // Who created & decides winner
   eventId     String?       // Optional link to an event
   entrySats   Int           // Cost per entry

@@ -857,7 +857,7 @@ export const sideBetsAPI = {
 
   getPlayerBets: (playerId: string) => fetchAPI<any[]>(`/side-bets/player/${playerId}`),
 
-  create: (data: { label: string; entrySats: number; eventId?: string }) =>
+  create: (data: { label: string; description?: string; entrySats: number; eventId?: string }) =>
     fetchAPI<{ sideBet: any; invoice: { paymentRequest: string; paymentHash: string; amountSats: number } }>(
       '/side-bets',
       { method: 'POST', body: JSON.stringify(data) }

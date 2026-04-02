@@ -10,6 +10,7 @@ import { sideBetsAPI } from '@/lib/api';
 interface SideBetDetail {
   id: string;
   label: string;
+  description: string | null;
   creator: { id: string; name: string };
   event: { id: string; name: string } | null;
   entrySats: number;
@@ -167,6 +168,9 @@ export default function SideBetDetailPage() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <h1 className="text-2xl font-bold text-white">{bet.label}</h1>
+              {bet.description && (
+                <p className="text-blue-200/70 text-sm mt-1">{bet.description}</p>
+              )}
               <p className="text-blue-300 text-sm mt-1">
                 Created by <Link href={`/players/${bet.creator.id}`} className="text-blue-200 hover:underline">{bet.creator.name}</Link>
               </p>

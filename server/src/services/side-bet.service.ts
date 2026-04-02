@@ -43,6 +43,7 @@ export class SideBetService {
    */
   async createSideBet(data: {
     label: string;
+    description?: string;
     entrySats: number;
     creatorId: string;
     eventId?: string;
@@ -66,6 +67,7 @@ export class SideBetService {
     const sideBet = await prisma.sideBet.create({
       data: {
         label: data.label.trim(),
+        description: data.description?.trim() || null,
         creatorId: data.creatorId,
         eventId: data.eventId || null,
         entrySats: data.entrySats,
@@ -203,6 +205,7 @@ export class SideBetService {
     return {
       id: sb.id,
       label: sb.label,
+      description: sb.description,
       creator: sb.creator,
       event: sb.event,
       entrySats: sb.entrySats,

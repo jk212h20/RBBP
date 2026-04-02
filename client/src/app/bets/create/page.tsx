@@ -11,6 +11,7 @@ export default function CreateSideBetPage() {
   const { isAuthenticated, loading } = useAuth();
   const router = useRouter();
   const [label, setLabel] = useState('');
+  const [description, setDescription] = useState('');
   const [entrySats, setEntrySats] = useState('500');
   const [eventId, setEventId] = useState('');
   const [events, setEvents] = useState<{ id: string; name: string }[]>([]);
@@ -57,6 +58,7 @@ export default function CreateSideBetPage() {
     try {
       const result = await sideBetsAPI.create({
         label: label.trim(),
+        description: description.trim() || undefined,
         entrySats: sats,
         eventId: eventId || undefined,
       });
@@ -89,6 +91,18 @@ export default function CreateSideBetPage() {
                 maxLength={100}
                 className="w-full p-3 bg-white/10 border border-blue-600/50 rounded-lg text-white placeholder-blue-200/40 focus:outline-none focus:border-blue-500"
                 placeholder='e.g. "First to bust pays the table"'
+              />
+            </div>
+
+            <div>
+              <label className="block text-blue-100 text-sm mb-1">Details <span className="text-blue-300/60">(optional)</span></label>
+              <textarea
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                maxLength={500}
+                rows={2}
+                className="w-full p-3 bg-white/10 border border-blue-600/50 rounded-lg text-white placeholder-blue-200/40 focus:outline-none focus:border-blue-500 text-sm resize-none"
+                placeholder="Rules, context, or anything else players should know..."
               />
             </div>
 

@@ -68,14 +68,15 @@ router.get('/:id', async (req: Request, res: Response) => {
 router.post('/', authenticate, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
-    const { label, entrySats, eventId } = req.body;
-    
+    const { label, description, entrySats, eventId } = req.body;
+
     if (!label || !entrySats) {
       return res.status(400).json({ error: 'label and entrySats are required' });
     }
 
     const result = await sideBetService.createSideBet({
       label,
+      description: description || undefined,
       entrySats: parseInt(entrySats),
       creatorId: userId,
       eventId: eventId || undefined,
