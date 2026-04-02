@@ -49,10 +49,16 @@ function SideBetsSection() {
   if (loadingBets) return null;
   if (allBets.length === 0 && activeBets.length === 0) {
     return (
-      <div className="flex justify-center mb-6">
-        <Link href="/bets/create" className="text-white/50 hover:text-white/80 text-sm flex items-center gap-1.5 transition">
-          🎲 Create a Side Bet
-        </Link>
+      <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 p-4 md:p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg md:text-xl font-bold text-white">🎲 Side Bets</h2>
+        </div>
+        <div className="text-center py-4">
+          <p className="text-blue-300 text-sm mb-3">No side bets yet</p>
+          <Link href="/bets/create" className="text-blue-300 hover:text-blue-200 text-sm font-medium transition">
+            + Create a Side Bet
+          </Link>
+        </div>
       </div>
     );
   }
