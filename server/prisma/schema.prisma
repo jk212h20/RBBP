@@ -600,7 +600,6 @@ model SideBetEntry {
   sideBet SideBet @relation(fields: [sideBetId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([sideBetId, userId])
   @@map("side_bet_entries")
 }
 

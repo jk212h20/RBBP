@@ -3,6 +3,7 @@
  * 
  * User-created betting pools. Creator sets label & entry cost,
  * pays to enter (initiating the bet), other users join by paying Lightning.
+ * Users can enter the same pool multiple times.
  * Creator picks the single winner. Platform takes a configurable fee (default 0%).
  * Fee is credited to a special "FEE" account for accounting.
  */
@@ -99,45 +100,42 @@ export class SideBetService {
   }
 
   /**
-   * Enter an existing side bet (generate Lightning invoice)
+   * Enter an existing side bet (generate Lightning invoice).
+   * Users can enter multiple times — each entry creates a new row.
    */
   async enterSideBet(sideBetId: string, userId: string) {
     const sideBet = await prisma.sideBet.findUnique({
       where: { id: sideBetId },
-      include: {
-        entries: { where: { paidAt: { not: null } }, select: { id: true } },
-      },
     });
 
     if (!sideBet) throw new Error('Side bet not found');
     if (sideBet.status !== 'OPEN') throw new Error('This side bet is no longer open');
 
     // Check creator has paid (bet is active)
-    const creatorEntry = await prisma.sideBetEntry.findUnique({
-      where: { sideBetId_userId: { sideBetId, userId: sideBet.creatorId } },
+    const creatorPaidEntry = await prisma.sideBetEntry.findFirst({
+      where: { sideBetId, userId: sideBet.creatorId, paidAt: { not: null } },
     });
-    if (!creatorEntry?.paidAt) {
+    if (!creatorPaidEntry) {
       throw new Error('This side bet has not been activated yet');
     }
 
-    // Check not already entered
-    const existing = await prisma.sideBetEntry.findUnique({
-      where: { sideBetId_userId: { sideBetId, userId } },
+    // Check user doesn't have an outstanding unpaid entry (prevent invoice spam)
+    const pendingEntry = await prisma.sideBetEntry.findFirst({
+      where: { sideBetId, userId, paidAt: null },
+      orderBy: { createdAt: 'desc' },
     });
-    if (existing?.paidAt) {
-      throw new Error('You have already entered this side bet');
-    }
 
     const memo = `Side Bet: ${sideBet.label}`;
     const { paymentRequest, paymentHash } = await createInvoice(sideBet.entrySats, memo);
 
-    // Upsert entry
-    if (existing) {
+    if (pendingEntry) {
+      // Update the existing pending entry with new invoice
       await prisma.sideBetEntry.update({
-        where: { id: existing.id },
+        where: { id: pendingEntry.id },
         data: { paymentHash, amountSats: sideBet.entrySats },
       });
     } else {
+      // Create a new entry
       await prisma.sideBetEntry.create({
         data: {
           sideBetId,
@@ -158,14 +156,24 @@ export class SideBetService {
   }
 
   /**
-   * Check if user's entry has been paid
+   * Check if user's latest pending entry has been paid
    */
   async checkPayment(sideBetId: string, userId: string) {
-    const entry = await prisma.sideBetEntry.findUnique({
-      where: { sideBetId_userId: { sideBetId, userId } },
+    // Find the user's most recent unpaid entry for this bet
+    const entry = await prisma.sideBetEntry.findFirst({
+      where: { sideBetId, userId, paidAt: null },
+      orderBy: { createdAt: 'desc' },
     });
-    if (!entry) throw new Error('No entry found');
-    if (entry.paidAt) return { paid: true, paidAt: entry.paidAt };
+    if (!entry) {
+      // No pending entry — maybe they already paid or don't have one
+      // Check if they have any paid entries
+      const paidEntry = await prisma.sideBetEntry.findFirst({
+        where: { sideBetId, userId, paidAt: { not: null } },
+        orderBy: { paidAt: 'desc' },
+      });
+      if (paidEntry) return { paid: true, paidAt: paidEntry.paidAt };
+      throw new Error('No entry found');
+    }
     if (!entry.paymentHash) return { paid: false };
 
     const { settled } = await lookupInvoice(entry.paymentHash);
@@ -180,7 +188,8 @@ export class SideBetService {
   }
 
   /**
-   * Get full details for a side bet
+   * Get full details for a side bet.
+   * Groups entries by user so we can show how many times each person entered.
    */
   async getSideBet(sideBetId: string) {
     const sb = await prisma.sideBet.findUnique({
@@ -202,6 +211,30 @@ export class SideBetService {
     const feeAmount = Math.floor(totalPot * sb.feePct / 100);
     const prizeAmount = totalPot - feeAmount;
 
+    // Group entries by user to get entry counts
+    const userEntryMap = new Map<string, { userId: string; userName: string; entryCount: number; firstPaidAt: Date | null }>();
+    for (const e of sb.entries) {
+      const existing = userEntryMap.get(e.userId);
+      if (existing) {
+        existing.entryCount += 1;
+      } else {
+        userEntryMap.set(e.userId, {
+          userId: e.userId,
+          userName: e.user.name,
+          entryCount: 1,
+          firstPaidAt: e.paidAt,
+        });
+      }
+    }
+
+    // Flat list of every entry (for backwards compat) plus grouped participants
+    const participants = Array.from(userEntryMap.values()).map(p => ({
+      userId: p.userId,
+      userName: p.userName,
+      entryCount: p.entryCount,
+      paidAt: p.firstPaidAt,
+    }));
+
     return {
       id: sb.id,
       label: sb.label,
@@ -218,11 +251,12 @@ export class SideBetService {
       totalPot,
       feeAmount,
       prizeAmount,
-      entries: sb.entries.map(e => ({
-        id: e.id,
-        userId: e.userId,
-        userName: e.user.name,
-        paidAt: e.paidAt,
+      entries: participants.map(p => ({
+        id: p.userId,
+        userId: p.userId,
+        userName: p.userName,
+        entryCount: p.entryCount,
+        paidAt: p.paidAt,
       })),
     };
   }
@@ -452,7 +486,7 @@ export class SideBetService {
     if (sideBet.creatorId !== callerId) throw new Error('Only the creator can cancel this bet');
     if (sideBet.status !== 'OPEN') throw new Error('This bet is already settled or cancelled');
 
-    // Refund all paid entries
+    // Refund all paid entries (each entry individually — a user with 3 entries gets 3 refunds)
     const txOps: any[] = [
       prisma.sideBet.update({
         where: { id: sideBetId },

@@ -23,7 +23,7 @@ interface SideBetDetail {
   totalPot: number;
   feeAmount: number;
   prizeAmount: number;
-  entries: { id: string; userId: string; userName: string; paidAt: string | null }[];
+  entries: { id: string; userId: string; userName: string; entryCount: number; paidAt: string | null }[];
 }
 
 export default function SideBetDetailPage() {
@@ -79,19 +79,14 @@ export default function SideBetDetailPage() {
   }, [invoice, paymentPaid, id, loadBet]);
 
   const isCreator = user?.id === bet?.creator?.id;
-  const hasEntered = bet?.entries.some(e => e.userId === user?.id);
+  const myEntry = bet?.entries.find(e => e.userId === user?.id);
+  const myEntryCount = myEntry?.entryCount || 0;
 
   const handleEnter = async () => {
     setPaying(true);
     setError('');
     try {
-      let result;
-      if (isCreator && !hasEntered) {
-        // Creator re-entering (shouldn't happen normally, but handle edge case)
-        result = await sideBetsAPI.enter(id as string);
-      } else {
-        result = await sideBetsAPI.enter(id as string);
-      }
+      const result = await sideBetsAPI.enter(id as string);
       setInvoice(result.invoice);
       setPaymentPaid(false);
     } catch (err: any) {
@@ -234,26 +229,31 @@ export default function SideBetDetailPage() {
         )}
         {paymentPaid && (
           <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-3 mb-4 text-green-300 text-sm">
-            ✅ Payment confirmed! You're in the bet.
+            ✅ Payment confirmed! You&apos;re in the bet.
           </div>
         )}
 
         {/* Actions */}
         {bet.status === 'OPEN' && isAuthenticated && (
           <div className="bg-white/10 rounded-xl border border-blue-600/30 p-5 mb-4">
-            {/* Enter Button */}
-            {!hasEntered && !invoice && (
-              <button
-                onClick={handleEnter}
-                disabled={paying}
-                className="w-full bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-600 text-black font-bold py-3 rounded-lg transition"
-              >
-                {paying ? '⏳ Generating Invoice...' : `⚡ Enter for ${bet.entrySats.toLocaleString()} sats`}
-              </button>
-            )}
-
-            {hasEntered && !isCreator && (
-              <p className="text-green-300 text-center font-medium">✅ You're in this bet!</p>
+            {/* Enter / Re-enter Button */}
+            {!invoice && (
+              <>
+                {myEntryCount > 0 && (
+                  <p className="text-green-300 text-center font-medium mb-3">
+                    ✅ You have {myEntryCount} {myEntryCount === 1 ? 'entry' : 'entries'} in this bet
+                  </p>
+                )}
+                <button
+                  onClick={handleEnter}
+                  disabled={paying}
+                  className="w-full bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-600 text-black font-bold py-3 rounded-lg transition"
+                >
+                  {paying ? '⏳ Generating Invoice...' : myEntryCount > 0
+                    ? `⚡ Enter Again (${bet.entrySats.toLocaleString()} sats)`
+                    : `⚡ Enter for ${bet.entrySats.toLocaleString()} sats`}
+                </button>
+              </>
             )}
 
             {/* Lightning Invoice QR */}
@@ -296,7 +296,9 @@ export default function SideBetDetailPage() {
                   >
                     <option value="">Select winner...</option>
                     {bet.entries.map(e => (
-                      <option key={e.userId} value={e.userId}>{e.userName}</option>
+                      <option key={e.userId} value={e.userId}>
+                        {e.userName}{e.entryCount > 1 ? ` (${e.entryCount}×)` : ''}
+                      </option>
                     ))}
                   </select>
                   <button
@@ -336,13 +338,20 @@ export default function SideBetDetailPage() {
 
         {/* Entries List */}
         <div className="bg-white/10 rounded-xl border border-blue-600/30 p-5">
-          <h2 className="text-white font-bold mb-3">Participants ({bet.entryCount})</h2>
+          <h2 className="text-white font-bold mb-3">
+            Participants ({bet.entries.length})
+            {bet.entryCount > bet.entries.length && (
+              <span className="text-blue-300 font-normal text-sm ml-2">
+                · {bet.entryCount} total entries
+              </span>
+            )}
+          </h2>
           {bet.entries.length === 0 ? (
             <p className="text-blue-300 text-sm text-center py-4">No entries yet</p>
           ) : (
             <div className="space-y-2">
               {bet.entries.map((entry, i) => (
-                <div key={entry.id} className="flex items-center justify-between p-2 bg-white/5 rounded-lg">
+                <div key={entry.userId} className="flex items-center justify-between p-2 bg-white/5 rounded-lg">
                   <div className="flex items-center gap-2">
                     <span className="text-white/40 text-xs w-5">{i + 1}.</span>
                     <Link href={`/players/${entry.userId}`} className="text-white hover:text-blue-200 text-sm">
@@ -354,8 +363,15 @@ export default function SideBetDetailPage() {
                     {bet.winner?.id === entry.userId && (
                       <span className="text-yellow-400 text-xs font-bold">🏆</span>
                     )}
+                    {entry.entryCount > 1 && (
+                      <span className="text-blue-300 text-xs bg-blue-500/20 px-1.5 py-0.5 rounded-full">
+                        ×{entry.entryCount}
+                      </span>
+                    )}
                   </div>
-                  <span className="text-blue-300/60 text-xs">{bet.entrySats.toLocaleString()} sats</span>
+                  <span className="text-blue-300/60 text-xs">
+                    {(bet.entrySats * entry.entryCount).toLocaleString()} sats
+                  </span>
                 </div>
               ))}
             </div>
