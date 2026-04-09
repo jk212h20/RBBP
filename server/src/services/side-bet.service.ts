@@ -262,6 +262,176 @@ export class SideBetService {
   }
 
   /**
+   * List ALL side bets (admin view) — shows open, settled, and cancelled
+   */
+  async listAll() {
+    const bets = await prisma.sideBet.findMany({
+      include: {
+        creator: { select: { id: true, name: true } },
+        event: { select: { id: true, name: true } },
+        winner: { select: { id: true, name: true } },
+        entries: {
+          where: { paidAt: { not: null } },
+          include: { user: { select: { id: true, name: true } } },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return bets.map(b => {
+      // Group entries by user
+      const userMap = new Map<string, { userId: string; userName: string; entryCount: number }>();
+      for (const e of b.entries) {
+        const existing = userMap.get(e.userId);
+        if (existing) {
+          existing.entryCount += 1;
+        } else {
+          userMap.set(e.userId, { userId: e.userId, userName: e.user.name, entryCount: 1 });
+        }
+      }
+
+      return {
+        id: b.id,
+        label: b.label,
+        description: b.description,
+        creator: b.creator,
+        event: b.event,
+        winner: b.winner,
+        entrySats: b.entrySats,
+        feePct: b.feePct,
+        status: b.status,
+        entryCount: b.entries.length,
+        participantCount: userMap.size,
+        totalPot: b.entries.reduce((s, e) => s + e.amountSats, 0),
+        createdAt: b.createdAt,
+        settledAt: b.settledAt,
+        participants: Array.from(userMap.values()),
+      };
+    });
+  }
+
+  /**
+   * Admin settle — admin can settle any bet (bypasses creator check)
+   */
+  async adminSettleSideBet(sideBetId: string, winnerId: string) {
+    const sideBet = await prisma.sideBet.findUnique({
+      where: { id: sideBetId },
+      include: {
+        entries: { where: { paidAt: { not: null } } },
+      },
+    });
+
+    if (!sideBet) throw new Error('Side bet not found');
+    if (sideBet.status !== 'OPEN') throw new Error('This bet is already settled or cancelled');
+
+    // Winner must be a paid participant
+    const winnerEntry = sideBet.entries.find(e => e.userId === winnerId);
+    if (!winnerEntry) throw new Error('Winner must be a paid participant');
+
+    const totalPot = sideBet.entries.reduce((s, e) => s + e.amountSats, 0);
+    const feeAmount = Math.floor(totalPot * sideBet.feePct / 100);
+    const prizeAmount = totalPot - feeAmount;
+
+    let feeAccountId: string | null = null;
+    if (feeAmount > 0) {
+      const feeAccount = await getFeeAccount();
+      feeAccountId = feeAccount.id;
+    }
+
+    const txOps: any[] = [
+      prisma.sideBet.update({
+        where: { id: sideBetId },
+        data: { status: 'SETTLED', winnerId, settledAt: new Date() },
+      }),
+      prisma.user.update({
+        where: { id: winnerId },
+        data: { lightningBalanceSats: { increment: prizeAmount } },
+      }),
+    ];
+
+    if (feeAmount > 0 && feeAccountId) {
+      txOps.push(
+        prisma.user.update({
+          where: { id: feeAccountId },
+          data: { lightningBalanceSats: { increment: feeAmount } },
+        })
+      );
+    }
+
+    await prisma.$transaction(txOps);
+
+    const winner = await prisma.user.findUnique({ where: { id: winnerId }, select: { name: true, lightningBalanceSats: true } });
+    await prisma.balanceTransaction.create({
+      data: {
+        userId: winnerId,
+        type: 'CREDIT',
+        amountSats: prizeAmount,
+        note: `Side Bet won (admin settled): "${sideBet.label}"`,
+        balanceAfter: winner?.lightningBalanceSats || prizeAmount,
+      },
+    });
+
+    return {
+      message: `Winner selected by admin! ${prizeAmount} sats credited to ${winner?.name || 'winner'}`,
+      winnerId,
+      winnerName: winner?.name || 'Unknown',
+      prizeAmount,
+      feeAmount,
+    };
+  }
+
+  /**
+   * Admin cancel — admin can cancel any bet (bypasses creator check)
+   */
+  async adminCancelSideBet(sideBetId: string) {
+    const sideBet = await prisma.sideBet.findUnique({
+      where: { id: sideBetId },
+      include: {
+        entries: { where: { paidAt: { not: null } } },
+      },
+    });
+
+    if (!sideBet) throw new Error('Side bet not found');
+    if (sideBet.status !== 'OPEN') throw new Error('This bet is already settled or cancelled');
+
+    const txOps: any[] = [
+      prisma.sideBet.update({
+        where: { id: sideBetId },
+        data: { status: 'CANCELLED' },
+      }),
+    ];
+
+    for (const entry of sideBet.entries) {
+      txOps.push(
+        prisma.user.update({
+          where: { id: entry.userId },
+          data: { lightningBalanceSats: { increment: entry.amountSats } },
+        })
+      );
+    }
+
+    await prisma.$transaction(txOps);
+
+    for (const entry of sideBet.entries) {
+      const user = await prisma.user.findUnique({ where: { id: entry.userId }, select: { lightningBalanceSats: true } });
+      await prisma.balanceTransaction.create({
+        data: {
+          userId: entry.userId,
+          type: 'REFUND',
+          amountSats: entry.amountSats,
+          note: `Side Bet cancelled by admin: "${sideBet.label}"`,
+          balanceAfter: user?.lightningBalanceSats || entry.amountSats,
+        },
+      });
+    }
+
+    return {
+      message: `Side bet cancelled by admin. ${sideBet.entries.length} entries refunded.`,
+      refundedCount: sideBet.entries.length,
+    };
+  }
+
+  /**
    * List open side bets, optionally filtered by eventId
    */
   async listOpen(eventId?: string) {

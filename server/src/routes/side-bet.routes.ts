@@ -54,6 +54,38 @@ router.put('/admin/settings', authenticate, requireAdmin, async (req: Request, r
   }
 });
 
+// Admin: list ALL side bets
+router.get('/admin/all', authenticate, requireAdmin, async (_req: Request, res: Response) => {
+  try {
+    const bets = await sideBetService.listAll();
+    res.json(bets);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin: settle any bet (bypass creator check)
+router.post('/admin/:id/settle', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { winnerId } = req.body;
+    if (!winnerId) return res.status(400).json({ error: 'winnerId is required' });
+    const result = await sideBetService.adminSettleSideBet(req.params.id, winnerId);
+    res.json(result);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Admin: cancel any bet (bypass creator check)
+router.post('/admin/:id/cancel', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const result = await sideBetService.adminCancelSideBet(req.params.id);
+    res.json(result);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 // Get side bet details (after all named routes)
 router.get('/:id', async (req: Request, res: Response) => {
   try {

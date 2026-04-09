@@ -1,10 +1,24 @@
 # Active Context
 
 ## Current Focus
-User-created side bets system (Apr 1, 2026). Admin balance management, email templates, and referral system complete.
+User-created side bets system with multiple entries per user (Apr 9, 2026). Admin balance management, email templates, and referral system complete.
+
+## Recent Changes (Apr 9, 2026) — Multiple Side Bet Entries
+- **Migration `20260409000000_allow_multiple_side_bet_entries`** — drops `@@unique([sideBetId, userId])` from `SideBetEntry`
+- **`side-bet.service.ts`** — `enterSideBet()` creates new entry each time (reuses pending unpaid entry to prevent invoice spam); `checkPayment()` finds latest unpaid entry via `findFirst`; `getSideBet()` groups entries by user, returns `entryCount` per participant; `cancelSideBet()` refunds each entry individually
+- **`/bets/[id]` page** — shows "×N" badge per participant, "Enter Again" button when already in pool, participant sats show total (entrySats × entryCount), header shows both participant count and total entries when different
+
+## Recent Changes (Apr 2, 2026) — Side Bet Description Field
+- **Migration `20260402000000_add_side_bet_description`** — added `description TEXT` to `side_bets`
+- **`side-bet.service.ts`** — `createSideBet()` accepts optional `description`, `getSideBet()` returns it
+- **`side-bet.routes.ts`** — passes `description` from request body
+- **`api.ts`** — `sideBetsAPI.create()` accepts optional `description`
+- **`/bets/create` page** — "Details" textarea (optional, 500 char max)
+- **`/bets/[id]` page** — shows description below label; `SideBetDetail` interface updated
+- **Profile/player pages** — side bets panels fixed to match other panel sizing
 
 ## Recent Changes (Apr 1, 2026) — User-Created Side Bets
-- **`SideBet` + `SideBetEntry` Prisma models** — `SideBet` has label, entrySats, status (OPEN/SETTLED/CANCELLED), feePct, creatorId, winnerId, optional eventId; `SideBetEntry` links user to bet
+- **`SideBet` + `SideBetEntry` Prisma models** — `SideBet` has label, description, entrySats, status (OPEN/SETTLED/CANCELLED), feePct, creatorId, winnerId, optional eventId; `SideBetEntry` links user to bet
 - **`SideBetSettings` model** — admin-configurable `sideBetFeePct` (default 0)
 - **Migration `20260401000000_add_side_bets`** — 3 new tables: `side_bets`, `side_bet_entries`, `side_bet_settings`
 - **`side-bet.service.ts`** — full service: `create()`, `enter()`, `leave()`, `settle()` (deducts fee, credits winner), `cancel()` (refunds all), `refund()` (refunds all from settled), `getSettings()`, `updateSettings()`

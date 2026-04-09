@@ -892,6 +892,18 @@ export const sideBetsAPI = {
       method: 'PUT',
       body: JSON.stringify({ feePct }),
     }),
+
+  // Admin endpoints
+  adminListAll: () => fetchAPI<any[]>('/side-bets/admin/all'),
+
+  adminSettle: (id: string, winnerId: string) =>
+    fetchAPI<any>(`/side-bets/admin/${id}/settle`, {
+      method: 'POST',
+      body: JSON.stringify({ winnerId }),
+    }),
+
+  adminCancel: (id: string) =>
+    fetchAPI<any>(`/side-bets/admin/${id}/cancel`, { method: 'POST' }),
 };
 
 // Profile API (authenticated user's own profile)
