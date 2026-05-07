@@ -202,6 +202,7 @@ model Event {
   maxPlayers            Int         @default(20)
   buyIn                 Float?      // Optional buy-in amount
   totalEntrants         Int?        // Manual override for total player count (for points calc)
+  registrationPointsEnabled Boolean @default(true)  // If false, no points awarded for signup and no penalties for cancel/no-show
   status                EventStatus @default(SCHEDULED)
   
   // Last Longer Pool

@@ -521,11 +521,13 @@ export async function getPublicPlayerProfile(userId: string, isAdmin = false) {
 
       // Also count registration points not tracked in PointsHistory
       // Registration: adjustUserSeasonPoints (1-2 pts per event signup)
-      // These go directly to Standing without PointsHistory
+      // These go directly to Standing without PointsHistory.
+      // Exclude events where registration points are disabled — those signups
+      // never awarded any points so they shouldn't be counted here either.
       const registrationSignups = await prisma.eventSignup.findMany({
         where: {
           userId,
-          event: { seasonId: activeSeason.id },
+          event: { seasonId: activeSeason.id, registrationPointsEnabled: true },
           status: { notIn: ['CANCELLED', 'WAITLISTED'] },
         },
         orderBy: { registeredAt: 'asc' },

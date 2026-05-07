@@ -70,6 +70,7 @@ interface EventForm {
   maxPlayers: number;
   buyIn: number;
   registrationCloseMinutes: number;
+  registrationPointsEnabled: boolean;
   lastLongerEnabled: boolean;
   lastLongerSeedSats: number;
   lastLongerEntrySats: number;
@@ -94,6 +95,7 @@ interface Event {
   slug?: string;
   name: string;
   description: string | null;
+  registrationPointsEnabled?: boolean;
   dateTime: string;
   status: 'SCHEDULED' | 'REGISTRATION_OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
   maxPlayers: number;
@@ -155,6 +157,7 @@ export default function AdminPage() {
     maxPlayers: 50, 
     buyIn: 0,
     registrationCloseMinutes: 30,
+    registrationPointsEnabled: true,
     lastLongerEnabled: false,
     lastLongerSeedSats: 10000,
     lastLongerEntrySats: 25000
@@ -216,7 +219,7 @@ export default function AdminPage() {
   
   // Event edit state
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
-  const [editEventForm, setEditEventForm] = useState({ name: '', description: '', dateTime: '', maxPlayers: 50, buyIn: 0, venueId: '', seasonId: '' });
+  const [editEventForm, setEditEventForm] = useState({ name: '', description: '', dateTime: '', maxPlayers: 50, buyIn: 0, venueId: '', seasonId: '', registrationPointsEnabled: true });
 
   useEffect(() => {
     if (!loading && !user) {
@@ -356,7 +359,7 @@ export default function AdminPage() {
       setMessage('');
       await eventsAPI.create(eventForm);
       setMessage('Event created successfully!');
-      setEventForm({ name: '', description: '', dateTime: '', venueId: '', seasonId: '', maxPlayers: 50, buyIn: 0, registrationCloseMinutes: 30, lastLongerEnabled: false, lastLongerSeedSats: 10000, lastLongerEntrySats: 25000 });
+      setEventForm({ name: '', description: '', dateTime: '', venueId: '', seasonId: '', maxPlayers: 50, buyIn: 0, registrationCloseMinutes: 30, registrationPointsEnabled: true, lastLongerEnabled: false, lastLongerSeedSats: 10000, lastLongerEntrySats: 25000 });
       fetchStats();
     } catch (err: any) {
       setError(err.message || 'Failed to create event');
@@ -1531,7 +1534,8 @@ export default function AdminPage() {
                                   maxPlayers: event.maxPlayers,
                                   buyIn: event.buyIn || 0,
                                   venueId: event.venue.id,
-                                  seasonId: event.season.id
+                                  seasonId: event.season.id,
+                                  registrationPointsEnabled: event.registrationPointsEnabled ?? true
                                 });
                               }}
                               className="text-yellow-400 hover:text-yellow-300 text-xs"
@@ -1848,6 +1852,21 @@ export default function AdminPage() {
                     placeholder="Event description..."
                   />
                 </div>
+                {/* Registration Points Toggle */}
+                <div className="md:col-span-2 border-t border-gray-700 pt-4">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={eventForm.registrationPointsEnabled}
+                      onChange={(e) => setEventForm({ ...eventForm, registrationPointsEnabled: e.target.checked })}
+                      className="w-5 h-5 rounded bg-gray-700 border-gray-600 text-yellow-500 focus:ring-yellow-500"
+                    />
+                    <span className="text-white font-semibold">🎯 Award registration points</span>
+                  </label>
+                  <p className="text-gray-500 text-xs mt-1 ml-8">
+                    When on (default): players earn 1 pt for signing up, 2 pts for the first 5 (early bird), and incur cancel/no-show penalties. Turn off for finales or special events where pre-registration shouldn’t award points.
+                  </p>
+                </div>
                 {/* Last Longer Pool Settings */}
                 <div className="md:col-span-2 border-t border-gray-700 pt-4">
                   <label className="flex items-center gap-3 cursor-pointer">
@@ -2011,6 +2030,20 @@ export default function AdminPage() {
               <div>
                 <label className="block text-gray-400 mb-1">Description</label>
                 <textarea value={editEventForm.description} onChange={(e) => setEditEventForm({ ...editEventForm, description: e.target.value })} className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white" rows={3} />
+              </div>
+              <div className="border-t border-gray-700 pt-4">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={editEventForm.registrationPointsEnabled}
+                    onChange={(e) => setEditEventForm({ ...editEventForm, registrationPointsEnabled: e.target.checked })}
+                    className="w-5 h-5 rounded bg-gray-700 border-gray-600 text-yellow-500 focus:ring-yellow-500"
+                  />
+                  <span className="text-white font-semibold">🎯 Award registration points</span>
+                </label>
+                <p className="text-gray-500 text-xs mt-1 ml-8">
+                  When on (default): players earn 1 pt for signing up (2 pts for the first 5 early-bird signups) and incur cancel/no-show penalties. Turn off for finales or special events where pre-registration shouldn’t award points.
+                </p>
               </div>
               <div className="flex gap-3">
                 <button type="button" onClick={() => setEditingEvent(null)} className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded">Cancel</button>

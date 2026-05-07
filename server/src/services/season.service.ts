@@ -222,10 +222,12 @@ export class SeasonService {
     });
     const pointsByUser = new Map(pointsSums.map(p => [p.userId, p._sum.points || 0]));
 
-    // 3. Bulk query: all non-cancelled/non-waitlisted signups for events in this season
+    // 3. Bulk query: all non-cancelled/non-waitlisted signups for events in this season.
+    //    Skip events where registration points are disabled (no points awarded
+    //    at signup time, so they shouldn't be reconstructed here either).
     const allSignups = await prisma.eventSignup.findMany({
       where: {
-        event: { seasonId },
+        event: { seasonId, registrationPointsEnabled: true },
         status: { notIn: ['CANCELLED', 'WAITLISTED'] },
       },
       select: { userId: true, eventId: true, registeredAt: true },

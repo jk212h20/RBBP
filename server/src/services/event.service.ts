@@ -316,6 +316,7 @@ export class EventService {
         seasonId: data.seasonId,
         directorId: data.directorId || null,
         status: data.status || EventStatus.SCHEDULED,
+        registrationPointsEnabled: data.registrationPointsEnabled ?? true,
         lastLongerEnabled: data.lastLongerEnabled ?? false,
         lastLongerSeedSats: data.lastLongerSeedSats ?? 10000,
         lastLongerEntrySats: data.lastLongerEntrySats ?? 25000,
@@ -364,6 +365,7 @@ export class EventService {
         ...(data.seasonId && { seasonId: data.seasonId }),
         ...(data.directorId !== undefined && { directorId: data.directorId }),
         ...(data.status && { status: data.status }),
+        ...(data.registrationPointsEnabled !== undefined && { registrationPointsEnabled: data.registrationPointsEnabled }),
         ...(data.lastLongerEnabled !== undefined && { lastLongerEnabled: data.lastLongerEnabled }),
         ...(data.lastLongerSeedSats !== undefined && { lastLongerSeedSats: data.lastLongerSeedSats }),
         ...(data.lastLongerEntrySats !== undefined && { lastLongerEntrySats: data.lastLongerEntrySats }),
@@ -493,7 +495,9 @@ export class EventService {
 
     // Determine if this is an early bird signup (first 5 get bonus)
     const isEarlyBird = registeredCount < EARLY_BIRD_THRESHOLD;
-    const pointsToAward = isEarlyBird ? EARLY_BIRD_REGISTRATION_POINTS : REGISTRATION_POINTS;
+    const pointsToAward = event.registrationPointsEnabled
+      ? (isEarlyBird ? EARLY_BIRD_REGISTRATION_POINTS : REGISTRATION_POINTS)
+      : 0;
 
     // Create signup
     const signup = await prisma.eventSignup.create({
@@ -512,8 +516,11 @@ export class EventService {
       },
     });
 
-    // Award registration points for the season
-    await this.adjustUserSeasonPoints(userId, event.seasonId, pointsToAward);
+    // Award registration points for the season (skipped when the event
+    // has registrationPointsEnabled = false, e.g. one-off finals)
+    if (pointsToAward !== 0) {
+      await this.adjustUserSeasonPoints(userId, event.seasonId, pointsToAward);
+    }
 
     // Send signup confirmation email (non-blocking)
     prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true } })
@@ -598,8 +605,17 @@ export class EventService {
       },
     });
 
+    // Honor the per-event registration-points flag
+    const eventFlag = await prisma.event.findUnique({
+      where: { id: eventId },
+      select: { registrationPointsEnabled: true },
+    });
+    const pointsEnabled = eventFlag?.registrationPointsEnabled ?? true;
+
     const isEarlyBird = registeredCount < EARLY_BIRD_THRESHOLD;
-    const pointsToAward = isEarlyBird ? EARLY_BIRD_REGISTRATION_POINTS : REGISTRATION_POINTS;
+    const pointsToAward = pointsEnabled
+      ? (isEarlyBird ? EARLY_BIRD_REGISTRATION_POINTS : REGISTRATION_POINTS)
+      : 0;
 
     // Promote to registered
     await prisma.eventSignup.update({
@@ -607,8 +623,10 @@ export class EventService {
       data: { status: SignupStatus.REGISTERED },
     });
 
-    // Award registration points
-    await this.adjustUserSeasonPoints(nextInLine.userId, seasonId, pointsToAward);
+    // Award registration points (skipped if disabled for this event)
+    if (pointsToAward !== 0) {
+      await this.adjustUserSeasonPoints(nextInLine.userId, seasonId, pointsToAward);
+    }
   }
 
   /**
@@ -638,6 +656,7 @@ export class EventService {
         dateTime: true,
         seasonId: true,
         status: true,
+        registrationPointsEnabled: true,
       },
     });
 
@@ -670,8 +689,14 @@ export class EventService {
     });
 
     // Apply point penalty based on timing
-    // If event hasn't started yet, apply cancellation penalty
-    if (event.status !== EventStatus.IN_PROGRESS && event.status !== EventStatus.COMPLETED) {
+    // If event hasn't started yet, apply cancellation penalty.
+    // Skip entirely if registration points are disabled for this event
+    // (no points were awarded at signup, so nothing to claw back).
+    if (
+      event.registrationPointsEnabled &&
+      event.status !== EventStatus.IN_PROGRESS &&
+      event.status !== EventStatus.COMPLETED
+    ) {
       // Points earned at registration
       const pointsEarned = wasEarlyBird ? EARLY_BIRD_REGISTRATION_POINTS : REGISTRATION_POINTS;
       
@@ -1132,9 +1157,14 @@ export class EventService {
         data: { status: SignupStatus.NO_SHOW },
       });
 
-      // Apply no-show penalty: remove points earned + 2 penalty (net -2)
-      const pointsEarned = wasEarlyBird ? EARLY_BIRD_REGISTRATION_POINTS : REGISTRATION_POINTS;
-      await this.adjustUserSeasonPoints(signup.userId, event.seasonId, -(pointsEarned + 2));
+      // Apply no-show penalty: remove points earned + 2 penalty (net -2).
+      // Skip entirely if registration points are disabled for this event
+      // (no points were ever awarded, so a no-show penalty would be punitive
+      // for registering at all).
+      if (event.registrationPointsEnabled) {
+        const pointsEarned = wasEarlyBird ? EARLY_BIRD_REGISTRATION_POINTS : REGISTRATION_POINTS;
+        await this.adjustUserSeasonPoints(signup.userId, event.seasonId, -(pointsEarned + 2));
+      }
     }
 
     return { noShowCount: noShows.length };
@@ -1192,6 +1222,7 @@ export class EventService {
           seasonId: data.seasonId,
           directorId: data.directorId || null,
           status: data.status || EventStatus.SCHEDULED,
+          registrationPointsEnabled: data.registrationPointsEnabled ?? true,
           lastLongerEnabled: data.lastLongerEnabled ?? false,
           lastLongerSeedSats: data.lastLongerSeedSats ?? 10000,
           lastLongerEntrySats: data.lastLongerEntrySats ?? 25000,
