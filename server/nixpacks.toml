@@ -2,7 +2,10 @@
 nixPkgs = ["nodejs_20"]
 
 [phases.install]
-cmds = ["npm ci"]
+# NODE_ENV=production is set on this service, which makes `npm ci`
+# skip devDependencies. Force --include=dev so TypeScript/Prisma CLI are
+# available during the build phase.
+cmds = ["npm ci --include=dev"]
 
 [phases.build]
 cmds = ["npm run build"]
