@@ -16,6 +16,7 @@ interface PointsHistoryEntry {
 
 interface RecentResult {
   eventId: string;
+  eventSlug?: string;
   eventName: string;
   eventDate: string;
   venue: string;
@@ -412,7 +413,7 @@ export default function PlayerProfilePage() {
               {profile.recentResults.map((result) => (
                 <Link
                   key={result.eventId}
-                  href={`/events/${result.eventId}`}
+                  href={`/events/${result.eventSlug || result.eventId}`}
                   className="flex items-center justify-between p-3 bg-white/5 hover:bg-white/10 rounded-lg transition"
                 >
                   <div className="flex-1 min-w-0">

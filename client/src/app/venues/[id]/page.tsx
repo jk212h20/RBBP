@@ -20,6 +20,7 @@ interface Venue {
 
 interface Event {
   id: string;
+  slug?: string;
   name: string;
   dateTime: string;
   status: string;
@@ -197,7 +198,7 @@ export default function VenueDetailPage() {
               {upcomingEvents.map(event => (
                 <Link 
                   key={event.id} 
-                  href={`/events/${event.id}`}
+                  href={`/events/${event.slug || event.id}`}
                   className="block bg-white/10 backdrop-blur rounded-xl p-4 hover:bg-white/20 transition"
                 >
                   <div className="flex justify-between items-start">
@@ -238,7 +239,7 @@ export default function VenueDetailPage() {
               {pastEvents.slice(0, 5).map(event => (
                 <Link 
                   key={event.id} 
-                  href={`/events/${event.id}`}
+                  href={`/events/${event.slug || event.id}`}
                   className="block bg-white/5 backdrop-blur rounded-xl p-4 hover:bg-white/10 transition"
                 >
                   <div className="flex justify-between items-center">

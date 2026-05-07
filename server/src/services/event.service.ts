@@ -41,6 +41,50 @@ function buildRoatanDate(year: number, month: number, day: number, hours: number
   return new Date(isoStr);
 }
 
+// ============================================
+// SLUG GENERATION
+// ============================================
+
+/**
+ * Convert an arbitrary string into a URL-friendly slug.
+ * Lowercase, strips non-alphanumerics, collapses runs of hyphens, trims edges.
+ */
+function slugifyBase(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')   // strip diacritics
+    .replace(/[^a-z0-9]+/g, '-')       // non-alphanumerics -> hyphen
+    .replace(/^-+|-+$/g, '')            // trim hyphens
+    .slice(0, 60)
+    .replace(/^-+|-+$/g, '');           // trim again after slice
+}
+
+/**
+ * Generate a unique slug for an event name. Tries the bare slug first,
+ * then appends -2, -3, ... until it finds an unused one.
+ * If `excludeId` is provided, that event id's existing slug is ignored
+ * (used when updating an event in place).
+ */
+async function generateUniqueEventSlug(name: string, excludeId?: string): Promise<string> {
+  const base = slugifyBase(name) || 'event';
+  let candidate = base;
+  let suffix = 2;
+  // Cap iterations defensively
+  for (let i = 0; i < 1000; i++) {
+    const existing = await prisma.event.findUnique({
+      where: { slug: candidate },
+      select: { id: true },
+    });
+    if (!existing || existing.id === excludeId) {
+      return candidate;
+    }
+    candidate = `${base}-${suffix++}`;
+  }
+  // Fallback: append a random-ish tail (timestamp)
+  return `${base}-${Date.now().toString(36)}`;
+}
+
 // Points for registration/unregistration
 const REGISTRATION_POINTS = 1;
 const EARLY_BIRD_REGISTRATION_POINTS = 2;  // First 5 signups get bonus
@@ -181,11 +225,13 @@ export class EventService {
   }
 
   /**
-   * Get event by ID with full details
+   * Get event by ID or slug with full details.
+   * Tries id first (for backwards compatibility with old random-id URLs),
+   * falls back to slug.
    */
-  async getEventById(id: string) {
-    return prisma.event.findUnique({
-      where: { id },
+  async getEventById(idOrSlug: string) {
+    return prisma.event.findFirst({
+      where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
       include: {
         venue: true,
         season: {
@@ -255,9 +301,11 @@ export class EventService {
    * Create a new event
    */
   async createEvent(data: CreateEventInput) {
+    const slug = await generateUniqueEventSlug(data.name);
     return prisma.event.create({
       data: {
         name: data.name,
+        slug,
         description: data.description || null,
         dateTime: toRoatanTime(data.dateTime),
         registrationOpenDays: data.registrationOpenDays ?? 10,
@@ -293,9 +341,18 @@ export class EventService {
    * Update an event
    */
   async updateEvent(id: string, data: UpdateEventInput) {
+    // If the name changed, regenerate the slug so the URL stays in sync.
+    let slugUpdate: { slug: string } | {} = {};
+    if (data.name) {
+      const current = await prisma.event.findUnique({ where: { id }, select: { name: true } });
+      if (current && current.name !== data.name) {
+        slugUpdate = { slug: await generateUniqueEventSlug(data.name, id) };
+      }
+    }
     return prisma.event.update({
       where: { id },
       data: {
+        ...slugUpdate,
         ...(data.name && { name: data.name }),
         ...(data.description !== undefined && { description: data.description }),
         ...(data.dateTime && { dateTime: toRoatanTime(data.dateTime) }),
@@ -1119,10 +1176,12 @@ export class EventService {
       
       const eventNumber = (data.startingNumber || 1) + i;
       const eventName = `${data.baseName} #${eventNumber}`;
+      const eventSlug = await generateUniqueEventSlug(eventName);
       
       const event = await prisma.event.create({
         data: {
           name: eventName,
+          slug: eventSlug,
           description: data.description || null,
           dateTime: eventDate,
           registrationOpenDays: data.registrationOpenDays ?? 10,

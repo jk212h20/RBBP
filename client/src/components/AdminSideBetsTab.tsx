@@ -9,7 +9,7 @@ interface SideBetAdmin {
   label: string;
   description: string | null;
   creator: { id: string; name: string };
-  event: { id: string; name: string } | null;
+  event: { id: string; slug?: string; name: string } | null;
   winner: { id: string; name: string } | null;
   entrySats: number;
   feePct: number;
@@ -272,7 +272,7 @@ export default function AdminSideBetsTab() {
                       {bet.event && (
                         <div>
                           <span className="text-blue-300/60">Event:</span>{' '}
-                          <Link href={`/events/${bet.event.id}`} className="text-blue-200 hover:underline">{bet.event.name}</Link>
+                          <Link href={`/events/${bet.event.slug || bet.event.id}`} className="text-blue-200 hover:underline">{bet.event.name}</Link>
                         </div>
                       )}
                       {bet.winner && (

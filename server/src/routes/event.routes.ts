@@ -9,6 +9,30 @@ import prisma from '../lib/prisma';
 const router = Router();
 
 /**
+ * Resolve any ':id' route param as either a database id OR a slug.
+ * Rewrites req.params.id to the canonical database id so downstream
+ * handlers can keep using `prisma.event.findUnique({where:{id}})`.
+ *
+ * If neither matches, we leave req.params.id alone — the handler will
+ * return its own 404 (preserving existing error semantics).
+ */
+router.param('id', async (req, _res, next, value: string) => {
+  try {
+    if (!value) return next();
+    // Fast-path: cuid-shaped strings are almost certainly ids; check id first either way.
+    const byId = await prisma.event.findUnique({ where: { id: value }, select: { id: true } });
+    if (byId) return next();
+    const bySlug = await prisma.event.findUnique({ where: { slug: value }, select: { id: true } });
+    if (bySlug) {
+      req.params.id = bySlug.id;
+    }
+    return next();
+  } catch (err) {
+    return next(err);
+  }
+});
+
+/**
  * GET /api/events/upcoming
  * Get upcoming events (public)
  * NOTE: Must be before /:id

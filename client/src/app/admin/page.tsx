@@ -91,6 +91,7 @@ interface BulkEventForm {
 
 interface Event {
   id: string;
+  slug?: string;
   name: string;
   description: string | null;
   dateTime: string;
@@ -1489,7 +1490,7 @@ export default function AdminPage() {
                     <div key={event.id} className="bg-gray-700 p-4 rounded">
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
-                          <Link href={`/events/${event.id}`} className="font-semibold text-yellow-400 hover:text-yellow-300">
+                          <Link href={`/events/${event.slug || event.id}`} className="font-semibold text-yellow-400 hover:text-yellow-300">
                             {event.name}
                           </Link>
                           <p className="text-gray-400 text-sm">
@@ -1538,7 +1539,7 @@ export default function AdminPage() {
                               ✏️ Edit
                             </button>
                             <Link
-                              href={`/events/${event.id}`}
+                              href={`/events/${event.slug || event.id}`}
                               className="text-blue-400 hover:text-blue-300 text-xs"
                             >
                               👥 Manage

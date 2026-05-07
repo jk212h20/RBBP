@@ -12,7 +12,7 @@ interface SideBetDetail {
   label: string;
   description: string | null;
   creator: { id: string; name: string };
-  event: { id: string; name: string } | null;
+  event: { id: string; slug?: string; name: string } | null;
   entrySats: number;
   feePct: number;
   status: 'OPEN' | 'SETTLED' | 'CANCELLED';
@@ -171,7 +171,7 @@ export default function SideBetDetailPage() {
               </p>
               {bet.event && (
                 <p className="text-blue-300 text-xs mt-1">
-                  🎰 <Link href={`/events/${bet.event.id}`} className="hover:underline">{bet.event.name}</Link>
+                  🎰 <Link href={`/events/${bet.event.slug || bet.event.id}`} className="hover:underline">{bet.event.name}</Link>
                 </p>
               )}
               <p className="text-blue-300/60 text-xs mt-1">{formatDate(bet.createdAt)}</p>

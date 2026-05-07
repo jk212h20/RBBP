@@ -9,6 +9,7 @@ import { eventsAPI } from '@/lib/api';
 
 interface EventDetail {
   id: string;
+  slug?: string;
   name: string;
   description?: string;
   dateTime: string;
@@ -339,6 +340,14 @@ export default function EventDetailPage() {
     try {
       const data = await eventsAPI.getById(eventId);
       setEvent(data);
+      // If the user landed via a raw cuid, swap the URL to the human-readable slug.
+      if (data?.slug && data.slug !== eventId) {
+        try {
+          window.history.replaceState(null, '', `/events/${data.slug}`);
+        } catch {
+          // Best-effort prettification — ignore failures (older browsers, etc.)
+        }
+      }
     } catch (err) {
       setError('Failed to load event');
       console.error(err);

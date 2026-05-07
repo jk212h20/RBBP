@@ -10,6 +10,7 @@ import { calculatePossiblePoints } from '@/lib/points';
 
 interface Event {
   id: string;
+  slug?: string;
   name: string;
   description?: string;
   dateTime: string;
@@ -320,7 +321,7 @@ export default function EventsPage() {
           {/* Action buttons */}
           <div className="mt-4 flex gap-2">
             <Link
-              href={`/events/${event.id}`}
+              href={`/events/${event.slug || event.id}`}
               className="flex-1 text-center bg-emerald-600 text-white py-2 rounded-lg hover:bg-emerald-500 transition font-medium"
             >
               View Details
@@ -351,7 +352,7 @@ export default function EventsPage() {
           {/* Last Longer Entry CTA */}
           {event.lastLongerEnabled && isUserSignedUp(event) && (event.status === 'SCHEDULED' || event.status === 'REGISTRATION_OPEN' || event.status === 'IN_PROGRESS') && (
             <Link
-              href={`/events/${event.id}#last-longer-pool`}
+              href={`/events/${event.slug || event.id}#last-longer-pool`}
               className="mt-2 block w-full text-center bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 py-2 rounded-lg font-medium transition border border-purple-500/30"
             >
               ⚡ Enter Last Longer Pool

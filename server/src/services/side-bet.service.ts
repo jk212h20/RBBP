@@ -197,7 +197,7 @@ export class SideBetService {
       include: {
         creator: { select: { id: true, name: true } },
         winner: { select: { id: true, name: true } },
-        event: { select: { id: true, name: true } },
+        event: { select: { id: true, name: true, slug: true } },
         entries: {
           where: { paidAt: { not: null } },
           include: { user: { select: { id: true, name: true } } },
@@ -268,7 +268,7 @@ export class SideBetService {
     const bets = await prisma.sideBet.findMany({
       include: {
         creator: { select: { id: true, name: true } },
-        event: { select: { id: true, name: true } },
+        event: { select: { id: true, name: true, slug: true } },
         winner: { select: { id: true, name: true } },
         entries: {
           where: { paidAt: { not: null } },
@@ -446,7 +446,7 @@ export class SideBetService {
       where,
       include: {
         creator: { select: { id: true, name: true } },
-        event: { select: { id: true, name: true } },
+        event: { select: { id: true, name: true, slug: true } },
         entries: { where: { paidAt: { not: null } }, select: { amountSats: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -473,7 +473,7 @@ export class SideBetService {
     const created = await prisma.sideBet.findMany({
       where: { creatorId: userId },
       include: {
-        event: { select: { id: true, name: true } },
+        event: { select: { id: true, name: true, slug: true } },
         winner: { select: { id: true, name: true } },
         entries: { where: { paidAt: { not: null } }, select: { amountSats: true } },
       },
@@ -488,7 +488,7 @@ export class SideBetService {
       },
       include: {
         creator: { select: { id: true, name: true } },
-        event: { select: { id: true, name: true } },
+        event: { select: { id: true, name: true, slug: true } },
         winner: { select: { id: true, name: true } },
         entries: { where: { paidAt: { not: null } }, select: { amountSats: true } },
       },
@@ -529,7 +529,7 @@ export class SideBetService {
       },
       include: {
         creator: { select: { id: true, name: true } },
-        event: { select: { id: true, name: true } },
+        event: { select: { id: true, name: true, slug: true } },
         winner: { select: { id: true, name: true } },
         entries: { where: { paidAt: { not: null } }, select: { amountSats: true, userId: true } },
       },

@@ -573,6 +573,7 @@ export async function getPublicPlayerProfile(userId: string, isAdmin = false) {
       event: {
         select: {
           id: true,
+          slug: true,
           name: true,
           dateTime: true,
           venue: { select: { name: true } },
@@ -590,6 +591,7 @@ export async function getPublicPlayerProfile(userId: string, isAdmin = false) {
       event: {
         select: {
           id: true,
+          slug: true,
           name: true,
           dateTime: true,
           venue: { select: { name: true } },
@@ -621,12 +623,14 @@ export async function getPublicPlayerProfile(userId: string, isAdmin = false) {
     currentSeasonStanding,
     upcomingEvents: upcomingSignups.map(s => ({
       id: s.event.id,
+      slug: s.event.slug,
       name: s.event.name,
       dateTime: s.event.dateTime,
       venue: s.event.venue.name,
     })),
     recentResults: recentResults.map(r => ({
       eventId: r.event.id,
+      eventSlug: r.event.slug,
       eventName: r.event.name,
       eventDate: r.event.dateTime,
       venue: r.event.venue.name,

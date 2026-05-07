@@ -10,6 +10,7 @@ import { calculatePossiblePoints } from '@/lib/points';
 
 interface UpcomingEvent {
   id: string;
+  slug?: string;
   name: string;
   dateTime: string;
   imageUrl?: string | null;
@@ -141,7 +142,7 @@ export default function HomePage() {
                   return (
                     <Link
                       key={event.id}
-                      href={`/events/${event.id}`}
+                      href={`/events/${event.slug || event.id}`}
                       className="block bg-white/5 rounded-xl hover:bg-white/10 transition overflow-hidden"
                     >
                       {/* Thumbnail image if exists */}

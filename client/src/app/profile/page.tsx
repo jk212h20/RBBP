@@ -10,6 +10,7 @@ import ReferralTab from '@/components/ReferralTab';
 
 interface UserEvent {
   id: string;
+  slug?: string;
   name: string;
   dateTime: string;
   venue: { name: string };
@@ -1616,7 +1617,7 @@ export default function ProfilePage() {
               {myEvents.map((event) => (
                 <Link
                   key={event.id}
-                  href={`/events/${event.id}`}
+                  href={`/events/${event.slug || event.id}`}
                   className="block p-3 md:p-4 bg-white/5 rounded-lg hover:bg-white/10 transition"
                 >
                   <div className="flex justify-between items-start gap-2">
