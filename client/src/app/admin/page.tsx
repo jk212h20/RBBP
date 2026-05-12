@@ -50,7 +50,6 @@ interface Season {
   startDate: string;
   endDate: string;
   isActive: boolean;
-  pointsStructure: Record<string, number>;
   _count?: { events: number; standings: number };
 }
 
@@ -58,7 +57,6 @@ interface SeasonForm {
   name: string;
   startDate: string;
   endDate: string;
-  pointsStructure: string;
 }
 
 interface EventForm {
@@ -145,8 +143,7 @@ export default function AdminPage() {
   const [seasonForm, setSeasonForm] = useState<SeasonForm>({ 
     name: '', 
     startDate: '', 
-    endDate: '', 
-    pointsStructure: JSON.stringify({ "1": 100, "2": 75, "3": 60, "4": 50, "5": 40, "knockout": 2 }, null, 2)
+    endDate: '',
   });
   const [eventForm, setEventForm] = useState<EventForm>({ 
     name: '', 
@@ -198,7 +195,7 @@ export default function AdminPage() {
   const [editingVenue, setEditingVenue] = useState<Venue | null>(null);
   const [editVenueForm, setEditVenueForm] = useState<VenueForm>({ name: '', address: '', description: '', imageUrl: null });
   const [editingSeason, setEditingSeason] = useState<Season | null>(null);
-  const [editSeasonForm, setEditSeasonForm] = useState<SeasonForm>({ name: '', startDate: '', endDate: '', pointsStructure: '' });
+  const [editSeasonForm, setEditSeasonForm] = useState<SeasonForm>({ name: '', startDate: '', endDate: '' });
   
   // Event management state
   const [events, setEvents] = useState<Event[]>([]);
@@ -333,17 +330,12 @@ export default function AdminPage() {
     try {
       setError('');
       setMessage('');
-      const data = {
-        ...seasonForm,
-        pointsStructure: JSON.parse(seasonForm.pointsStructure)
-      };
-      await seasonsAPI.create(data);
+      await seasonsAPI.create(seasonForm);
       setMessage('Season created successfully!');
       setSeasonForm({ 
         name: '', 
         startDate: '', 
-        endDate: '', 
-        pointsStructure: JSON.stringify({ "1": 100, "2": 75, "3": 60, "4": 50, "5": 40, "knockout": 2 }, null, 2)
+        endDate: '',
       });
       fetchSeasons();
       fetchStats();
@@ -420,7 +412,6 @@ export default function AdminPage() {
       name: season.name,
       startDate: season.startDate.split('T')[0],
       endDate: season.endDate.split('T')[0],
-      pointsStructure: JSON.stringify(season.pointsStructure, null, 2)
     });
   };
 
@@ -980,15 +971,6 @@ export default function AdminPage() {
                     onChange={(e) => setSeasonForm({ ...seasonForm, endDate: e.target.value })}
                     required
                     className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-400 mb-1">Points Structure (JSON)</label>
-                  <textarea
-                    value={seasonForm.pointsStructure}
-                    onChange={(e) => setSeasonForm({ ...seasonForm, pointsStructure: e.target.value })}
-                    className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white font-mono text-sm"
-                    rows={5}
                   />
                 </div>
                 <button

@@ -238,7 +238,6 @@ export class EventService {
           select: {
             id: true,
             name: true,
-            pointsStructure: true,
           },
         },
         director: {
@@ -796,7 +795,6 @@ export class EventService {
         season: {
           select: {
             id: true,
-            pointsStructure: true,
           },
         },
         signups: {

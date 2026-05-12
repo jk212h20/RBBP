@@ -27,7 +27,6 @@ interface EventDetail {
   season: {
     id: string;
     name: string;
-    pointsStructure?: Record<string, number>;
   };
   director?: {
     id: string;

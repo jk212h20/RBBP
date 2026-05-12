@@ -1,5 +1,5 @@
 import prisma from '../lib/prisma';
-import { CreateSeasonInput, UpdateSeasonInput, defaultPointsStructure } from '../validators/season.validator';
+import { CreateSeasonInput, UpdateSeasonInput } from '../validators/season.validator';
 
 export class SeasonService {
   /**
@@ -112,7 +112,6 @@ export class SeasonService {
         startDate: new Date(data.startDate),
         endDate: new Date(data.endDate),
         isActive: data.isActive || false,
-        pointsStructure: data.pointsStructure || defaultPointsStructure,
         playoffQualifyCount: data.playoffQualifyCount || 10,
       },
     });
@@ -140,7 +139,6 @@ export class SeasonService {
         ...(data.startDate && { startDate: new Date(data.startDate) }),
         ...(data.endDate && { endDate: new Date(data.endDate) }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
-        ...(data.pointsStructure && { pointsStructure: data.pointsStructure }),
         ...(data.playoffQualifyCount && { playoffQualifyCount: data.playoffQualifyCount }),
       },
     });

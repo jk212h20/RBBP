@@ -156,7 +156,7 @@ export const seasonsAPI = {
   getStandings: (id: string, limit = 50) => 
     fetchAPI<any[]>(`/seasons/${id}/standings?limit=${limit}`),
   
-  create: (data: { name: string; startDate: string; endDate: string; isActive?: boolean; pointsStructure?: Record<string, number> }) =>
+  create: (data: { name: string; startDate: string; endDate: string; isActive?: boolean }) =>
     fetchAPI<any>('/seasons', {
       method: 'POST',
       body: JSON.stringify(data),

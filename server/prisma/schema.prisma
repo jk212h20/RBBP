@@ -161,9 +161,6 @@ model Season {
   endDate     DateTime
   isActive    Boolean  @default(false)
   
-  // Points configuration (JSON for flexibility)
-  pointsStructure Json // { "1": 100, "2": 75, "3": 60, ... "knockout": 2 }
-  
   // Playoff configuration
   playoffQualifyCount Int @default(10) // Top N players qualify
   

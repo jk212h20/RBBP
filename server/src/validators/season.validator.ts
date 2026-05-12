@@ -1,24 +1,5 @@
 import { z } from 'zod';
 
-// Default points structure for poker tournaments
-export const defaultPointsStructure = {
-  "1": 100,
-  "2": 80,
-  "3": 65,
-  "4": 55,
-  "5": 45,
-  "6": 40,
-  "7": 35,
-  "8": 30,
-  "9": 25,
-  "10": 20,
-  "11-15": 15,
-  "16-20": 10,
-  "21+": 5,
-  "knockout": 2,
-  "participation": 5
-};
-
 export const createSeasonSchema = z.object({
   name: z.string().min(2, 'Season name must be at least 2 characters'),
   startDate: z.string().refine((date) => !isNaN(Date.parse(date)), {
@@ -28,7 +9,6 @@ export const createSeasonSchema = z.object({
     message: 'Invalid end date',
   }),
   isActive: z.boolean().optional().default(false),
-  pointsStructure: z.record(z.string(), z.number()).optional(),
   playoffQualifyCount: z.number().int().min(1).optional().default(10),
 }).refine((data) => {
   const start = new Date(data.startDate);
@@ -48,7 +28,6 @@ export const updateSeasonSchema = z.object({
     message: 'Invalid end date',
   }).optional(),
   isActive: z.boolean().optional(),
-  pointsStructure: z.record(z.string(), z.number()).optional(),
   playoffQualifyCount: z.number().int().min(1).optional(),
 });
 
