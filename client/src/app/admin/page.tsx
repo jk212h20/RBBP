@@ -18,6 +18,8 @@ import NotificationsTab from '@/components/NotificationsTab';
 import AdminReferralsTab from '@/components/AdminReferralsTab';
 import EmailTemplatesTab from '@/components/EmailTemplatesTab';
 import AdminSideBetsTab from '@/components/AdminSideBetsTab';
+import BlogTab from '@/components/BlogTab';
+import AnnouncementsTab from '@/components/AnnouncementsTab';
 
 interface Stats {
   users: number;
@@ -127,7 +129,7 @@ interface GuestUser {
 export default function AdminPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'overview' | 'venues' | 'seasons' | 'events' | 'users' | 'points' | 'balances' | 'withdrawals' | 'setup' | 'faq' | 'applications' | 'exports' | 'puzzles' | 'notifications' | 'referrals' | 'emails' | 'sidebets'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'venues' | 'seasons' | 'events' | 'users' | 'points' | 'balances' | 'withdrawals' | 'setup' | 'faq' | 'applications' | 'exports' | 'puzzles' | 'notifications' | 'referrals' | 'emails' | 'sidebets' | 'blog' | 'announcements'>('overview');
   const [stats, setStats] = useState<Stats | null>(null);
   const [venues, setVenues] = useState<any[]>([]);
   const [seasons, setSeasons] = useState<any[]>([]);
@@ -571,7 +573,7 @@ export default function AdminPage() {
         {/* Tabs - Scrollable on mobile */}
         <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
           <div className="flex gap-2 mb-6 border-b border-gray-700 pb-4 min-w-max">
-            {['overview', 'users', 'points', 'venues', 'applications', 'seasons', 'events', 'sidebets', 'balances', 'withdrawals', 'referrals', 'emails', 'faq', 'puzzles', 'exports', 'notifications'].map((tab) => (
+            {['overview', 'users', 'points', 'venues', 'applications', 'seasons', 'events', 'sidebets', 'balances', 'withdrawals', 'referrals', 'emails', 'blog', 'announcements', 'faq', 'puzzles', 'exports', 'notifications'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => {
@@ -589,7 +591,7 @@ export default function AdminPage() {
                     : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
               >
-                {tab === 'points' ? '🎯 Points' : tab === 'faq' ? '❓ FAQ' : tab === 'applications' ? '🏢 Applications' : tab === 'exports' ? '📥 Exports' : tab === 'notifications' ? '🔔 Notifications' : tab === 'referrals' ? '🔗 Referrals' : tab === 'emails' ? '📧 Emails' : tab === 'sidebets' ? '🎲 Side Bets' : tab}
+                {tab === 'points' ? '🎯 Points' : tab === 'faq' ? '❓ FAQ' : tab === 'applications' ? '🏢 Applications' : tab === 'exports' ? '📥 Exports' : tab === 'notifications' ? '🔔 Notifications' : tab === 'referrals' ? '🔗 Referrals' : tab === 'emails' ? '📧 Emails' : tab === 'sidebets' ? '🎲 Side Bets' : tab === 'blog' ? '📝 Blog' : tab === 'announcements' ? '📣 Announcements' : tab}
               </button>
             ))}
           </div>
@@ -1447,6 +1449,16 @@ export default function AdminPage() {
         {/* Side Bets Tab */}
         {activeTab === 'sidebets' && (
           <AdminSideBetsTab />
+        )}
+
+        {/* Blog Tab */}
+        {activeTab === 'blog' && (
+          <BlogTab setMessage={setMessage} setError={setError} />
+        )}
+
+        {/* Announcements Tab */}
+        {activeTab === 'announcements' && (
+          <AnnouncementsTab setMessage={setMessage} setError={setError} />
         )}
 
         {/* Events Tab */}

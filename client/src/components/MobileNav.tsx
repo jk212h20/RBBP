@@ -4,9 +4,10 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
+import AnnouncementBar from './AnnouncementBar';
 
 interface MobileNavProps {
-  currentPage?: 'home' | 'events' | 'leaderboard' | 'venues' | 'dashboard' | 'faq' | 'puzzle';
+  currentPage?: 'home' | 'events' | 'leaderboard' | 'venues' | 'dashboard' | 'faq' | 'puzzle' | 'blog';
 }
 
 export default function MobileNav({ currentPage }: MobileNavProps) {
@@ -31,6 +32,7 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
     { href: '/events', label: 'Events', key: 'events' },
     { href: '/leaderboard', label: 'Leaderboard', key: 'leaderboard' },
     { href: '/venues', label: 'Venues', key: 'venues' },
+    { href: '/blog', label: 'Blog', key: 'blog' },
     { href: '/faq', label: 'FAQ', key: 'faq' },
     { href: '/puzzle', label: '🧩 Daily Puzzle', key: 'puzzle' },
   ];
@@ -42,6 +44,7 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
   ];
 
   return (
+    <>
     <header className="bg-black/30 backdrop-blur-sm border-b border-blue-700/50">
       <div className="max-w-7xl mx-auto px-4 py-4">
         <div className="flex justify-between items-center">
@@ -252,5 +255,7 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
         )}
       </div>
     </header>
+    <AnnouncementBar />
+    </>
   );
 }

@@ -19,3 +19,24 @@ body {
   font-family: Arial, Helvetica, sans-serif;
   min-height: 100vh;
 }
+
+/* Announcement bar: horizontal marquee.
+   The track holds the message twice back-to-back; we translate -50% so the
+   second copy seamlessly takes over as the first scrolls off-screen. */
+@keyframes marquee-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.marquee-track {
+  display: inline-flex;
+  white-space: nowrap;
+  will-change: transform;
+}
+.marquee-track.is-scrolling {
+  animation: marquee-scroll linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track.is-scrolling {
+    animation: none;
+  }
+}

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import MobileNav from '@/components/MobileNav';
 import { useAuth } from '@/context/AuthContext';
-import { eventsAPI, seasonsAPI } from '@/lib/api';
+import { eventsAPI, seasonsAPI, blogAPI, type BlogListItem } from '@/lib/api';
 import { calculatePossiblePoints } from '@/lib/points';
 
 interface UpcomingEvent {
@@ -47,6 +47,7 @@ export default function HomePage() {
   const { isAuthenticated, loading } = useAuth();
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
   const [topPlayers, setTopPlayers] = useState<TopPlayer[]>([]);
+  const [latestPosts, setLatestPosts] = useState<BlogListItem[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [, setTick] = useState(0);
 
@@ -76,6 +77,14 @@ export default function HomePage() {
       } catch (err) {
         // No active season, that's okay
       }
+
+      // Load latest blog posts (top 3). Fail quiet — blog is optional.
+      try {
+        const posts = await blogAPI.list();
+        setLatestPosts(posts.slice(0, 3));
+      } catch (err) {
+        // ignore
+      }
     } catch (err) {
       console.error('Failed to load home data:', err);
     } finally {
@@ -101,12 +110,13 @@ export default function HomePage() {
       {/* Hero Section */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="flex flex-col md:flex-row items-center justify-center gap-6 mb-16">
+          {/* Shark/logo — mobile shrinks to ~40% of desktop size (120px vs 300px). */}
           <Image
             src="/logo.png"
             alt="RBBP Logo"
             width={300}
             height={300}
-            className="flex-shrink-0"
+            className="flex-shrink-0 w-[120px] h-[120px] md:w-[300px] md:h-[300px]"
             priority
           />
           <div className="text-center md:text-left">
@@ -248,8 +258,48 @@ export default function HomePage() {
           </div>
         </div>
 
+        {/* Latest Blog Posts */}
+        {latestPosts.length > 0 && (
+          <div className="bg-white/10 backdrop-blur rounded-2xl p-6 border border-white/10 mb-16">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-white">📝 Latest Posts</h2>
+              <Link href="/blog" className="text-blue-300 hover:text-blue-200 text-sm">
+                View All →
+              </Link>
+            </div>
+            <div className="grid md:grid-cols-3 gap-4">
+              {latestPosts.map((post) => (
+                <Link
+                  key={post.id}
+                  href={`/blog/${post.slug}`}
+                  className="block bg-white/5 rounded-xl hover:bg-white/10 transition overflow-hidden"
+                >
+                  {post.coverImage && (
+                    <div className="relative w-full h-32">
+                      <Image src={post.coverImage} alt={post.title} fill className="object-cover" />
+                    </div>
+                  )}
+                  <div className="p-4">
+                    <p className="text-white/50 text-xs mb-1">
+                      {new Date(post.publishedAt).toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </p>
+                    <h3 className="text-white font-semibold text-base mb-1 line-clamp-2">{post.title}</h3>
+                    {post.excerpt && (
+                      <p className="text-white/60 text-sm line-clamp-2">{post.excerpt}</p>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Features */}
-        <div className="grid md:grid-cols-3 gap-8 mb-16">
+        <div className="grid md:grid-cols-2 gap-8 mb-16">
           <div className="bg-white/10 backdrop-blur rounded-2xl p-8 border border-white/10">
             <div className="text-2xl mb-3">🏆</div>
             <h3 className="text-white font-bold text-xl mb-2">Leaderboards</h3>
@@ -262,16 +312,6 @@ export default function HomePage() {
             <h3 className="text-white font-bold text-xl mb-2">Events</h3>
             <p className="text-white/70">
               Find poker nights at venues across Roatan and sign up instantly.
-            </p>
-          </div>
-          <div className="bg-white/10 backdrop-blur rounded-2xl p-8 border border-white/10">
-            <div className="text-2xl mb-3">⚡</div>
-            <h3 className="text-white font-bold text-xl mb-2">Lightning Login</h3>
-            <p className="text-white/70">
-              Sign in with your Bitcoin Lightning wallet - no password needed!
-            </p>
-            <p className="text-white/50 text-sm mt-2">
-              Need a wallet? Get <a href="https://phoenix.acinq.co" target="_blank" rel="noopener noreferrer" className="text-yellow-400 hover:text-yellow-300 underline">Phoenix</a>
             </p>
           </div>
         </div>
@@ -291,8 +331,7 @@ export default function HomePage() {
         {/* CTA */}
         {!isAuthenticated && (
           <div className="text-center bg-white/5 backdrop-blur rounded-2xl p-8 border border-white/10">
-            <h3 className="text-2xl font-bold text-white mb-4">Ready to play?</h3>
-            <p className="text-white/70 mb-6">Join Roatan Bitcoin Bar Poker today and start competing!</p>
+            <h3 className="text-2xl font-bold text-white mb-6">Start Playing!</h3>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
                 href="/register"

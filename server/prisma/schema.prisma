@@ -439,6 +439,43 @@ model Faq {
 }
 
 // ============================================
+// BLOG POSTS
+// ============================================
+
+model BlogPost {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  excerpt     String?  // Short summary shown on the home card / list
+  content     String   // Markdown / plain text body
+  coverImage  String?  // Optional cover image URL
+  isPublished Boolean  @default(true)
+  publishedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isPublished, publishedAt])
+  @@map("blog_posts")
+}
+
+// ============================================
+// ANNOUNCEMENTS (top-bar marquee)
+// ============================================
+
+model Announcement {
+  id        String   @id @default(cuid())
+  message   String   // Plain text shown in the bar
+  linkUrl   String?  // Optional click-through URL
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+  @@map("announcements")
+}
+
+// ============================================
 // VENUE APPLICATIONS
 // ============================================
 

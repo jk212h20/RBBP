@@ -19,6 +19,8 @@ import faqRoutes from './routes/faq.routes';
 import venueApplicationRoutes from './routes/venue-application.routes';
 import puzzleRoutes from './routes/puzzle.routes';
 import sideBetRoutes from './routes/side-bet.routes';
+import blogRoutes from './routes/blog.routes';
+import announcementRoutes from './routes/announcement.routes';
 
 // Load environment variables
 dotenv.config();
@@ -191,6 +193,12 @@ app.use('/api/puzzle', puzzleRoutes);
 
 // Side Bet routes (user-created betting pools)
 app.use('/api/side-bets', sideBetRoutes);
+
+// Blog routes (admin posts shown on home + public blog index)
+app.use('/api/blog', blogRoutes);
+
+// Announcement routes (top-bar marquee)
+app.use('/api/announcements', announcementRoutes);
 
 // ============================================
 // ERROR HANDLING

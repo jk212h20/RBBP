@@ -690,6 +690,110 @@ export const faqAPI = {
 };
 
 // ============================================
+// BLOG API
+// ============================================
+export interface BlogListItem {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string | null;
+  coverImage: string | null;
+  publishedAt: string;
+}
+
+export interface BlogPost extends BlogListItem {
+  content: string;
+  isPublished: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const blogAPI = {
+  // Public: list published posts (no content payload)
+  list: () => fetchAPI<BlogListItem[]>('/blog'),
+
+  // Public: single post by slug
+  getBySlug: (slug: string) => fetchAPI<BlogPost>(`/blog/${slug}`),
+
+  // Admin: list every post (drafts + published)
+  listAdmin: () => fetchAPI<BlogPost[]>('/blog/all'),
+
+  create: (data: {
+    title: string;
+    content: string;
+    excerpt?: string;
+    coverImage?: string | null;
+    isPublished?: boolean;
+    slug?: string;
+  }) =>
+    fetchAPI<BlogPost>('/blog', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  update: (
+    id: string,
+    data: Partial<{
+      title: string;
+      content: string;
+      excerpt: string;
+      coverImage: string | null;
+      isPublished: boolean;
+      slug: string;
+    }>
+  ) =>
+    fetchAPI<BlogPost>(`/blog/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string) =>
+    fetchAPI<{ message: string }>(`/blog/${id}`, { method: 'DELETE' }),
+};
+
+// ============================================
+// ANNOUNCEMENTS API
+// ============================================
+export interface PublicAnnouncement {
+  id: string;
+  message: string;
+  linkUrl: string | null;
+  sortOrder: number;
+}
+
+export interface AdminAnnouncement extends PublicAnnouncement {
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const announcementAPI = {
+  // Public: active announcements only
+  list: () => fetchAPI<PublicAnnouncement[]>('/announcements'),
+
+  // Admin: every announcement
+  listAdmin: () => fetchAPI<AdminAnnouncement[]>('/announcements/all'),
+
+  create: (data: { message: string; linkUrl?: string | null; isActive?: boolean; sortOrder?: number }) =>
+    fetchAPI<AdminAnnouncement>('/announcements', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  update: (
+    id: string,
+    data: Partial<{ message: string; linkUrl: string | null; isActive: boolean; sortOrder: number }>
+  ) =>
+    fetchAPI<AdminAnnouncement>(`/announcements/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string) =>
+    fetchAPI<{ message: string }>(`/announcements/${id}`, { method: 'DELETE' }),
+};
+
+// ============================================
 // VENUE APPLICATIONS API
 // ============================================
 export const venueApplicationsAPI = {
