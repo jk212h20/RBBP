@@ -5,6 +5,37 @@ import { seasonService } from './season.service';
 import { pointsService } from './points.service';
 import { processReferralReward } from './referral.service';
 import { sendEventSignupEmail } from './email.service';
+import { createInvoice, lookupInvoice } from './voltage.service';
+
+/**
+ * Compute the buy-in price a player owes at this moment.
+ * Returns null when the event has no buy-in (free).
+ *
+ * Pricing rules:
+ *   - Free event (buyInSats null or 0) -> null.
+ *   - If the player pays AT LEAST `prepayDiscountHours` before event start, they pay
+ *     `buyInSats - prepayDiscountSats` (floored at 0).
+ *   - Otherwise full price.
+ */
+export function computeBuyInPrice(event: {
+  buyInSats: number | null;
+  prepayDiscountSats: number | null;
+  prepayDiscountHours: number;
+  dateTime: Date;
+}, now: Date = new Date()): { priceSats: number; discountApplied: boolean; fullPriceSats: number; discountSats: number } | null {
+  const full = event.buyInSats ?? 0;
+  if (full <= 0) return null;
+  const discount = event.prepayDiscountSats ?? 0;
+  const hoursBefore = (event.dateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+  const qualifies = discount > 0 && hoursBefore >= event.prepayDiscountHours;
+  const priceSats = qualifies ? Math.max(0, full - discount) : full;
+  return {
+    priceSats,
+    discountApplied: qualifies,
+    fullPriceSats: full,
+    discountSats: qualifies ? discount : 0,
+  };
+}
 
 // ============================================
 // ROATAN TIMEZONE HANDLING
@@ -310,7 +341,9 @@ export class EventService {
         registrationOpenDays: data.registrationOpenDays ?? 10,
         registrationCloseMinutes: data.registrationCloseMinutes ?? 30,
         maxPlayers: data.maxPlayers || 50,
-        buyIn: data.buyIn || null,
+        buyInSats: data.buyInSats ?? null,
+        prepayDiscountSats: data.prepayDiscountSats ?? 0,
+        prepayDiscountHours: data.prepayDiscountHours ?? 3,
         venueId: data.venueId,
         seasonId: data.seasonId,
         directorId: data.directorId || null,
@@ -359,7 +392,9 @@ export class EventService {
         ...(data.registrationOpenDays !== undefined && { registrationOpenDays: data.registrationOpenDays }),
         ...(data.registrationCloseMinutes !== undefined && { registrationCloseMinutes: data.registrationCloseMinutes }),
         ...(data.maxPlayers && { maxPlayers: data.maxPlayers }),
-        ...(data.buyIn !== undefined && { buyIn: data.buyIn }),
+        ...(data.buyInSats !== undefined && { buyInSats: data.buyInSats }),
+        ...(data.prepayDiscountSats !== undefined && { prepayDiscountSats: data.prepayDiscountSats ?? 0 }),
+        ...(data.prepayDiscountHours !== undefined && { prepayDiscountHours: data.prepayDiscountHours }),
         ...(data.venueId && { venueId: data.venueId }),
         ...(data.seasonId && { seasonId: data.seasonId }),
         ...(data.directorId !== undefined && { directorId: data.directorId }),
@@ -419,7 +454,7 @@ export class EventService {
    * - Remaining signups get 1 point
    * - If event is full, user is added to waitlist (no points awarded)
    */
-  async signupForEvent(eventId: string, userId: string) {
+  async signupForEvent(eventId: string, userId: string, opts: { payOnArrival?: boolean } = {}) {
     // Check if event exists and is open for registration
     const event = await prisma.event.findUnique({
       where: { id: eventId },
@@ -451,7 +486,22 @@ export class EventService {
       },
     });
 
-    if (existingSignup) {
+    if (existingSignup && existingSignup.status !== SignupStatus.CANCELLED) {
+      // If this is a paid event and they have a pending unpaid signup, hand them
+      // back a fresh invoice instead of erroring out (lets them resume from the QR).
+      const buyInInfo = computeBuyInPrice(event);
+      if (buyInInfo && !existingSignup.paidAt && !existingSignup.payOnArrival) {
+        const memo = `${event.name} buy-in`;
+        const { paymentRequest, paymentHash } = await createInvoice(buyInInfo.priceSats, memo);
+        await prisma.eventSignup.update({
+          where: { id: existingSignup.id },
+          data: { paymentHash },
+        });
+        return {
+          ...existingSignup,
+          invoice: { paymentRequest, paymentHash, amountSats: buyInInfo.priceSats, discountApplied: buyInInfo.discountApplied, fullPriceSats: buyInInfo.fullPriceSats },
+        };
+      }
       throw new Error('Already signed up for this event');
     }
 
@@ -498,22 +548,58 @@ export class EventService {
       ? (isEarlyBird ? EARLY_BIRD_REGISTRATION_POINTS : REGISTRATION_POINTS)
       : 0;
 
-    // Create signup
-    const signup = await prisma.eventSignup.create({
-      data: {
-        eventId,
-        userId,
-        status: SignupStatus.REGISTERED,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
+    // Determine buy-in pricing and whether we need to mint a Lightning invoice.
+    // A non-zero buyInSats means this is a paid event; players either pay now
+    // (we generate a BOLT11 invoice + payment hash) or choose pay-on-arrival.
+    const buyInInfo = computeBuyInPrice(event);
+    const wantsPayOnArrival = !!opts.payOnArrival;
+    let invoice: { paymentRequest: string; paymentHash: string; amountSats: number; discountApplied: boolean; fullPriceSats: number } | null = null;
+    let paymentHash: string | null = null;
+
+    if (buyInInfo && !wantsPayOnArrival) {
+      const memo = `${event.name} buy-in`;
+      const { paymentRequest, paymentHash: ph } = await createInvoice(buyInInfo.priceSats, memo);
+      paymentHash = ph;
+      invoice = {
+        paymentRequest,
+        paymentHash: ph,
+        amountSats: buyInInfo.priceSats,
+        discountApplied: buyInInfo.discountApplied,
+        fullPriceSats: buyInInfo.fullPriceSats,
+      };
+    }
+
+    // If an existing CANCELLED signup row exists, reactivate it instead of
+    // creating a duplicate (unique key is eventId+userId).
+    const reactivate = existingSignup && existingSignup.status === SignupStatus.CANCELLED
+      ? existingSignup
+      : null;
+
+    const signup = reactivate
+      ? await prisma.eventSignup.update({
+          where: { id: reactivate.id },
+          data: {
+            status: SignupStatus.REGISTERED,
+            registeredAt: new Date(),
+            checkedInAt: null,
+            paymentHash,
+            payOnArrival: wantsPayOnArrival,
+            paidAt: null,
+            paidAmountSats: null,
+            paidInPerson: false,
           },
-        },
-      },
-    });
+          include: { user: { select: { id: true, name: true } } },
+        })
+      : await prisma.eventSignup.create({
+          data: {
+            eventId,
+            userId,
+            status: SignupStatus.REGISTERED,
+            paymentHash,
+            payOnArrival: wantsPayOnArrival,
+          },
+          include: { user: { select: { id: true, name: true } } },
+        });
 
     // Award registration points for the season (skipped when the event
     // has registrationPointsEnabled = false, e.g. one-off finals)
@@ -543,7 +629,78 @@ export class EventService {
       })
       .catch(() => {});
 
-    return signup;
+    return invoice ? { ...signup, invoice } : signup;
+  }
+
+  /**
+   * Check whether the user's buy-in invoice has been paid.
+   * Returns { paid: boolean, paidAt?: Date, amountPaidSats?: number }.
+   * Updates the signup record on first observed settlement.
+   */
+  async checkSignupPayment(eventId: string, userId: string) {
+    const signup = await prisma.eventSignup.findUnique({
+      where: { eventId_userId: { eventId, userId } },
+    });
+    if (!signup) throw new Error('Not registered for this event');
+    if (signup.paidAt) {
+      return { paid: true, paidAt: signup.paidAt, amountPaidSats: signup.paidAmountSats };
+    }
+    if (!signup.paymentHash) {
+      return { paid: false };
+    }
+    const { settled, amountPaidSats } = await lookupInvoice(signup.paymentHash);
+    if (settled) {
+      const updated = await prisma.eventSignup.update({
+        where: { id: signup.id },
+        data: { paidAt: new Date(), paidAmountSats: amountPaidSats },
+      });
+      return { paid: true, paidAt: updated.paidAt, amountPaidSats: updated.paidAmountSats };
+    }
+    return { paid: false };
+  }
+
+  /**
+   * Admin/TD marks a player as paid in person (no Lightning involved).
+   * Idempotent: marking twice is a no-op.
+   */
+  async markSignupPaidInPerson(eventId: string, userId: string) {
+    const signup = await prisma.eventSignup.findUnique({
+      where: { eventId_userId: { eventId, userId } },
+      include: { event: { select: { buyInSats: true } } },
+    });
+    if (!signup) throw new Error('Signup not found');
+    if (signup.paidAt) return signup; // already paid
+    return prisma.eventSignup.update({
+      where: { id: signup.id },
+      data: {
+        paidAt: new Date(),
+        paidAmountSats: signup.event.buyInSats ?? 0,
+        paidInPerson: true,
+      },
+    });
+  }
+
+  /**
+   * Admin/TD: list all signups for an event with payment status.
+   * Used by the admin registrants panel.
+   */
+  async getRegistrants(eventId: string) {
+    return prisma.eventSignup.findMany({
+      where: { eventId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            isGuest: true,
+            avatar: true,
+            profile: { select: { profileImage: true } },
+          },
+        },
+      },
+      orderBy: { registeredAt: 'asc' },
+    });
   }
 
   /**
@@ -761,7 +918,15 @@ export class EventService {
   async getEventSignups(eventId: string) {
     return prisma.eventSignup.findMany({
       where: { eventId },
-      include: {
+      select: {
+        id: true,
+        eventId: true,
+        userId: true,
+        status: true,
+        registeredAt: true,
+        checkedInAt: true,
+        // Note: paymentHash / paid* fields are intentionally omitted from the
+        // public signup listing. Use the admin-only /registrants endpoint for those.
         user: {
           select: {
             id: true,
@@ -1215,7 +1380,9 @@ export class EventService {
           registrationOpenDays: data.registrationOpenDays ?? 10,
           registrationCloseMinutes: data.registrationCloseMinutes ?? 30,
           maxPlayers: data.maxPlayers || 50,
-          buyIn: data.buyIn || null,
+          buyInSats: data.buyInSats ?? null,
+          prepayDiscountSats: data.prepayDiscountSats ?? 0,
+          prepayDiscountHours: data.prepayDiscountHours ?? 3,
           venueId: data.venueId,
           seasonId: data.seasonId,
           directorId: data.directorId || null,

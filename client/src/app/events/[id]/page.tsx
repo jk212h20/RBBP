@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import MobileNav from '@/components/MobileNav';
+import RegistrantsPanel from '@/components/RegistrantsPanel';
 import { eventsAPI } from '@/lib/api';
 
 interface EventDetail {
@@ -14,7 +15,9 @@ interface EventDetail {
   description?: string;
   dateTime: string;
   maxPlayers: number;
-  buyIn?: number;
+  buyInSats?: number | null;
+  prepayDiscountSats?: number | null;
+  prepayDiscountHours?: number;
   registrationCloseMinutes?: number;
   status: string;
   venue: {
@@ -355,19 +358,104 @@ export default function EventDetailPage() {
     }
   };
 
+  // Buy-in payment modal state
+  const [payModalOpen, setPayModalOpen] = useState(false);
+  const [payInvoice, setPayInvoice] = useState<{
+    paymentRequest: string;
+    paymentHash: string;
+    amountSats: number;
+    discountApplied: boolean;
+    fullPriceSats: number;
+  } | null>(null);
+  const [paymentChecking, setPaymentChecking] = useState(false);
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
+  const [signupBusy, setSignupBusy] = useState(false);
+
+  // For paid events the player chooses Pay Now or Pay on Arrival in a modal.
+  // Free events skip the modal entirely.
   const handleSignup = async () => {
     if (!isAuthenticated) {
       router.push('/login');
       return;
     }
-
+    const hasBuyIn = !!(event && event.buyInSats && event.buyInSats > 0);
+    if (hasBuyIn) {
+      setPaymentConfirmed(false);
+      setPayInvoice(null);
+      setPayModalOpen(true);
+      return;
+    }
     try {
+      setSignupBusy(true);
       await eventsAPI.signup(eventId);
-      loadEvent();
+      await loadEvent();
     } catch (err: any) {
       alert(err.message || 'Failed to sign up');
+    } finally {
+      setSignupBusy(false);
     }
   };
+
+  // "Pay Now" branch: create signup + receive invoice + poll until paid.
+  const handlePayNow = async () => {
+    try {
+      setSignupBusy(true);
+      const res: any = await eventsAPI.signup(eventId, { payOnArrival: false });
+      if (res?.invoice) {
+        setPayInvoice(res.invoice);
+      } else {
+        // Server says the signup is already paid / no invoice needed.
+        setPaymentConfirmed(true);
+        await loadEvent();
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to start payment');
+      setPayModalOpen(false);
+    } finally {
+      setSignupBusy(false);
+    }
+  };
+
+  // "Pay on Arrival" branch: register without creating an invoice.
+  const handlePayOnArrival = async () => {
+    try {
+      setSignupBusy(true);
+      await eventsAPI.signup(eventId, { payOnArrival: true });
+      setPayModalOpen(false);
+      await loadEvent();
+    } catch (err: any) {
+      alert(err.message || 'Failed to sign up');
+    } finally {
+      setSignupBusy(false);
+    }
+  };
+
+  // Poll the server every 3 seconds while the QR is visible.
+  useEffect(() => {
+    if (!payInvoice || paymentConfirmed) return;
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        setPaymentChecking(true);
+        const res = await eventsAPI.checkPayment(eventId);
+        if (cancelled) return;
+        if (res.paid) {
+          setPaymentConfirmed(true);
+          await loadEvent();
+        }
+      } catch {
+        // ignore transient errors
+      } finally {
+        if (!cancelled) setPaymentChecking(false);
+      }
+    };
+    tick();
+    const id = setInterval(tick, 3000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [payInvoice, paymentConfirmed, eventId]);
 
   const handleCancelSignup = async () => {
     try {
@@ -674,10 +762,15 @@ export default function EventDetailPage() {
               <h1 className="text-3xl font-bold text-white mt-3">{event.name}</h1>
               <p className="text-blue-100 mt-1">{event.season.name}</p>
             </div>
-            {event.buyIn && (
+            {event.buyInSats != null && event.buyInSats > 0 && (
               <div className="text-right">
                 <p className="text-blue-200 text-sm">Buy-in</p>
-                <p className="text-3xl font-bold text-yellow-400">${event.buyIn}</p>
+                <p className="text-3xl font-bold text-yellow-400">{event.buyInSats.toLocaleString()} sats</p>
+                {event.prepayDiscountSats != null && event.prepayDiscountSats > 0 && (
+                  <p className="text-yellow-300/80 text-xs mt-1">
+                    Save {event.prepayDiscountSats.toLocaleString()} sats when paid {event.prepayDiscountHours ?? 3}h+ early
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -982,6 +1075,13 @@ export default function EventDetailPage() {
 
             {showManagement && (
               <div className="space-y-6">
+                {/* Registrants + payment status */}
+                <RegistrantsPanel
+                  eventId={eventId}
+                  buyInSats={event.buyInSats ?? 0}
+                  onChange={loadEvent}
+                />
+
                 {/* Status Controls */}
                 <div>
                   <h3 className="text-white font-medium mb-2">Event Status</h3>
@@ -1560,6 +1660,115 @@ export default function EventDetailPage() {
           )}
         </div>
       </main>
+
+      {/* Buy-in Payment Modal
+          Two paths:
+          1) Pay Now: server mints a Lightning invoice; we render a QR + poll for settlement.
+          2) Pay on Arrival: skip the invoice and register; the TD will mark them paid at the venue. */}
+      {payModalOpen && event && event.buyInSats && event.buyInSats > 0 && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          <div className="bg-gray-900 border border-blue-600/40 rounded-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-start mb-4">
+              <h2 className="text-2xl font-bold text-white">Buy-in Required</h2>
+              <button onClick={() => setPayModalOpen(false)} className="text-white/60 hover:text-white text-2xl leading-none">×</button>
+            </div>
+
+            {paymentConfirmed ? (
+              <div className="text-center py-6">
+                <p className="text-5xl mb-3">✅</p>
+                <p className="text-green-400 font-bold text-xl mb-1">Payment received!</p>
+                <p className="text-white/70 text-sm">You're registered for the event.</p>
+                <button
+                  onClick={() => setPayModalOpen(false)}
+                  className="mt-6 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold"
+                >
+                  Done
+                </button>
+              </div>
+            ) : payInvoice ? (
+              <>
+                <p className="text-center text-white mb-1">
+                  Scan with any Lightning wallet to pay
+                </p>
+                <p className="text-center text-yellow-400 font-bold text-2xl mb-4">
+                  {payInvoice.amountSats.toLocaleString()} sats
+                </p>
+                {payInvoice.discountApplied && (
+                  <p className="text-center text-green-400 text-sm mb-3">
+                    🎉 Prepay discount applied! Saved {(payInvoice.fullPriceSats - payInvoice.amountSats).toLocaleString()} sats.
+                  </p>
+                )}
+                <div className="bg-white rounded-lg p-4 mx-auto max-w-xs">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(payInvoice.paymentRequest)}`}
+                    alt="Lightning invoice QR code"
+                    className="w-full h-auto"
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(payInvoice.paymentRequest).catch(() => {});
+                  }}
+                  className="mt-3 w-full text-blue-300 hover:text-blue-200 text-xs underline"
+                >
+                  Copy invoice
+                </button>
+                <p className="text-center text-white/60 text-xs mt-3">
+                  {paymentChecking ? 'Checking for payment…' : 'Waiting for payment…'}
+                </p>
+                <button
+                  onClick={() => setPayModalOpen(false)}
+                  className="mt-4 w-full bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg text-sm"
+                >
+                  Close (your registration is held until paid)
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="bg-white/5 rounded-lg p-4 mb-4">
+                  <p className="text-white/70 text-sm">Buy-in</p>
+                  <p className="text-yellow-400 font-bold text-2xl">{event.buyInSats.toLocaleString()} sats</p>
+                  {(() => {
+                    const discount = event.prepayDiscountSats ?? 0;
+                    const hours = event.prepayDiscountHours ?? 3;
+                    if (discount <= 0) return null;
+                    const hoursBefore = (new Date(event.dateTime).getTime() - Date.now()) / (1000 * 60 * 60);
+                    const qualifies = hoursBefore >= hours;
+                    return qualifies ? (
+                      <p className="text-green-400 text-sm mt-2">
+                        🎉 Pay now and save {discount.toLocaleString()} sats — only {(event.buyInSats! - discount).toLocaleString()} sats!
+                      </p>
+                    ) : (
+                      <p className="text-white/50 text-xs mt-2">
+                        (Prepay discount expired — it required paying {hours}h+ before start.)
+                      </p>
+                    );
+                  })()}
+                </div>
+                <div className="space-y-3">
+                  <button
+                    onClick={handlePayNow}
+                    disabled={signupBusy}
+                    className="w-full bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black py-3 rounded-lg font-bold text-lg"
+                  >
+                    ⚡ Pay Now with Lightning
+                  </button>
+                  <button
+                    onClick={handlePayOnArrival}
+                    disabled={signupBusy}
+                    className="w-full bg-blue-700 hover:bg-blue-600 disabled:opacity-60 text-white py-3 rounded-lg font-semibold"
+                  >
+                    💵 Pay on Arrival
+                  </button>
+                </div>
+                <p className="text-white/50 text-xs text-center mt-3">
+                  Pay on arrival registers you now; settle the buy-in in person at the venue.
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

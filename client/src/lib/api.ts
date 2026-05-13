@@ -194,14 +194,16 @@ export const eventsAPI = {
   
   getMy: () => fetchAPI<any[]>('/events/my'),
   
-  create: (data: { 
-    name: string; 
-    dateTime: string; 
-    venueId: string; 
-    seasonId: string; 
+  create: (data: {
+    name: string;
+    dateTime: string;
+    venueId: string;
+    seasonId: string;
     description?: string;
     maxPlayers?: number;
-    buyIn?: number;
+    buyInSats?: number | null;
+    prepayDiscountSats?: number;
+    prepayDiscountHours?: number;
   }) =>
     fetchAPI<any>('/events', {
       method: 'POST',
@@ -223,11 +225,27 @@ export const eventsAPI = {
     fetchAPI<{ message: string }>(`/events/${id}`, { method: 'DELETE' }),
   
   // Signups
-  signup: (eventId: string) =>
-    fetchAPI<any>(`/events/${eventId}/signup`, { method: 'POST' }),
-  
+  signup: (eventId: string, opts?: { payOnArrival?: boolean }) =>
+    fetchAPI<any>(`/events/${eventId}/signup`, {
+      method: 'POST',
+      body: JSON.stringify(opts || {}),
+    }),
+
   cancelSignup: (eventId: string) =>
     fetchAPI<{ message: string }>(`/events/${eventId}/signup`, { method: 'DELETE' }),
+
+  // Buy-in payment
+  checkPayment: (eventId: string) =>
+    fetchAPI<{ paid: boolean; paidAt?: string; amountPaidSats?: number }>(
+      `/events/${eventId}/check-payment`,
+      { method: 'POST' }
+    ),
+
+  markPaid: (eventId: string, userId: string) =>
+    fetchAPI<any>(`/events/${eventId}/signup/${userId}/mark-paid`, { method: 'POST' }),
+
+  getRegistrants: (eventId: string) =>
+    fetchAPI<any[]>(`/events/${eventId}/registrants`),
   
   getSignups: (eventId: string) => fetchAPI<any[]>(`/events/${eventId}/signups`),
   
@@ -267,7 +285,9 @@ export const eventsAPI = {
     seasonId: string;
     description?: string;
     maxPlayers?: number;
-    buyIn?: number;
+    buyInSats?: number | null;
+    prepayDiscountSats?: number;
+    prepayDiscountHours?: number;
     startingNumber?: number;
   }) =>
     fetchAPI<{ message: string; events: any[] }>('/events/bulk', {

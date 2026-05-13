@@ -254,11 +254,56 @@ router.post('/:id/signup', authenticate, async (req: Request, res: Response) => 
       }
     }
     
-    const signup = await eventService.signupForEvent(req.params.id, req.user.userId);
+    const payOnArrival = req.body?.payOnArrival === true;
+    const signup = await eventService.signupForEvent(req.params.id, req.user.userId, { payOnArrival });
     res.status(201).json(signup);
   } catch (error: any) {
     console.error('Error signing up for event:', error);
     res.status(400).json({ error: error.message || 'Failed to sign up for event' });
+  }
+});
+
+/**
+ * POST /api/events/:id/check-payment
+ * Poll Lightning to see whether the current user's buy-in invoice settled.
+ * Idempotent: hits LND once and updates the signup if newly paid.
+ */
+router.post('/:id/check-payment', authenticate, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
+    const result = await eventService.checkSignupPayment(req.params.id, req.user.userId);
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error checking event payment:', error);
+    res.status(400).json({ error: error.message || 'Failed to check payment' });
+  }
+});
+
+/**
+ * POST /api/events/:id/signup/:userId/mark-paid
+ * Admin/TD marks a player as paid in person (cash at the venue).
+ */
+router.post('/:id/signup/:userId/mark-paid', authenticate, requireTournamentDirector, async (req: Request, res: Response) => {
+  try {
+    const signup = await eventService.markSignupPaidInPerson(req.params.id, req.params.userId);
+    res.json(signup);
+  } catch (error: any) {
+    console.error('Error marking paid:', error);
+    res.status(400).json({ error: error.message || 'Failed to mark paid' });
+  }
+});
+
+/**
+ * GET /api/events/:id/registrants
+ * Admin/TD: detailed list of every signup including payment status.
+ */
+router.get('/:id/registrants', authenticate, requireTournamentDirector, async (req: Request, res: Response) => {
+  try {
+    const registrants = await eventService.getRegistrants(req.params.id);
+    res.json(registrants);
+  } catch (error: any) {
+    console.error('Error fetching registrants:', error);
+    res.status(500).json({ error: 'Failed to fetch registrants' });
   }
 });
 

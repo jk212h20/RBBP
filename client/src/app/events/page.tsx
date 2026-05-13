@@ -16,7 +16,7 @@ interface Event {
   dateTime: string;
   imageUrl?: string;
   maxPlayers: number;
-  buyIn?: number;
+  buyInSats?: number | null;
   status: string;
   registrationCloseMinutes?: number;
   lastLongerEnabled?: boolean;
@@ -254,8 +254,8 @@ export default function EventsPage() {
                 </span>
               )}
             </div>
-            {event.buyIn && (
-              <span className="text-yellow-400 font-bold">${event.buyIn}</span>
+            {event.buyInSats != null && event.buyInSats > 0 && (
+              <span className="text-yellow-400 font-bold">{event.buyInSats.toLocaleString()} sats</span>
             )}
           </div>
           

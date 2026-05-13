@@ -25,7 +25,7 @@ interface Event {
   dateTime: string;
   status: string;
   maxPlayers: number;
-  buyIn: number | null;
+  buyInSats: number | null;
   _count: { signups: number };
 }
 

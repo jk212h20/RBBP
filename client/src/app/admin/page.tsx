@@ -68,7 +68,9 @@ interface EventForm {
   venueId: string;
   seasonId: string;
   maxPlayers: number;
-  buyIn: number;
+  buyInSats: number;
+  prepayDiscountSats: number;
+  prepayDiscountHours: number;
   registrationCloseMinutes: number;
   registrationPointsEnabled: boolean;
   lastLongerEnabled: boolean;
@@ -86,7 +88,9 @@ interface BulkEventForm {
   venueId: string;
   seasonId: string;
   maxPlayers: number;
-  buyIn: number;
+  buyInSats: number;
+  prepayDiscountSats: number;
+  prepayDiscountHours: number;
   startingNumber: number;
 }
 
@@ -99,7 +103,9 @@ interface Event {
   dateTime: string;
   status: 'SCHEDULED' | 'REGISTRATION_OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
   maxPlayers: number;
-  buyIn: number | null;
+  buyInSats: number | null;
+  prepayDiscountSats: number | null;
+  prepayDiscountHours: number;
   venue: { id: string; name: string };
   season: { id: string; name: string };
   _count: { signups: number; results: number };
@@ -154,7 +160,9 @@ export default function AdminPage() {
     venueId: '', 
     seasonId: '', 
     maxPlayers: 50, 
-    buyIn: 0,
+    buyInSats: 0,
+    prepayDiscountSats: 0,
+    prepayDiscountHours: 3,
     registrationCloseMinutes: 30,
     registrationPointsEnabled: true,
     lastLongerEnabled: false,
@@ -178,7 +186,9 @@ export default function AdminPage() {
     venueId: '',
     seasonId: '',
     maxPlayers: 50,
-    buyIn: 0,
+    buyInSats: 0,
+    prepayDiscountSats: 0,
+    prepayDiscountHours: 3,
     startingNumber: 1
   });
   
@@ -189,7 +199,7 @@ export default function AdminPage() {
     status: '',
     venueId: '',
     maxPlayers: '',
-    buyIn: ''
+    buyInSats: ''
   });
   const [setupKey, setSetupKey] = useState('');
   
@@ -218,7 +228,7 @@ export default function AdminPage() {
   
   // Event edit state
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
-  const [editEventForm, setEditEventForm] = useState({ name: '', description: '', dateTime: '', maxPlayers: 50, buyIn: 0, venueId: '', seasonId: '', registrationPointsEnabled: true });
+  const [editEventForm, setEditEventForm] = useState({ name: '', description: '', dateTime: '', maxPlayers: 50, buyInSats: 0, prepayDiscountSats: 0, prepayDiscountHours: 3, venueId: '', seasonId: '', registrationPointsEnabled: true });
 
   useEffect(() => {
     if (!loading && !user) {
@@ -353,7 +363,7 @@ export default function AdminPage() {
       setMessage('');
       await eventsAPI.create(eventForm);
       setMessage('Event created successfully!');
-      setEventForm({ name: '', description: '', dateTime: '', venueId: '', seasonId: '', maxPlayers: 50, buyIn: 0, registrationCloseMinutes: 30, registrationPointsEnabled: true, lastLongerEnabled: false, lastLongerSeedSats: 10000, lastLongerEntrySats: 25000 });
+      setEventForm({ name: '', description: '', dateTime: '', venueId: '', seasonId: '', maxPlayers: 50, buyInSats: 0, prepayDiscountSats: 0, prepayDiscountHours: 3, registrationCloseMinutes: 30, registrationPointsEnabled: true, lastLongerEnabled: false, lastLongerSeedSats: 10000, lastLongerEntrySats: 25000 });
       fetchStats();
     } catch (err: any) {
       setError(err.message || 'Failed to create event');
@@ -1526,7 +1536,9 @@ export default function AdminPage() {
                                   description: event.description || '',
                                   dateTime: localDt,
                                   maxPlayers: event.maxPlayers,
-                                  buyIn: event.buyIn || 0,
+                                  buyInSats: event.buyInSats || 0,
+                                  prepayDiscountSats: event.prepayDiscountSats || 0,
+                                  prepayDiscountHours: event.prepayDiscountHours ?? 3,
                                   venueId: event.venue.id,
                                   seasonId: event.season.id,
                                   registrationPointsEnabled: event.registrationPointsEnabled ?? true
@@ -1688,14 +1700,45 @@ export default function AdminPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-gray-400 mb-1">Buy-in ($)</label>
+                      <label className="block text-gray-400 mb-1">Buy-in (sats)</label>
                       <input
                         type="number"
-                        value={bulkEventForm.buyIn}
-                        onChange={(e) => setBulkEventForm({ ...bulkEventForm, buyIn: parseFloat(e.target.value) })}
+                        min="0"
+                        step="1"
+                        value={bulkEventForm.buyInSats}
+                        onChange={(e) => setBulkEventForm({ ...bulkEventForm, buyInSats: parseInt(e.target.value) || 0 })}
                         className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
                       />
+                      <p className="text-gray-500 text-xs mt-1">0 = free event</p>
                     </div>
+                    {bulkEventForm.buyInSats > 0 && (
+                      <>
+                        <div>
+                          <label className="block text-gray-400 mb-1">Prepay Discount (sats)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={bulkEventForm.prepayDiscountSats}
+                            onChange={(e) => setBulkEventForm({ ...bulkEventForm, prepayDiscountSats: parseInt(e.target.value) || 0 })}
+                            className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
+                          />
+                          <p className="text-gray-500 text-xs mt-1">Sats off if paid early. 0 = no discount.</p>
+                        </div>
+                        <div>
+                          <label className="block text-gray-400 mb-1">Prepay Window (hours)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={bulkEventForm.prepayDiscountHours}
+                            onChange={(e) => setBulkEventForm({ ...bulkEventForm, prepayDiscountHours: parseInt(e.target.value) || 0 })}
+                            className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
+                          />
+                          <p className="text-gray-500 text-xs mt-1">Discount applies when paid this many hours before start. Default 3.</p>
+                        </div>
+                      </>
+                    )}
                     <div className="md:col-span-2">
                       <label className="block text-gray-400 mb-1">Description (optional)</label>
                       <textarea
@@ -1727,7 +1770,9 @@ export default function AdminPage() {
                               venueId: '',
                               seasonId: '',
                               maxPlayers: 50,
-                              buyIn: 0,
+                              buyInSats: 0,
+                              prepayDiscountSats: 0,
+                              prepayDiscountHours: 3,
                               startingNumber: 1
                             });
                             setShowBulkForm(false);
@@ -1817,14 +1862,45 @@ export default function AdminPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-400 mb-1">Buy-in ($)</label>
+                  <label className="block text-gray-400 mb-1">Buy-in (sats)</label>
                   <input
                     type="number"
-                    value={eventForm.buyIn}
-                    onChange={(e) => setEventForm({ ...eventForm, buyIn: parseFloat(e.target.value) })}
+                    min="0"
+                    step="1"
+                    value={eventForm.buyInSats}
+                    onChange={(e) => setEventForm({ ...eventForm, buyInSats: parseInt(e.target.value) || 0 })}
                     className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
                   />
+                  <p className="text-gray-500 text-xs mt-1">0 = free event</p>
                 </div>
+                {eventForm.buyInSats > 0 && (
+                  <>
+                    <div>
+                      <label className="block text-gray-400 mb-1">Prepay Discount (sats)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={eventForm.prepayDiscountSats}
+                        onChange={(e) => setEventForm({ ...eventForm, prepayDiscountSats: parseInt(e.target.value) || 0 })}
+                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
+                      />
+                      <p className="text-gray-500 text-xs mt-1">Sats off if paid early. 0 = no discount.</p>
+                    </div>
+                    <div>
+                      <label className="block text-gray-400 mb-1">Prepay Window (hours)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={eventForm.prepayDiscountHours}
+                        onChange={(e) => setEventForm({ ...eventForm, prepayDiscountHours: parseInt(e.target.value) || 0 })}
+                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
+                      />
+                      <p className="text-gray-500 text-xs mt-1">Discount applies when paid this many hours before start. Default 3.</p>
+                    </div>
+                  </>
+                )}
                 <div>
                   <label className="block text-gray-400 mb-1">Reg Closes (min before)</label>
                   <input
@@ -2005,9 +2081,22 @@ export default function AdminPage() {
                   <input type="number" value={editEventForm.maxPlayers} onChange={(e) => setEditEventForm({ ...editEventForm, maxPlayers: parseInt(e.target.value) })} className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white" />
                 </div>
                 <div>
-                  <label className="block text-gray-400 mb-1">Buy-in ($)</label>
-                  <input type="number" value={editEventForm.buyIn} onChange={(e) => setEditEventForm({ ...editEventForm, buyIn: parseFloat(e.target.value) })} className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white" />
+                  <label className="block text-gray-400 mb-1">Buy-in (sats)</label>
+                  <input type="number" min="0" step="1" value={editEventForm.buyInSats} onChange={(e) => setEditEventForm({ ...editEventForm, buyInSats: parseInt(e.target.value) || 0 })} className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white" />
+                  <p className="text-gray-500 text-xs mt-1">0 = free event</p>
                 </div>
+                {editEventForm.buyInSats > 0 && (
+                  <>
+                    <div>
+                      <label className="block text-gray-400 mb-1">Prepay Discount (sats)</label>
+                      <input type="number" min="0" step="1" value={editEventForm.prepayDiscountSats} onChange={(e) => setEditEventForm({ ...editEventForm, prepayDiscountSats: parseInt(e.target.value) || 0 })} className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white" />
+                    </div>
+                    <div>
+                      <label className="block text-gray-400 mb-1">Prepay Window (hours)</label>
+                      <input type="number" min="0" step="1" value={editEventForm.prepayDiscountHours} onChange={(e) => setEditEventForm({ ...editEventForm, prepayDiscountHours: parseInt(e.target.value) || 0 })} className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white" />
+                    </div>
+                  </>
+                )}
               </div>
               <div>
                 <label className="block text-gray-400 mb-1">Venue</label>

@@ -721,7 +721,7 @@ router.get('/export/events', authenticate, requireAdmin, async (_req: Request, r
       orderBy: { dateTime: 'desc' },
     });
 
-    const headers = ['Name', 'Date', 'Venue', 'Season', 'Status', 'Signups', 'Results', 'Max Players', 'Buy-In'];
+    const headers = ['Name', 'Date', 'Venue', 'Season', 'Status', 'Signups', 'Results', 'Max Players', 'Buy-In (sats)'];
     const rows = events.map(e => [
       e.name,
       new Date(e.dateTime).toISOString().replace('T', ' ').substring(0, 16),
@@ -731,7 +731,7 @@ router.get('/export/events', authenticate, requireAdmin, async (_req: Request, r
       e._count.signups,
       e._count.results,
       e.maxPlayers,
-      e.buyIn ?? 0,
+      e.buyInSats ?? 0,
     ]);
 
     const csv = toCsv(headers, rows);

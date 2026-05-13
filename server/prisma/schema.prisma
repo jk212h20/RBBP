@@ -197,7 +197,12 @@ model Event {
   registrationOpenDays  Int         @default(10)  // Days before event when registration opens
   registrationCloseMinutes Int      @default(30)  // Minutes before event when registration closes (0 = never closes)
   maxPlayers            Int         @default(20)
-  buyIn                 Float?      // Optional buy-in amount
+  // Buy-in (in satoshis). null/0 => free event.
+  buyInSats             Int?        // Buy-in amount in sats
+  // Prepay discount: players who pay at least `prepayDiscountHours` BEFORE
+  // the event start time pay `buyInSats - prepayDiscountSats`. Both null/0 = no discount.
+  prepayDiscountSats    Int?        @default(0)
+  prepayDiscountHours   Int         @default(3) // How many hours before event start the prepay discount applies
   totalEntrants         Int?        // Manual override for total player count (for points calc)
   registrationPointsEnabled Boolean @default(true)  // If false, no points awarded for signup and no penalties for cancel/no-show
   status                EventStatus @default(SCHEDULED)
@@ -249,7 +254,14 @@ model EventSignup {
   status       SignupStatus @default(REGISTERED)
   registeredAt DateTime     @default(now())
   checkedInAt  DateTime?
-  
+
+  // Payment tracking (used only for events with a non-zero buyInSats)
+  paymentHash      String?   // Lightning invoice payment hash, if a QR was generated
+  paidAt           DateTime? // Timestamp of payment (Lightning settlement OR admin mark-paid)
+  paidAmountSats   Int?      // Sats actually paid (after any prepay discount)
+  payOnArrival     Boolean   @default(false) // Player chose to pay in person
+  paidInPerson     Boolean   @default(false) // Admin/TD marked them paid at the venue
+
   // Relations
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
