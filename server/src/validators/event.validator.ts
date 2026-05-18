@@ -49,10 +49,12 @@ export const resultEntrySchema = z.object({
   userId: z.string().min(1, 'User ID is required'),
   position: z.number().int().min(1, 'Position must be at least 1'),
   knockouts: z.number().int().min(0).optional().default(0),
+  pointsEarned: z.number().int().min(0, 'Points earned must be at least 0').optional(),
 });
 
 export const bulkResultsSchema = z.object({
   results: z.array(resultEntrySchema).min(1, 'At least one result is required'),
+  finalize: z.boolean().optional().default(false),
 }).refine((data) => {
   const positions = data.results.map(r => r.position);
   return new Set(positions).size === positions.length;

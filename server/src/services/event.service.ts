@@ -953,7 +953,7 @@ export class EventService {
    * - Uses diff-based point adjustment to preserve registration points
    * - Creates points history records with reasons
    */
-  async enterResults(eventId: string, results: ResultEntry[]) {
+  async enterResults(eventId: string, results: ResultEntry[], options: { finalize?: boolean } = {}) {
     const event = await prisma.event.findUnique({
       where: { id: eventId },
       include: {
@@ -1010,8 +1010,11 @@ export class EventService {
     const resultsWithPoints = results.map((result) => {
       let pointsEarned = 0;
 
-      // Only positions 1, 2, 3 get points
-      if (result.position === 1) {
+      // Only positions 1, 2, 3 get points by default, but admins may
+      // explicitly override pointsEarned when correcting completed results.
+      if (result.pointsEarned !== undefined) {
+        pointsEarned = result.pointsEarned;
+      } else if (result.position === 1) {
         pointsEarned = pointsCalc.first;
       } else if (result.position === 2) {
         pointsEarned = pointsCalc.second;
@@ -1081,14 +1084,18 @@ export class EventService {
       }
     }
 
-    // Update event status
-    await prisma.event.update({
-      where: { id: eventId },
-      data: { status: EventStatus.COMPLETED },
-    });
+    // Only finalization changes the event status and processes no-shows.
+    // Draft saves and completed-event corrections should not re-run no-show
+    // penalties or force a status transition.
+    if (options.finalize && event.status !== EventStatus.COMPLETED) {
+      await prisma.event.update({
+        where: { id: eventId },
+        data: { status: EventStatus.COMPLETED },
+      });
 
-    // Process no-shows: penalize registered players who didn't attend
-    await this.processNoShows(eventId);
+      // Process no-shows: penalize registered players who didn't attend
+      await this.processNoShows(eventId);
+    }
 
     // Recalculate season standings (for stats like eventsPlayed, wins, etc.)
     await seasonService.recalculateStandings(event.seasonId);

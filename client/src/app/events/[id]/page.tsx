@@ -77,6 +77,7 @@ interface PlayerResult {
   attended: boolean;
   position: number | null;
   knockouts: number;
+  pointsEarned: number | null;
 }
 
 interface ExtraPlayerSlot {
@@ -86,6 +87,7 @@ interface ExtraPlayerSlot {
   attended: boolean;
   position: number | null;
   knockouts: number;
+  pointsEarned: number | null;
   // search state
   searchQuery: string;
   searchResults: { id: string; name: string; email: string | null; isGuest: boolean }[];
@@ -229,7 +231,9 @@ export default function EventDetailPage() {
   // Of those, some may already be filled (have a userId), the rest are blank search fields
   useEffect(() => {
     if (totalEntrantsValue === null || !canManageEvent) {
-      setExtraSlots([]);
+      // Keep result-only rows when editing a completed event; those players may
+      // not have an EventSignup record but their results still need correction.
+      setExtraSlots(prev => prev.filter(s => s.id.startsWith('result-')));
       return;
     }
     const attendedCount = playerResults.filter(p => p.attended).length;
@@ -237,9 +241,12 @@ export default function EventDetailPage() {
     const totalExtraNeeded = Math.max(0, totalEntrantsValue - attendedCount);
     
     setExtraSlots(prev => {
-      const filledSlots = prev.filter(s => s.userId !== null);
-      // If we have more filled slots than needed, keep only what fits
-      const keptFilled = filledSlots.slice(0, totalExtraNeeded);
+      const filledResultSlots = prev.filter(s => s.userId !== null && s.id.startsWith('result-'));
+      const otherFilledSlots = prev.filter(s => s.userId !== null && !s.id.startsWith('result-'));
+      // Always keep result-only rows when editing completed events. For normal
+      // extra slots, keep only as many as the totalEntrants override requires.
+      const otherFilledNeeded = Math.max(0, totalExtraNeeded - filledResultSlots.length);
+      const keptFilled = [...filledResultSlots, ...otherFilledSlots.slice(0, otherFilledNeeded)];
       const blanksNeeded = Math.max(0, totalExtraNeeded - keptFilled.length);
       
       // Reuse existing blanks where possible, create new ones if needed
@@ -253,11 +260,14 @@ export default function EventDetailPage() {
         attended: true,
         position: null as number | null,
         knockouts: 0,
+        pointsEarned: null as number | null,
         searchQuery: '',
         searchResults: [] as { id: string; name: string; email: string | null; isGuest: boolean }[],
         searchLoading: false,
       }));
       
+      // Preserve the existing order of filled slots and blanks. Do not sort by
+      // position during data entry — that makes the form jump around.
       return [...keptFilled, ...keptBlanks, ...newBlanks];
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -314,9 +324,13 @@ export default function EventDetailPage() {
   }, [showManagement, canManageEvent, event, eventId, playerResults]);
 
   useEffect(() => {
-    // Initialize player results from signups when event loads
+    // Initialize player results from signups when event loads.
+    // Preserve signup order during entry so the form doesn't jump around while
+    // positions are being typed. Existing completed results are merged into
+    // those fixed rows by user id.
     if (event && canManageEvent) {
       const existingResults = event.results || [];
+      const signupUserIds = new Set(event.signups.map(signup => signup.user.id));
       const initialResults: PlayerResult[] = event.signups.map(signup => {
         const existingResult = existingResults.find(r => r.user.id === signup.user.id);
         return {
@@ -325,9 +339,30 @@ export default function EventDetailPage() {
           attended: existingResult ? true : signup.status === 'CHECKED_IN',
           position: existingResult?.position || null,
           knockouts: existingResult?.knockouts || 0,
+          pointsEarned: existingResult?.pointsEarned ?? null,
         };
       });
       setPlayerResults(initialResults);
+
+      // If completed results contain unregistered/extra players, keep them
+      // editable as fixed extra rows instead of losing them from the form.
+      const resultOnlySlots: ExtraPlayerSlot[] = existingResults
+        .filter(result => !signupUserIds.has(result.user.id))
+        .map(result => ({
+          id: `result-${result.id}`,
+          userId: result.user.id,
+          name: result.user.name,
+          attended: true,
+          position: result.position,
+          knockouts: result.knockouts || 0,
+          pointsEarned: result.pointsEarned ?? null,
+          searchQuery: '',
+          searchResults: [],
+          searchLoading: false,
+        }));
+      if (resultOnlySlots.length > 0) {
+        setExtraSlots(resultOnlySlots);
+      }
 
       // Initialize totalEntrantsValue from event data
       if (event.totalEntrants) {
@@ -494,6 +529,12 @@ export default function EventDetailPage() {
     ));
   };
 
+  const updatePointsEarned = (userId: string, pointsEarned: number | null) => {
+    setPlayerResults(prev => prev.map(p =>
+      p.userId === userId ? { ...p, pointsEarned: pointsEarned === null ? null : Math.max(0, pointsEarned) } : p
+    ));
+  };
+
   // Quick Add Player handlers
   const handleQuickAddSearch = async (query: string) => {
     setQuickAddSearch(query);
@@ -601,7 +642,7 @@ export default function EventDetailPage() {
   // Clear an extra slot selection
   const handleExtraSlotClear = (slotId: string) => {
     setExtraSlots(prev => prev.map(s => 
-      s.id === slotId ? { ...s, userId: null, name: '', searchQuery: '', searchResults: [], position: null, knockouts: 0 } : s
+      s.id === slotId ? { ...s, userId: null, name: '', searchQuery: '', searchResults: [], position: null, knockouts: 0, pointsEarned: null } : s
     ));
   };
 
@@ -619,6 +660,12 @@ export default function EventDetailPage() {
     ));
   };
 
+  const updateExtraPointsEarned = (slotId: string, pointsEarned: number | null) => {
+    setExtraSlots(prev => prev.map(s =>
+      s.id === slotId ? { ...s, pointsEarned: pointsEarned === null ? null : Math.max(0, pointsEarned) } : s
+    ));
+  };
+
   const handleSaveResults = async (finalize: boolean = false) => {
     const attendedPlayers = playerResults.filter(p => p.attended);
     // Include extra slots that have a user assigned
@@ -626,8 +673,8 @@ export default function EventDetailPage() {
     
     // Combine all players (registered attended + extra slots)
     const allPlayers = [
-      ...attendedPlayers.map(p => ({ userId: p.userId, position: p.position, knockouts: p.knockouts })),
-      ...filledExtraSlots.map(s => ({ userId: s.userId!, position: s.position, knockouts: s.knockouts })),
+      ...attendedPlayers.map(p => ({ userId: p.userId, position: p.position, knockouts: p.knockouts, pointsEarned: p.pointsEarned })),
+      ...filledExtraSlots.map(s => ({ userId: s.userId!, position: s.position, knockouts: s.knockouts, pointsEarned: s.pointsEarned })),
     ];
     
     // Validate positions for all players
@@ -658,15 +705,17 @@ export default function EventDetailPage() {
         userId: p.userId,
         position: p.position!,
         knockouts: p.knockouts,
+        ...(p.pointsEarned !== null ? { pointsEarned: p.pointsEarned } : {}),
       }));
 
       if (resultsToSubmit.length > 0) {
-        await eventsAPI.enterResults(eventId, resultsToSubmit);
+        await eventsAPI.enterResults(eventId, resultsToSubmit, finalize);
       }
 
       if (finalize) {
-        await eventsAPI.updateStatus(eventId, 'COMPLETED');
         setResultMessage({ type: 'success', text: 'Results finalized! Standings have been updated.' });
+      } else if (isFinalized) {
+        setResultMessage({ type: 'success', text: 'Corrections saved. Standings have been updated.' });
       } else {
         setResultMessage({ type: 'success', text: 'Results saved. You can continue editing.' });
       }
@@ -1061,10 +1110,10 @@ export default function EventDetailPage() {
         )}
 
         {/* Tournament Director Management Panel */}
-        {canManageEvent && !isFinalized && (
+        {canManageEvent && (
           <div className="bg-orange-500/10 backdrop-blur-sm rounded-xl border border-orange-500/30 p-6 mb-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-orange-300">🎯 Tournament Director Panel</h2>
+              <h2 className="text-xl font-bold text-orange-300">🎯 Tournament Director Panel {isFinalized && <span className="text-sm font-normal text-orange-200/70">(editing completed event)</span>}</h2>
               <button
                 onClick={() => setShowManagement(!showManagement)}
                 className="text-orange-400 hover:text-orange-300"
@@ -1256,7 +1305,7 @@ export default function EventDetailPage() {
                 <div>
                   <h3 className="text-white font-medium mb-3">📋 Attendance & Results</h3>
                   <p className="text-orange-200/70 text-sm mb-4">
-                    Mark who attended, then enter their finishing positions. Only top 3 get points!
+                    Mark who attended, then enter their finishing positions. Rows stay in signup order while you type. Leave Points blank to use the automatic top-3 award, or enter a value to override/correct a completed event.
                   </p>
 
                   {playerResults.length === 0 ? (
@@ -1266,8 +1315,9 @@ export default function EventDetailPage() {
                       {/* Header - Desktop */}
                       <div className="hidden md:grid grid-cols-12 gap-2 text-orange-200/70 text-sm font-medium px-3 py-2">
                         <div className="col-span-1">Came</div>
-                        <div className="col-span-5">Player</div>
-                        <div className="col-span-3">Position</div>
+                        <div className="col-span-4">Player</div>
+                        <div className="col-span-2">Position</div>
+                        <div className="col-span-2">Points</div>
                         <div className="col-span-3">Knockouts</div>
                       </div>
 
@@ -1307,6 +1357,18 @@ export default function EventDetailPage() {
                                   className="w-full p-2 bg-white/10 border border-blue-600/50 rounded text-white text-center disabled:opacity-50"
                                 />
                               </div>
+                              <div className="flex-1">
+                                <label className="text-orange-200/70 text-xs block mb-1">Points</label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={player.pointsEarned ?? ''}
+                                  onChange={(e) => updatePointsEarned(player.userId, e.target.value ? parseInt(e.target.value) : null)}
+                                  placeholder="auto"
+                                  disabled={!player.attended}
+                                  className="w-full p-2 bg-white/10 border border-blue-600/50 rounded text-white text-center disabled:opacity-50"
+                                />
+                              </div>
                               <div>
                                 <label className="text-orange-200/70 text-xs block mb-1">KOs</label>
                                 <div className="flex items-center gap-1">
@@ -1340,12 +1402,12 @@ export default function EventDetailPage() {
                                 className="w-5 h-5 rounded border-blue-600 bg-white/10 text-blue-500 focus:ring-blue-500"
                               />
                             </div>
-                            <div className="col-span-5">
+                            <div className="col-span-4">
                               <span className={`font-medium ${player.attended ? 'text-white' : 'text-gray-400'}`}>
                                 {player.name}
                               </span>
                             </div>
-                            <div className="col-span-3">
+                            <div className="col-span-2">
                               <input
                                 type="number"
                                 min="1"
@@ -1353,6 +1415,17 @@ export default function EventDetailPage() {
                                 value={player.position || ''}
                                 onChange={(e) => updatePosition(player.userId, e.target.value ? parseInt(e.target.value) : null)}
                                 placeholder="#"
+                                disabled={!player.attended}
+                                className={`w-full p-2 bg-white/10 border border-blue-600/50 rounded text-white text-center disabled:opacity-30 ${!player.attended ? 'invisible' : ''}`}
+                              />
+                            </div>
+                            <div className="col-span-2">
+                              <input
+                                type="number"
+                                min="0"
+                                value={player.pointsEarned ?? ''}
+                                onChange={(e) => updatePointsEarned(player.userId, e.target.value ? parseInt(e.target.value) : null)}
+                                placeholder="auto"
                                 disabled={!player.attended}
                                 className={`w-full p-2 bg-white/10 border border-blue-600/50 rounded text-white text-center disabled:opacity-30 ${!player.attended ? 'invisible' : ''}`}
                               />
@@ -1396,16 +1469,25 @@ export default function EventDetailPage() {
                                 <div className="col-span-1">
                                   <span className="text-blue-300">✓</span>
                                 </div>
-                                <div className="col-span-5 flex items-center gap-2">
+                                <div className="col-span-4 flex items-center gap-2">
                                   <span className="text-white font-medium">{slot.name}</span>
                                   <button onClick={() => handleExtraSlotClear(slot.id)} className="text-red-400 hover:text-red-300 text-xs">✕</button>
                                 </div>
-                                <div className="col-span-3">
+                                <div className="col-span-2">
                                   <input
                                     type="number" min="1"
                                     value={slot.position || ''}
                                     onChange={(e) => updateExtraPosition(slot.id, e.target.value ? parseInt(e.target.value) : null)}
                                     placeholder="#"
+                                    className="w-full p-2 bg-white/10 border border-orange-500/50 rounded text-white text-center"
+                                  />
+                                </div>
+                                <div className="col-span-2">
+                                  <input
+                                    type="number" min="0"
+                                    value={slot.pointsEarned ?? ''}
+                                    onChange={(e) => updateExtraPointsEarned(slot.id, e.target.value ? parseInt(e.target.value) : null)}
+                                    placeholder="auto"
                                     className="w-full p-2 bg-white/10 border border-orange-500/50 rounded text-white text-center"
                                   />
                                 </div>
@@ -1471,15 +1553,17 @@ export default function EventDetailPage() {
                         disabled={savingResults}
                         className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white px-6 py-2 rounded-lg font-medium transition"
                       >
-                        {savingResults ? 'Saving...' : '💾 Save Draft'}
+                        {savingResults ? 'Saving...' : (isFinalized ? '💾 Save Corrections' : '💾 Save Draft')}
                       </button>
-                      <button
-                        onClick={() => handleSaveResults(true)}
-                        disabled={savingResults}
-                        className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white px-6 py-2 rounded-lg font-medium transition"
-                      >
-                        {savingResults ? 'Finalizing...' : '✅ Finalize Results'}
-                      </button>
+                      {!isFinalized && (
+                        <button
+                          onClick={() => handleSaveResults(true)}
+                          disabled={savingResults}
+                          className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white px-6 py-2 rounded-lg font-medium transition"
+                        >
+                          {savingResults ? 'Finalizing...' : '✅ Finalize Results'}
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

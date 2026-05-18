@@ -440,7 +440,9 @@ router.post('/:id/results', authenticate, requireTournamentDirector, async (req:
       });
     }
     
-    const results = await eventService.enterResults(req.params.id, validation.data.results);
+    const results = await eventService.enterResults(req.params.id, validation.data.results, {
+      finalize: validation.data.finalize,
+    });
     res.json(results);
   } catch (error: any) {
     console.error('Error entering results:', error);

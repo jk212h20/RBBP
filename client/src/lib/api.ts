@@ -256,10 +256,10 @@ export const eventsAPI = {
     fetchAPI<{ message: string }>(`/events/${eventId}/signup/${userId}`, { method: 'DELETE' }),
   
   // Results
-  enterResults: (eventId: string, results: { userId: string; position: number; knockouts?: number }[]) =>
+  enterResults: (eventId: string, results: { userId: string; position: number; knockouts?: number; pointsEarned?: number }[], finalize = false) =>
     fetchAPI<any[]>(`/events/${eventId}/results`, {
       method: 'POST',
-      body: JSON.stringify({ results }),
+      body: JSON.stringify({ results, finalize }),
     }),
   
   getResults: (eventId: string) => fetchAPI<any[]>(`/events/${eventId}/results`),
