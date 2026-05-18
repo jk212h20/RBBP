@@ -246,8 +246,17 @@ RoatanPoker/
 ## Deployment (Railway)
 
 ### Current Production URLs
-- **Frontend**: https://client-production-41b3.up.railway.app
+- **Frontend**: https://www.rbbp.fun (custom domain)
+- **Frontend (Railway)**: https://client-production-41b3.up.railway.app
 - **Backend API**: https://rbbp-production.up.railway.app/api
+
+### Domain & DNS (Cloudflare)
+- **Registrar**: Squarespace/Google Domains (NS delegated to Cloudflare)
+- **DNS**: Cloudflare (`quentin.ns.cloudflare.com` / `rose.ns.cloudflare.com`)
+- `www.rbbp.fun` → CNAME → `tx6fixtg.up.railway.app` (DNS only, gray cloud)
+- `rbbp.fun` → CNAME → `at4o5q5b.up.railway.app` (Proxied, orange cloud) — apex can't use CNAME directly, Cloudflare flattens it
+- Cloudflare Page Rule: `rbbp.fun/*` → 301 redirect → `https://www.rbbp.fun/$1`
+- **Why redirect instead of direct?** Railway can't verify apex domains when Cloudflare CNAME-flattens them. The CNAME becomes an A record externally, so Railway never sees it and won't issue a cert.
 
 ### Railway Services
 1. **PostgreSQL** — Managed database (auto-provisioned)
