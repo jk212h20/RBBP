@@ -18,6 +18,13 @@ import {
   getAllTransactions,
 } from '../services/balance.service';
 import { getWithdrawalWithLnurl } from '../services/withdrawal.service';
+import {
+  createDeposit,
+  getDepositLimits,
+  getDepositStatus,
+  getUserDeposits,
+} from '../services/deposit.service';
+import { depositCreateLimiter, depositStatusLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
@@ -102,6 +109,81 @@ router.get('/withdrawal/:id/status', authenticate, async (req: Request, res: Res
   } catch (error) {
     console.error('[Balance] Get withdrawal status error:', error);
     return res.status(500).json({ error: 'Failed to get withdrawal status' });
+  }
+});
+
+/**
+ * GET /api/balance/deposit/limits
+ *
+ * Get deposit limits and invoice expiry for UI validation.
+ */
+router.get('/deposit/limits', authenticate, async (_req: Request, res: Response) => {
+  return res.json(getDepositLimits());
+});
+
+/**
+ * POST /api/balance/deposit
+ *
+ * Create a Lightning invoice to deposit sats into user's balance.
+ */
+router.post('/deposit', authenticate, depositCreateLimiter, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const { amountSats } = req.body;
+    const result = await createDeposit(userId, amountSats);
+    return res.status(201).json(result);
+  } catch (error) {
+    console.error('[Balance] Create deposit error:', error);
+    return res.status(400).json({
+      error: error instanceof Error ? error.message : 'Failed to create deposit invoice',
+    });
+  }
+});
+
+/**
+ * GET /api/balance/deposit/:id/status
+ *
+ * Check and settle a deposit invoice if paid.
+ */
+router.get('/deposit/:id/status', authenticate, depositStatusLimiter, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const result = await getDepositStatus(userId, req.params.id);
+    return res.json(result);
+  } catch (error) {
+    console.error('[Balance] Get deposit status error:', error);
+    const message = error instanceof Error ? error.message : 'Failed to get deposit status';
+    const status = message === 'Deposit not found' ? 404 : message === 'Not authorized' ? 403 : 500;
+    return res.status(status).json({ error: message });
+  }
+});
+
+/**
+ * GET /api/balance/deposits
+ *
+ * Get current user's recent Lightning deposits.
+ */
+router.get('/deposits', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const limit = Math.min(parseInt(req.query.limit as string, 10) || 25, 100);
+    const deposits = await getUserDeposits(userId, limit);
+    return res.json(deposits);
+  } catch (error) {
+    console.error('[Balance] Get deposits error:', error);
+    return res.status(500).json({ error: 'Failed to get deposits' });
   }
 });
 

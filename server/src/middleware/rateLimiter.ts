@@ -21,3 +21,17 @@ export const lightningStatusLimiter = rateLimit({
   max: 200, // ~2 req/sec for 5 min polling is ~150, allow headroom
   message: { error: 'Too many status checks. Please try again later.' }
 });
+
+// Lightning deposit invoice creation limiter
+export const depositCreateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,
+  message: { error: 'Too many deposit invoices created. Please try again later.' }
+});
+
+// Lightning deposit status polling limiter
+export const depositStatusLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 200,
+  message: { error: 'Too many deposit status checks. Please try again later.' }
+});

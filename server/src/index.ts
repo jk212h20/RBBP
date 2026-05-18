@@ -14,6 +14,7 @@ import adminRoutes from './routes/admin.routes';
 import withdrawalRoutes from './routes/withdrawal.routes';
 import lnurlRoutes from './routes/lnurl.routes';
 import { cleanupExpiredChallenges } from './services/lightning.service';
+import { checkPendingDeposits } from './services/deposit.service';
 import balanceRoutes from './routes/balance.routes';
 import faqRoutes from './routes/faq.routes';
 import venueApplicationRoutes from './routes/venue-application.routes';
@@ -232,6 +233,13 @@ setInterval(() => {
     console.error('Lightning challenge cleanup error:', err)
   );
 }, 10 * 60 * 1000);
+
+// Check pending Lightning deposits every minute so users can close the page after paying
+setInterval(() => {
+  checkPendingDeposits().catch(err =>
+    console.error('Lightning deposit settlement error:', err)
+  );
+}, 60 * 1000);
 
 // ============================================
 // START SERVER

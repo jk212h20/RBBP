@@ -80,6 +80,7 @@ model User {
   earnedAchievements UserAchievement[]
   comments          Comment[]
   withdrawals       Withdrawal[]
+  lightningDeposits LightningDeposit[]
   pointsHistory     PointsHistory[]
   venueApplicationsSubmitted VenueApplication[] @relation("VenueApplicationSubmitter")
   venueApplicationsReviewed  VenueApplication[] @relation("VenueApplicationReviewer")
@@ -406,6 +407,13 @@ model DeletedUser {
 // LIGHTNING WITHDRAWALS
 // ============================================
 
+enum DepositStatus {
+  PENDING
+  SETTLED
+  EXPIRED
+  FAILED
+}
+
 enum WithdrawalStatus {
   PENDING    // Created, waiting for user to claim
   CLAIMED    // User submitted invoice, payment in progress
@@ -432,6 +440,27 @@ model Withdrawal {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("withdrawals")
+}
+
+model LightningDeposit {
+  id             String        @id @default(cuid())
+  userId         String
+  amountSats     Int
+  paymentRequest String
+  paymentHash    String        @unique
+  status         DepositStatus @default(PENDING)
+  memo           String?
+  expiresAt      DateTime
+  settledAt      DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([status, expiresAt])
+  @@map("lightning_deposits")
 }
 
 // ============================================

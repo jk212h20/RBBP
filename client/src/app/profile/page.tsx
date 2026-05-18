@@ -146,6 +146,28 @@ export default function ProfilePage() {
   } | null>(null);
   const [withdrawalStatus, setWithdrawalStatus] = useState<'PENDING' | 'PAID' | 'FAILED' | 'EXPIRED'>('PENDING');
 
+  // Lightning deposit state
+  const [showDepositModal, setShowDepositModal] = useState(false);
+  const [depositAmountInput, setDepositAmountInput] = useState('10000');
+  const [depositing, setDepositing] = useState(false);
+  const [depositData, setDepositData] = useState<{
+    id: string;
+    paymentRequest: string;
+    qrData: string;
+    lightningUri: string;
+    amountSats: number;
+    expiresAt: string;
+  } | null>(null);
+  const [depositStatus, setDepositStatus] = useState<'amount' | 'pending' | 'settled' | 'expired' | 'failed' | 'error'>('amount');
+  const [depositError, setDepositError] = useState('');
+  const [copiedDepositInvoice, setCopiedDepositInvoice] = useState(false);
+  const [depositCountdown, setDepositCountdown] = useState('');
+  const [depositLimits, setDepositLimits] = useState({
+    minDepositSats: 100,
+    maxDepositSats: 250000,
+    invoiceExpirySeconds: 600,
+  });
+
   // Link Lightning wallet state
   const [linkingLightning, setLinkingLightning] = useState(false);
   const [linkLightningData, setLinkLightningData] = useState<{
@@ -207,6 +229,7 @@ export default function ProfilePage() {
       loadMyEvents();
       loadSeasonStanding();
       loadBalance();
+      loadDepositLimits();
       loadWithdrawals();
       loadProfileDetails();
     }
@@ -220,6 +243,57 @@ export default function ProfilePage() {
       setEditEmail(user.email || '');
     }
   }, [user, needsRealName]);
+
+  // Deposit invoice countdown
+  useEffect(() => {
+    if (!depositData || depositStatus !== 'pending') return;
+
+    const updateCountdown = () => {
+      const msRemaining = new Date(depositData.expiresAt).getTime() - Date.now();
+      if (msRemaining <= 0) {
+        setDepositCountdown('expired');
+        return;
+      }
+
+      const minutes = Math.floor(msRemaining / 60000);
+      const seconds = Math.floor((msRemaining % 60000) / 1000);
+      setDepositCountdown(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [depositData, depositStatus]);
+
+  // Poll for deposit status when invoice is shown
+  useEffect(() => {
+    if (!depositData || depositStatus !== 'pending') return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const status = await balanceAPI.getDepositStatus(depositData.id);
+        if (status.status === 'SETTLED') {
+          setDepositStatus('settled');
+          setLightningBalance(status.balanceSats);
+          setSaveMessage({ type: 'success', text: `${status.amountSats.toLocaleString()} sats deposited successfully!` });
+          loadBalance();
+          setTimeout(() => {
+            setShowDepositModal(false);
+            setDepositData(null);
+            setDepositStatus('amount');
+          }, 3000);
+        } else if (status.status === 'EXPIRED') {
+          setDepositStatus('expired');
+        } else if (status.status === 'FAILED') {
+          setDepositStatus('failed');
+        }
+      } catch (err) {
+        console.error('Failed to poll deposit status:', err);
+      }
+    }, 2000);
+
+    return () => clearInterval(pollInterval);
+  }, [depositData, depositStatus]);
 
   // Poll for withdrawal status when QR is shown
   useEffect(() => {
@@ -307,6 +381,72 @@ export default function ProfilePage() {
       console.error('Failed to load balance:', err);
     } finally {
       setLoadingBalance(false);
+    }
+  };
+
+  const loadDepositLimits = async () => {
+    try {
+      const limits = await balanceAPI.getDepositLimits();
+      setDepositLimits(limits);
+      setDepositAmountInput(prev => prev || Math.min(10000, limits.maxDepositSats).toString());
+    } catch (err) {
+      console.error('Failed to load deposit limits:', err);
+    }
+  };
+
+  const resetDepositFlow = () => {
+    setDepositData(null);
+    setDepositStatus('amount');
+    setDepositError('');
+    setCopiedDepositInvoice(false);
+    setDepositCountdown('');
+  };
+
+  const handleCreateDeposit = async () => {
+    const amountSats = parseInt(depositAmountInput.replace(/,/g, ''), 10);
+    if (!Number.isInteger(amountSats)) {
+      setDepositError('Enter a whole number of sats');
+      return;
+    }
+    if (amountSats < depositLimits.minDepositSats) {
+      setDepositError(`Minimum deposit is ${depositLimits.minDepositSats.toLocaleString()} sats`);
+      return;
+    }
+    if (amountSats > depositLimits.maxDepositSats) {
+      setDepositError(`Maximum deposit is ${depositLimits.maxDepositSats.toLocaleString()} sats`);
+      return;
+    }
+
+    setDepositing(true);
+    setDepositError('');
+    setCopiedDepositInvoice(false);
+    try {
+      const result = await balanceAPI.deposit(amountSats);
+      setDepositData({
+        id: result.deposit.id,
+        paymentRequest: result.paymentRequest,
+        qrData: result.qrData,
+        lightningUri: result.lightningUri,
+        amountSats: result.deposit.amountSats,
+        expiresAt: result.deposit.expiresAt,
+      });
+      setDepositStatus('pending');
+    } catch (err: any) {
+      setDepositError(err.message || 'Failed to create deposit invoice');
+      setDepositStatus('error');
+    } finally {
+      setDepositing(false);
+    }
+  };
+
+  const copyDepositInvoice = async () => {
+    if (!depositData) return;
+    try {
+      await navigator.clipboard.writeText(depositData.paymentRequest);
+      setCopiedDepositInvoice(true);
+      setTimeout(() => setCopiedDepositInvoice(false), 2000);
+    } catch (err) {
+      setDepositError('Could not copy invoice. Select and copy it manually.');
     }
   };
 
@@ -1350,24 +1490,174 @@ export default function ProfilePage() {
                 <p className="text-3xl md:text-4xl font-bold text-yellow-400">
                   {lightningBalance.toLocaleString()} sats
                 </p>
+                {lightningBalance === 0 && (
+                  <p className="text-yellow-200 text-sm mt-1">Deposit sats to join side bets or keep a balance on site.</p>
+                )}
               </div>
               
-              {lightningBalance > 0 && !withdrawalData && (
+              <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                 <button
-                  onClick={handleWithdraw}
-                  disabled={withdrawing || lightningBalance < 100}
-                  className="bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-black font-bold px-6 py-3 rounded-lg transition w-full md:w-auto"
+                  onClick={() => {
+                    resetDepositFlow();
+                    setShowDepositModal(true);
+                  }}
+                  className="bg-orange-500 hover:bg-orange-600 text-black font-bold px-6 py-3 rounded-lg transition w-full md:w-auto"
                 >
-                  {withdrawing ? '⏳ Processing...' : '⚡ Withdraw All'}
+                  ⚡ Deposit
                 </button>
-              )}
-              
-              {lightningBalance === 0 && (
-                <p className="text-yellow-200 text-sm">No balance to withdraw</p>
-              )}
+                {lightningBalance > 0 && !withdrawalData && (
+                  <button
+                    onClick={handleWithdraw}
+                    disabled={withdrawing || lightningBalance < 100}
+                    className="bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-black font-bold px-6 py-3 rounded-lg transition w-full md:w-auto"
+                  >
+                    {withdrawing ? '⏳ Processing...' : '⚡ Withdraw All'}
+                  </button>
+                )}
+              </div>
             </div>
           )}
           
+          {/* Deposit Modal */}
+          {showDepositModal && (
+            <div className="mt-4 p-4 bg-black/30 rounded-lg border border-orange-500/30">
+              {depositStatus === 'pending' && depositData ? (
+                <div className="flex flex-col items-center gap-4">
+                  <div className="text-center">
+                    <h3 className="text-white font-bold text-lg">⚡ Send {depositData.amountSats.toLocaleString()} sats</h3>
+                    <p className="text-yellow-200 text-sm mt-1">
+                      Your balance updates automatically after payment.
+                    </p>
+                    <p className="text-orange-300 text-xs mt-1">
+                      Expires in {depositCountdown || '...'}
+                    </p>
+                  </div>
+                  <div className="bg-white p-4 rounded-lg">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(depositData.qrData)}`}
+                      alt="Deposit invoice QR Code"
+                      className="w-52 h-52"
+                    />
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-3 w-full max-w-md">
+                    <a
+                      href={depositData.lightningUri}
+                      className="flex-1 text-center bg-orange-500 hover:bg-orange-600 text-black font-bold px-4 py-3 rounded-lg transition"
+                    >
+                      📱 Open in Wallet
+                    </a>
+                    <button
+                      onClick={copyDepositInvoice}
+                      className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold px-4 py-3 rounded-lg transition"
+                    >
+                      {copiedDepositInvoice ? '✅ Copied' : '📋 Copy Invoice'}
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2 text-yellow-200 text-sm">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-400"></div>
+                    Waiting for payment...
+                  </div>
+                  <p className="text-gray-300 text-xs text-center max-w-md">
+                    You can safely close this page after paying; we’ll still credit your balance once the invoice confirms.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setShowDepositModal(false);
+                      resetDepositFlow();
+                    }}
+                    className="text-gray-400 hover:text-white text-sm"
+                  >
+                    ✕ Close
+                  </button>
+                </div>
+              ) : depositStatus === 'settled' && depositData ? (
+                <div className="flex flex-col items-center gap-4 py-8">
+                  <div className="text-4xl">✅</div>
+                  <h3 className="text-green-300 font-bold text-xl text-center">Deposit received!</h3>
+                  <p className="text-green-100 text-center">
+                    {depositData.amountSats.toLocaleString()} sats added to your balance.
+                  </p>
+                </div>
+              ) : depositStatus === 'expired' || depositStatus === 'failed' ? (
+                <div className="flex flex-col items-center gap-4 py-8">
+                  <div className="text-4xl">⚠️</div>
+                  <h3 className="text-red-300 font-bold text-xl text-center">
+                    Deposit {depositStatus === 'expired' ? 'expired' : 'failed'}
+                  </h3>
+                  <p className="text-red-100 text-center">No sats were credited. Create a new invoice to try again.</p>
+                  <button
+                    onClick={resetDepositFlow}
+                    className="bg-orange-500 hover:bg-orange-600 text-black font-bold px-4 py-2 rounded-lg transition"
+                  >
+                    Create New Invoice
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-white font-bold text-lg">⚡ Deposit with Lightning</h3>
+                      <p className="text-yellow-200 text-sm">Choose an amount and pay from any Lightning wallet.</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setShowDepositModal(false);
+                        resetDepositFlow();
+                      }}
+                      className="text-gray-400 hover:text-white text-xl"
+                      aria-label="Close deposit modal"
+                    >
+                      ×
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-4">
+                    {[1000, 5000, 10000, 25000, 50000].map(amount => (
+                      <button
+                        key={amount}
+                        onClick={() => setDepositAmountInput(amount.toString())}
+                        className={`px-3 py-2 rounded-lg font-bold transition ${
+                          parseInt(depositAmountInput, 10) === amount
+                            ? 'bg-orange-500 text-black'
+                            : 'bg-white/10 hover:bg-white/20 text-white'
+                        }`}
+                      >
+                        {amount.toLocaleString()}
+                      </button>
+                    ))}
+                  </div>
+
+                  <label className="block text-yellow-100 text-sm mb-1">Custom amount, sats</label>
+                  <input
+                    type="number"
+                    min={depositLimits.minDepositSats}
+                    max={depositLimits.maxDepositSats}
+                    value={depositAmountInput}
+                    onChange={(e) => {
+                      setDepositAmountInput(e.target.value);
+                      setDepositError('');
+                    }}
+                    className="w-full p-3 bg-white/10 border border-yellow-500/40 rounded-lg text-white placeholder-yellow-200/50 focus:outline-none focus:border-yellow-400"
+                    placeholder="10000"
+                  />
+                  <p className="text-yellow-200 text-xs mt-2">
+                    Min {depositLimits.minDepositSats.toLocaleString()} sats · Max {depositLimits.maxDepositSats.toLocaleString()} sats · Invoice expires in {Math.round(depositLimits.invoiceExpirySeconds / 60)} minutes.
+                  </p>
+                  {depositError && (
+                    <p className="text-red-300 text-sm mt-3">⚠️ {depositError}</p>
+                  )}
+                  <button
+                    onClick={handleCreateDeposit}
+                    disabled={depositing}
+                    className="mt-4 w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-black font-bold px-6 py-3 rounded-lg transition"
+                  >
+                    {depositing ? '⏳ Generating Invoice...' : 'Generate Lightning Invoice'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Withdrawal QR Code Modal */}
           {withdrawalData && (
             <div className="mt-4 p-4 bg-black/30 rounded-lg">

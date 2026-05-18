@@ -592,6 +592,44 @@ export const withdrawalsAPI = {
 export const balanceAPI = {
   // User endpoints
   get: () => fetchAPI<{ balanceSats: number }>('/balance'),
+
+  getDepositLimits: () =>
+    fetchAPI<{ minDepositSats: number; maxDepositSats: number; invoiceExpirySeconds: number }>(
+      '/balance/deposit/limits'
+    ),
+
+  deposit: (amountSats: number) =>
+    fetchAPI<{
+      deposit: { id: string; amountSats: number; status: 'PENDING' | 'SETTLED' | 'EXPIRED' | 'FAILED'; expiresAt: string; settledAt?: string | null };
+      paymentRequest: string;
+      lightningUri: string;
+      qrData: string;
+    }>('/balance/deposit', {
+      method: 'POST',
+      body: JSON.stringify({ amountSats }),
+    }),
+
+  getDepositStatus: (depositId: string) =>
+    fetchAPI<{
+      id: string;
+      status: 'PENDING' | 'SETTLED' | 'EXPIRED' | 'FAILED';
+      amountSats: number;
+      expiresAt: string;
+      settledAt: string | null;
+      balanceSats: number;
+    }>(`/balance/deposit/${depositId}/status`),
+
+  getDeposits: (limit?: number) => {
+    const query = limit ? `?limit=${limit}` : '';
+    return fetchAPI<{
+      id: string;
+      amountSats: number;
+      status: 'PENDING' | 'SETTLED' | 'EXPIRED' | 'FAILED';
+      expiresAt: string;
+      settledAt: string | null;
+      createdAt: string;
+    }[]>(`/balance/deposits${query}`);
+  },
   
   withdraw: (amountSats?: number) =>
     fetchAPI<{
