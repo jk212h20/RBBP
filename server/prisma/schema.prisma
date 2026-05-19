@@ -91,6 +91,7 @@ model User {
   sideBetsCreated            SideBet[]          @relation("SideBetCreator")
   sideBetsWon                SideBet[]          @relation("SideBetWinner")
   sideBetEntries             SideBetEntry[]
+  storeOrders                StoreOrder[]
 
   @@map("users")
 }
@@ -678,6 +679,88 @@ model SideBetEntry {
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("side_bet_entries")
+}
+
+// ============================================
+// STORE
+// ============================================
+
+enum StoreOrderStatus {
+  PAID
+  FULFILLED
+  CANCELLED
+}
+
+model StoreProduct {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  priceSats   Int
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  variants   StoreProductVariant[]
+  promoCodes StorePromoCode[]
+  orders     StoreOrder[]
+
+  @@map("store_products")
+}
+
+model StoreProductVariant {
+  id                String   @id @default(cuid())
+  productId         String
+  size              String
+  quantityAvailable Int      @default(0)
+  sortOrder         Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  product StoreProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orders  StoreOrder[]
+
+  @@unique([productId, size])
+  @@map("store_product_variants")
+}
+
+model StorePromoCode {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  label     String?
+  productId String
+  priceSats Int
+  maxUses   Int      @default(0)
+  uses      Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product StoreProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orders  StoreOrder[]
+
+  @@map("store_promo_codes")
+}
+
+model StoreOrder {
+  id            String           @id @default(cuid())
+  userId        String
+  productId     String
+  variantId     String
+  promoCodeId   String?
+  quantity      Int              @default(1)
+  pricePaidSats Int
+  status        StoreOrderStatus @default(PAID)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   StoreProduct         @relation(fields: [productId], references: [id], onDelete: Restrict)
+  variant   StoreProductVariant  @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  promoCode StorePromoCode?      @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([productId])
+  @@map("store_orders")
 }
 
 // ============================================

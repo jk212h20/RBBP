@@ -7,7 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import AnnouncementBar from './AnnouncementBar';
 
 interface MobileNavProps {
-  currentPage?: 'home' | 'events' | 'leaderboard' | 'venues' | 'dashboard' | 'faq' | 'puzzle' | 'blog';
+  currentPage?: 'home' | 'events' | 'leaderboard' | 'venues' | 'dashboard' | 'faq' | 'puzzle' | 'blog' | 'store';
 }
 
 export default function MobileNav({ currentPage }: MobileNavProps) {
@@ -33,6 +33,7 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
     { href: '/leaderboard', label: 'Leaderboard', key: 'leaderboard' },
     { href: '/venues', label: 'Venues', key: 'venues' },
     { href: '/blog', label: 'Blog', key: 'blog' },
+    { href: '/store', label: 'Store', key: 'store' },
     { href: '/faq', label: 'FAQ', key: 'faq' },
     { href: '/puzzle', label: '🧩 Daily Puzzle', key: 'puzzle' },
   ];

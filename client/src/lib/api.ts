@@ -523,6 +523,66 @@ export const adminAPI = {
 };
 
 // ============================================
+// STORE API
+// ============================================
+export interface StoreVariant {
+  id: string;
+  size: string;
+  quantityAvailable: number;
+  soldOut?: boolean;
+  sortOrder?: number;
+}
+
+export interface StoreProduct {
+  id: string;
+  name: string;
+  description: string;
+  priceSats: number;
+  isActive?: boolean;
+  variants: StoreVariant[];
+  promoCodes?: any[];
+  _count?: { orders: number };
+}
+
+export const storeAPI = {
+  getStorefront: () => fetchAPI<{ products: StoreProduct[] }>('/store'),
+
+  previewPromo: (productId: string, promoCode: string) =>
+    fetchAPI<{ promo: { id: string; code: string; priceSats: number; usesRemaining: number } | null }>('/store/promo/preview', {
+      method: 'POST',
+      body: JSON.stringify({ productId, promoCode }),
+    }),
+
+  createOrder: (data: { productId: string; variantId: string; promoCode?: string }) =>
+    fetchAPI<{ order: any; balanceSats: number }>('/store/orders', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getMyOrders: () => fetchAPI<{ orders: any[] }>('/store/orders/my'),
+
+  getAdminStore: () => fetchAPI<{ products: StoreProduct[]; recentOrders: any[] }>('/store/admin'),
+
+  updateProduct: (productId: string, data: { description?: string; priceSats?: number; isActive?: boolean }) =>
+    fetchAPI<StoreProduct>(`/store/admin/products/${productId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  updateVariant: (variantId: string, data: { quantityAvailable: number }) =>
+    fetchAPI<StoreVariant>(`/store/admin/variants/${variantId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  updatePromoCode: (promoId: string, data: { priceSats?: number; maxUses?: number; isActive?: boolean }) =>
+    fetchAPI<any>(`/store/admin/promo-codes/${promoId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+};
+
+// ============================================
 // STANDINGS API
 // ============================================
 export const standingsAPI = {

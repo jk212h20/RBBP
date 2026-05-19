@@ -22,6 +22,7 @@ import puzzleRoutes from './routes/puzzle.routes';
 import sideBetRoutes from './routes/side-bet.routes';
 import blogRoutes from './routes/blog.routes';
 import announcementRoutes from './routes/announcement.routes';
+import storeRoutes from './routes/store.routes';
 
 // Load environment variables
 dotenv.config();
@@ -200,6 +201,7 @@ app.use('/api/blog', blogRoutes);
 
 // Announcement routes (top-bar marquee)
 app.use('/api/announcements', announcementRoutes);
+app.use('/api/store', storeRoutes);
 
 // ============================================
 // ERROR HANDLING
