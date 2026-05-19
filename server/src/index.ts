@@ -15,6 +15,7 @@ import withdrawalRoutes from './routes/withdrawal.routes';
 import lnurlRoutes from './routes/lnurl.routes';
 import { cleanupExpiredChallenges } from './services/lightning.service';
 import { checkPendingDeposits } from './services/deposit.service';
+import { checkPendingStoreOrders } from './services/store.service';
 import balanceRoutes from './routes/balance.routes';
 import faqRoutes from './routes/faq.routes';
 import venueApplicationRoutes from './routes/venue-application.routes';
@@ -240,6 +241,9 @@ setInterval(() => {
 setInterval(() => {
   checkPendingDeposits().catch(err =>
     console.error('Lightning deposit settlement error:', err)
+  );
+  checkPendingStoreOrders().catch(err =>
+    console.error('Store checkout settlement error:', err)
   );
 }, 60 * 1000);
 

@@ -16,6 +16,19 @@ export default function StorePage() {
   const [loading, setLoading] = useState(true);
   const [checkingPromo, setCheckingPromo] = useState(false);
   const [buying, setBuying] = useState(false);
+  const [checkingOut, setCheckingOut] = useState(false);
+  const [checkoutData, setCheckoutData] = useState<{
+    orderId: string;
+    paymentRequest: string;
+    qrData: string;
+    lightningUri: string;
+    expiresAt: string;
+    pricePaidSats: number;
+    size: string;
+  } | null>(null);
+  const [checkoutStatus, setCheckoutStatus] = useState<'idle' | 'pending' | 'paid' | 'expired' | 'failed'>('idle');
+  const [checkoutCountdown, setCheckoutCountdown] = useState('');
+  const [copiedInvoice, setCopiedInvoice] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -35,6 +48,49 @@ export default function StorePage() {
   useEffect(() => {
     if (isAuthenticated) loadBalance();
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!checkoutData || checkoutStatus !== 'pending') return;
+
+    const updateCountdown = () => {
+      const msRemaining = new Date(checkoutData.expiresAt).getTime() - Date.now();
+      if (msRemaining <= 0) {
+        setCheckoutCountdown('expired');
+        return;
+      }
+      const minutes = Math.floor(msRemaining / 60000);
+      const seconds = Math.floor((msRemaining % 60000) / 1000);
+      setCheckoutCountdown(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [checkoutData, checkoutStatus]);
+
+  useEffect(() => {
+    if (!checkoutData || checkoutStatus !== 'pending') return;
+
+    const interval = setInterval(async () => {
+      try {
+        const result = await storeAPI.getOrderStatus(checkoutData.orderId);
+        if (result.order.status === 'PAID' || result.order.status === 'FULFILLED') {
+          setCheckoutStatus('paid');
+          setMessage(`Order paid! Your ${checkoutData.size} shirt order is confirmed.`);
+          await loadStore();
+          await loadBalance();
+        } else if (result.order.status === 'EXPIRED') {
+          setCheckoutStatus('expired');
+        } else if (result.order.status === 'FAILED' || result.order.status === 'CANCELLED') {
+          setCheckoutStatus('failed');
+        }
+      } catch (err) {
+        console.error('Failed to poll checkout status:', err);
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [checkoutData, checkoutStatus]);
 
   const loadStore = async () => {
     setLoading(true);
@@ -60,11 +116,19 @@ export default function StorePage() {
     }
   };
 
+  const resetCheckout = () => {
+    setCheckoutData(null);
+    setCheckoutStatus('idle');
+    setCheckoutCountdown('');
+    setCopiedInvoice(false);
+  };
+
   const applyPromo = async () => {
     if (!product || !promoCode.trim()) return;
     setCheckingPromo(true);
     setError('');
     setMessage('');
+    resetCheckout();
     try {
       const data = await storeAPI.previewPromo(product.id, promoCode);
       setPromo(data.promo);
@@ -84,6 +148,7 @@ export default function StorePage() {
     setBuying(true);
     setError('');
     setMessage('');
+    resetCheckout();
     try {
       const result = await storeAPI.createOrder({
         productId: product.id,
@@ -101,6 +166,46 @@ export default function StorePage() {
     }
   };
 
+  const checkoutWithLightning = async () => {
+    if (!product || !selectedVariant) return;
+    setCheckingOut(true);
+    setError('');
+    setMessage('');
+    resetCheckout();
+    try {
+      const result = await storeAPI.createLightningCheckout({
+        productId: product.id,
+        variantId: selectedVariant.id,
+        promoCode: promoCode.trim() || undefined,
+      });
+      setCheckoutData({
+        orderId: result.order.id,
+        paymentRequest: result.paymentRequest,
+        qrData: result.qrData,
+        lightningUri: result.lightningUri,
+        expiresAt: result.expiresAt,
+        pricePaidSats: result.order.pricePaidSats,
+        size: result.order.variant?.size || selectedVariant.size,
+      });
+      setCheckoutStatus('pending');
+    } catch (err: any) {
+      setError(err.message || 'Failed to create Lightning invoice');
+    } finally {
+      setCheckingOut(false);
+    }
+  };
+
+  const copyInvoice = async () => {
+    if (!checkoutData) return;
+    try {
+      await navigator.clipboard.writeText(checkoutData.paymentRequest);
+      setCopiedInvoice(true);
+      setTimeout(() => setCopiedInvoice(false), 2000);
+    } catch (err) {
+      setError('Could not copy invoice. Select and copy it manually.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-green-800">
       <MobileNav currentPage="store" />
@@ -110,7 +215,7 @@ export default function StorePage() {
           <div className="text-5xl mb-3">👕</div>
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">RBBP Store</h1>
           <p className="text-blue-100 max-w-2xl mx-auto">
-            Buy league gear with your Lightning balance. For now, we’re starting simple with official shirts.
+            Buy league gear with your site balance, or check out directly with a Lightning invoice.
           </p>
         </div>
 
@@ -151,7 +256,10 @@ export default function StorePage() {
                 {product.variants.map(variant => (
                   <button
                     key={variant.id}
-                    onClick={() => setSelectedVariantId(variant.id)}
+                    onClick={() => {
+                      setSelectedVariantId(variant.id);
+                      resetCheckout();
+                    }}
                     disabled={variant.quantityAvailable <= 0}
                     className={`p-3 rounded-lg border text-left transition ${
                       selectedVariantId === variant.id
@@ -172,6 +280,7 @@ export default function StorePage() {
                   onChange={(e) => {
                     setPromoCode(e.target.value);
                     setPromo(null);
+                    resetCheckout();
                   }}
                   placeholder="Optional"
                   className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-yellow-400"
@@ -199,26 +308,66 @@ export default function StorePage() {
                 )}
               </div>
 
-              {!isAuthenticated ? (
+              {checkoutStatus === 'pending' && checkoutData ? (
+                <div className="mt-5 p-4 bg-black/30 rounded-xl border border-yellow-400/30 text-center">
+                  <h4 className="font-bold text-yellow-200 mb-1">Lightning checkout</h4>
+                  <p className="text-sm text-gray-300 mb-2">Pay {checkoutData.pricePaidSats.toLocaleString()} sats for a {checkoutData.size} shirt</p>
+                  <p className="text-xs text-orange-300 mb-3">Expires in {checkoutCountdown || '...'}</p>
+                  <div className="bg-white p-3 rounded-lg inline-block mb-3">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(checkoutData.qrData)}`}
+                      alt="Lightning checkout QR code"
+                      className="w-48 h-48"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <a href={checkoutData.lightningUri} className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-4 py-3 rounded-lg transition">
+                      Open in Wallet
+                    </a>
+                    <button onClick={copyInvoice} className="bg-white/10 hover:bg-white/20 px-4 py-3 rounded-lg font-semibold">
+                      {copiedInvoice ? 'Copied!' : 'Copy Invoice'}
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 text-sm text-yellow-100 mt-3">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-300"></div>
+                    Waiting for payment...
+                  </div>
+                </div>
+              ) : checkoutStatus === 'paid' ? (
+                <div className="mt-5 bg-green-500/20 border border-green-400 text-green-100 rounded-xl p-4 text-center">
+                  ✅ Payment received. Your order is confirmed.
+                </div>
+              ) : checkoutStatus === 'expired' || checkoutStatus === 'failed' ? (
+                <div className="mt-5 bg-red-500/20 border border-red-400 text-red-100 rounded-xl p-4 text-center">
+                  <p className="mb-3">Checkout {checkoutStatus === 'expired' ? 'expired' : 'failed'}.</p>
+                  <button onClick={resetCheckout} className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-4 py-2 rounded-lg">
+                    Try Again
+                  </button>
+                </div>
+              ) : !isAuthenticated ? (
                 <Link href="/login" className="block text-center mt-5 bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-5 py-3 rounded-lg transition">
                   Log in to buy
                 </Link>
-              ) : balanceSats !== null && balanceSats < finalPrice ? (
-                <Link href="/profile" className="block text-center mt-5 bg-orange-500 hover:bg-orange-600 text-black font-bold px-5 py-3 rounded-lg transition">
-                  Deposit sats to buy
-                </Link>
-              ) : (
+              ) : balanceSats !== null && balanceSats >= finalPrice ? (
                 <button
                   onClick={buyShirt}
                   disabled={buying || !selectedVariant || selectedVariant.quantityAvailable <= 0}
                   className="mt-5 w-full bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-black font-bold px-5 py-3 rounded-lg transition"
                 >
-                  {buying ? 'Placing order...' : `Buy for ${finalPrice.toLocaleString()} sats`}
+                  {buying ? 'Placing order...' : `Buy It Now — ${finalPrice.toLocaleString()} sats`}
+                </button>
+              ) : (
+                <button
+                  onClick={checkoutWithLightning}
+                  disabled={checkingOut || !selectedVariant || selectedVariant.quantityAvailable <= 0}
+                  className="mt-5 w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-black font-bold px-5 py-3 rounded-lg transition"
+                >
+                  {checkingOut ? 'Creating Invoice...' : `Click here to check out with Lightning`}
                 </button>
               )}
 
               <p className="text-xs text-gray-400 mt-4">
-                Orders debit your site Lightning balance immediately. Pick up details can be coordinated with the league.
+                If your site balance covers the price, Buy It Now debits it immediately. Otherwise, Lightning checkout creates an invoice for this item.
               </p>
             </aside>
           </div>

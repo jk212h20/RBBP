@@ -1,9 +1,12 @@
 import prisma from '../lib/prisma';
+import { createInvoice, lookupInvoice } from './voltage.service';
 
 export const DEFAULT_SHIRT_PRODUCT_ID = 'rbbp-shirt';
 export const DEFAULT_SHIRT_PROMO_CODE = '1BtcT4me';
 export const DEFAULT_SHIRT_PRICE_SATS = 25000;
 export const DEFAULT_PROMO_PRICE_SATS = 10000;
+
+const STORE_INVOICE_EXPIRY_SECONDS = parseInt(process.env.STORE_INVOICE_EXPIRY_SECONDS || '600', 10);
 
 const SHIRT_SIZES = [
   { size: 'Small', quantity: 10, sortOrder: 1 },
@@ -198,6 +201,53 @@ export async function previewPromoCode(productId: string, rawCode?: string | nul
   };
 }
 
+async function resolveStoreSelection(
+  tx: any,
+  data: { productId: string; variantId: string; promoCode?: string | null },
+  claimPromo: boolean
+) {
+  const product = await tx.storeProduct.findUnique({
+    where: { id: data.productId },
+    select: { id: true, name: true, priceSats: true, isActive: true },
+  });
+  if (!product || !product.isActive) throw new Error('Item is not available');
+
+  const variant = await tx.storeProductVariant.findUnique({
+    where: { id: data.variantId },
+    select: { id: true, productId: true, size: true, quantityAvailable: true },
+  });
+  if (!variant || variant.productId !== product.id) throw new Error('Selected size is not available');
+  if (variant.quantityAvailable <= 0) throw new Error('Selected size is sold out');
+
+  let finalPriceSats = product.priceSats;
+  let promoId: string | null = null;
+  const code = data.promoCode?.trim().toUpperCase();
+  if (code) {
+    const promo = await tx.storePromoCode.findUnique({ where: { code } });
+    if (!promo || !promo.isActive || promo.productId !== product.id) {
+      throw new Error('Promo code is not valid for this item');
+    }
+    if (promo.uses >= promo.maxUses) {
+      throw new Error('Promo code has already been used up');
+    }
+
+    if (claimPromo) {
+      const promoClaim = await tx.storePromoCode.updateMany({
+        where: { id: promo.id, isActive: true, uses: { lt: promo.maxUses } },
+        data: { uses: { increment: 1 } },
+      });
+      if (promoClaim.count !== 1) {
+        throw new Error('Promo code has already been used up');
+      }
+    }
+
+    finalPriceSats = promo.priceSats;
+    promoId = promo.id;
+  }
+
+  return { product, variant, finalPriceSats, promoId };
+}
+
 export async function createStoreOrder(userId: string, data: { productId: string; variantId: string; promoCode?: string | null }) {
   await ensureDefaultStore();
 
@@ -208,42 +258,7 @@ export async function createStoreOrder(userId: string, data: { productId: string
     });
     if (!user) throw new Error('User not found');
 
-    const product = await tx.storeProduct.findUnique({
-      where: { id: data.productId },
-      select: { id: true, name: true, priceSats: true, isActive: true },
-    });
-    if (!product || !product.isActive) throw new Error('Item is not available');
-
-    const variant = await tx.storeProductVariant.findUnique({
-      where: { id: data.variantId },
-      select: { id: true, productId: true, size: true, quantityAvailable: true },
-    });
-    if (!variant || variant.productId !== product.id) throw new Error('Selected size is not available');
-    if (variant.quantityAvailable <= 0) throw new Error('Selected size is sold out');
-
-    let finalPriceSats = product.priceSats;
-    let promoId: string | null = null;
-    const code = data.promoCode?.trim().toUpperCase();
-    if (code) {
-      const promo = await tx.storePromoCode.findUnique({ where: { code } });
-      if (!promo || !promo.isActive || promo.productId !== product.id) {
-        throw new Error('Promo code is not valid for this item');
-      }
-      if (promo.uses >= promo.maxUses) {
-        throw new Error('Promo code has already been used up');
-      }
-
-      const promoClaim = await tx.storePromoCode.updateMany({
-        where: { id: promo.id, isActive: true, uses: { lt: promo.maxUses } },
-        data: { uses: { increment: 1 } },
-      });
-      if (promoClaim.count !== 1) {
-        throw new Error('Promo code has already been used up');
-      }
-
-      finalPriceSats = promo.priceSats;
-      promoId = promo.id;
-    }
+    const { product, variant, finalPriceSats, promoId } = await resolveStoreSelection(tx, data, true);
 
     if (user.lightningBalanceSats < finalPriceSats) {
       throw new Error(`Insufficient balance. Deposit ${finalPriceSats - user.lightningBalanceSats} more sats to buy this item.`);
@@ -272,6 +287,8 @@ export async function createStoreOrder(userId: string, data: { productId: string
         quantity: 1,
         pricePaidSats: finalPriceSats,
         status: 'PAID',
+        paymentMethod: 'BALANCE',
+        paidAt: new Date(),
       },
       include: {
         product: { select: { name: true } },
@@ -292,6 +309,183 @@ export async function createStoreOrder(userId: string, data: { productId: string
 
     return { order, balanceSats: updatedUser.lightningBalanceSats };
   });
+}
+
+export async function createStoreLightningCheckout(userId: string, data: { productId: string; variantId: string; promoCode?: string | null }) {
+  await ensureDefaultStore();
+
+  const pending = await prisma.$transaction(async (tx) => {
+    const { product, variant, finalPriceSats, promoId } = await resolveStoreSelection(tx, data, false);
+
+    const order = await tx.storeOrder.create({
+      data: {
+        userId,
+        productId: product.id,
+        variantId: variant.id,
+        promoCodeId: promoId,
+        quantity: 1,
+        pricePaidSats: finalPriceSats,
+        status: 'PENDING',
+        paymentMethod: 'LIGHTNING',
+        expiresAt: new Date(Date.now() + STORE_INVOICE_EXPIRY_SECONDS * 1000),
+      },
+      include: {
+        product: { select: { name: true } },
+        variant: { select: { size: true } },
+        promoCode: { select: { code: true } },
+      },
+    });
+
+    return { order, product, variant, finalPriceSats };
+  });
+
+  const invoice = await createInvoice(
+    pending.finalPriceSats,
+    `RBBP Store: ${pending.product.name} (${pending.variant.size})`,
+    STORE_INVOICE_EXPIRY_SECONDS
+  );
+
+  const updatedOrder = await prisma.storeOrder.update({
+    where: { id: pending.order.id },
+    data: {
+      paymentRequest: invoice.paymentRequest,
+      paymentHash: invoice.paymentHash,
+    },
+    include: {
+      product: { select: { name: true } },
+      variant: { select: { size: true } },
+      promoCode: { select: { code: true } },
+    },
+  });
+
+  return {
+    order: updatedOrder,
+    paymentRequest: invoice.paymentRequest,
+    qrData: invoice.paymentRequest,
+    lightningUri: `lightning:${invoice.paymentRequest}`,
+    expiresAt: updatedOrder.expiresAt,
+  };
+}
+
+export async function getStoreOrderStatus(userId: string, orderId: string) {
+  const order = await prisma.storeOrder.findUnique({
+    where: { id: orderId },
+    include: {
+      product: { select: { name: true } },
+      variant: { select: { size: true } },
+      promoCode: { select: { code: true } },
+    },
+  });
+
+  if (!order) throw new Error('Order not found');
+  if (order.userId !== userId) throw new Error('Not authorized');
+
+  if (order.status !== 'PENDING') {
+    return order;
+  }
+
+  let lookupSucceeded = false;
+  let invoiceSettled = false;
+  if (order.paymentHash) {
+    try {
+      const invoice = await lookupInvoice(order.paymentHash);
+      lookupSucceeded = true;
+      invoiceSettled = invoice.settled && invoice.amountPaidSats >= order.pricePaidSats;
+    } catch (error) {
+      console.error(`[Store] Invoice lookup failed for order ${order.id}:`, error);
+    }
+  }
+
+  if (invoiceSettled) {
+    return settleStoreLightningOrder(order.id);
+  }
+
+  if (lookupSucceeded && order.expiresAt && order.expiresAt < new Date()) {
+    return prisma.storeOrder.update({
+      where: { id: order.id },
+      data: { status: 'EXPIRED' },
+      include: {
+        product: { select: { name: true } },
+        variant: { select: { size: true } },
+        promoCode: { select: { code: true } },
+      },
+    });
+  }
+
+  return order;
+}
+
+export async function settleStoreLightningOrder(orderId: string) {
+  return prisma.$transaction(async (tx) => {
+    const claim = await tx.storeOrder.updateMany({
+      where: { id: orderId, status: 'PENDING' },
+      data: { status: 'PAID', paidAt: new Date() },
+    });
+
+    const order = await tx.storeOrder.findUnique({
+      where: { id: orderId },
+      include: {
+        product: { select: { name: true } },
+        variant: { select: { id: true, size: true } },
+        promoCode: { select: { id: true, code: true } },
+      },
+    });
+    if (!order) throw new Error('Order not found');
+
+    if (claim.count !== 1) return order;
+
+    const variantClaim = await tx.storeProductVariant.updateMany({
+      where: { id: order.variantId, quantityAvailable: { gt: 0 } },
+      data: { quantityAvailable: { decrement: 1 } },
+    });
+    if (variantClaim.count !== 1) {
+      await tx.storeOrder.update({ where: { id: order.id }, data: { status: 'FAILED' } });
+      throw new Error('Selected size is sold out');
+    }
+
+    if (order.promoCodeId) {
+      const promo = await tx.storePromoCode.findUnique({
+        where: { id: order.promoCodeId },
+        select: { id: true, isActive: true, uses: true, maxUses: true },
+      });
+      if (!promo || !promo.isActive || promo.uses >= promo.maxUses) {
+        await tx.storeOrder.update({ where: { id: order.id }, data: { status: 'FAILED' } });
+        throw new Error('Promo code has already been used up');
+      }
+      await tx.storePromoCode.update({
+        where: { id: order.promoCodeId },
+        data: { uses: { increment: 1 } },
+      });
+    }
+
+    await tx.balanceTransaction.create({
+      data: {
+        userId: order.userId,
+        type: 'STORE_PURCHASE_LIGHTNING',
+        amountSats: order.pricePaidSats,
+        note: `Lightning store purchase: ${order.product.name} (${order.variant.size})`,
+        balanceAfter: 0,
+      },
+    });
+
+    return order;
+  });
+}
+
+export async function checkPendingStoreOrders() {
+  const pendingOrders = await prisma.storeOrder.findMany({
+    where: { status: 'PENDING', paymentMethod: 'LIGHTNING' },
+    take: 50,
+    orderBy: { createdAt: 'asc' },
+  });
+
+  for (const order of pendingOrders) {
+    try {
+      await getStoreOrderStatus(order.userId, order.id);
+    } catch (error) {
+      console.error(`[Store] Failed to check pending order ${order.id}:`, error);
+    }
+  }
 }
 
 export async function getMyStoreOrders(userId: string) {

@@ -1,11 +1,13 @@
 import { Router, Request, Response } from 'express';
 import { authenticate, requireAdmin } from '../middleware/auth.middleware';
 import {
+  createStoreLightningCheckout,
   createStoreOrder,
   ensureDefaultStore,
   getAdminStore,
   getMyStoreOrders,
   getStorefront,
+  getStoreOrderStatus,
   previewPromoCode,
   updateStoreProduct,
   updateStorePromoCode,
@@ -46,6 +48,38 @@ router.get('/orders/my', authenticate, async (req: Request, res: Response) => {
   } catch (error) {
     console.error('[Store] Get my orders error:', error);
     res.status(500).json({ error: 'Failed to load orders' });
+  }
+});
+
+router.post('/checkout/lightning', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+
+    const { productId, variantId, promoCode } = req.body;
+    if (!productId || !variantId) {
+      return res.status(400).json({ error: 'Choose an item and size' });
+    }
+
+    const result = await createStoreLightningCheckout(userId, { productId, variantId, promoCode });
+    res.status(201).json(result);
+  } catch (error) {
+    console.error('[Store] Create lightning checkout error:', error);
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Failed to create Lightning checkout' });
+  }
+});
+
+router.get('/orders/:id/status', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+
+    const order = await getStoreOrderStatus(userId, req.params.id);
+    res.json({ order });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to get order status';
+    const status = message === 'Order not found' ? 404 : message === 'Not authorized' ? 403 : 400;
+    res.status(status).json({ error: message });
   }
 });
 

@@ -686,9 +686,12 @@ model SideBetEntry {
 // ============================================
 
 enum StoreOrderStatus {
+  PENDING
   PAID
   FULFILLED
   CANCELLED
+  EXPIRED
+  FAILED
 }
 
 model StoreProduct {
@@ -747,11 +750,16 @@ model StoreOrder {
   productId     String
   variantId     String
   promoCodeId   String?
-  quantity      Int              @default(1)
-  pricePaidSats Int
-  status        StoreOrderStatus @default(PAID)
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  quantity       Int              @default(1)
+  pricePaidSats  Int
+  status         StoreOrderStatus @default(PAID)
+  paymentMethod  String           @default("BALANCE")
+  paymentRequest String?
+  paymentHash    String?          @unique
+  expiresAt      DateTime?
+  paidAt         DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
 
   user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   product   StoreProduct         @relation(fields: [productId], references: [id], onDelete: Restrict)

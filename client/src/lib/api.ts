@@ -559,6 +559,14 @@ export const storeAPI = {
       body: JSON.stringify(data),
     }),
 
+  createLightningCheckout: (data: { productId: string; variantId: string; promoCode?: string }) =>
+    fetchAPI<{ order: any; paymentRequest: string; qrData: string; lightningUri: string; expiresAt: string }>('/store/checkout/lightning', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getOrderStatus: (orderId: string) => fetchAPI<{ order: any }>(`/store/orders/${orderId}/status`),
+
   getMyOrders: () => fetchAPI<{ orders: any[] }>('/store/orders/my'),
 
   getAdminStore: () => fetchAPI<{ products: StoreProduct[]; recentOrders: any[] }>('/store/admin'),
