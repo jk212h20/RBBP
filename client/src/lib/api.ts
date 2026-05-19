@@ -537,6 +537,7 @@ export interface StoreProduct {
   id: string;
   name: string;
   description: string;
+  imageUrl?: string | null;
   priceSats: number;
   isActive?: boolean;
   variants: StoreVariant[];
@@ -571,7 +572,7 @@ export const storeAPI = {
 
   getAdminStore: () => fetchAPI<{ products: StoreProduct[]; recentOrders: any[] }>('/store/admin'),
 
-  updateProduct: (productId: string, data: { description?: string; priceSats?: number; isActive?: boolean }) =>
+  updateProduct: (productId: string, data: { description?: string; imageUrl?: string | null; priceSats?: number; isActive?: boolean }) =>
     fetchAPI<StoreProduct>(`/store/admin/products/${productId}`, {
       method: 'PUT',
       body: JSON.stringify(data),

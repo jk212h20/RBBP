@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { storeAPI, type StoreProduct } from '@/lib/api';
+import ImageUpload from './ImageUpload';
 
 export default function StoreAdminTab() {
   const [products, setProducts] = useState<StoreProduct[]>([]);
@@ -10,7 +11,7 @@ export default function StoreAdminTab() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const [productEdits, setProductEdits] = useState<Record<string, { description: string; priceSats: string; isActive: boolean }>>({});
+  const [productEdits, setProductEdits] = useState<Record<string, { description: string; imageUrl: string | null; priceSats: string; isActive: boolean }>>({});
   const [variantEdits, setVariantEdits] = useState<Record<string, string>>({});
   const [promoEdits, setPromoEdits] = useState<Record<string, { priceSats: string; maxUses: string; isActive: boolean }>>({});
 
@@ -33,6 +34,7 @@ export default function StoreAdminTab() {
       data.products.forEach(product => {
         nextProductEdits[product.id] = {
           description: product.description,
+          imageUrl: product.imageUrl || null,
           priceSats: String(product.priceSats),
           isActive: product.isActive !== false,
         };
@@ -67,6 +69,7 @@ export default function StoreAdminTab() {
     try {
       await storeAPI.updateProduct(product.id, {
         description: edit.description,
+        imageUrl: edit.imageUrl,
         priceSats: parseInt(edit.priceSats, 10),
         isActive: edit.isActive,
       });
@@ -125,7 +128,7 @@ export default function StoreAdminTab() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold mb-2">🛒 Store</h2>
-        <p className="text-gray-400">Manage the shirt description, price, inventory, and launch promo code.</p>
+        <p className="text-gray-400">Manage the shirt image, description, price, inventory, and launch promo code.</p>
       </div>
 
       {message && <div className="bg-green-900/50 border border-green-600 text-green-200 p-3 rounded-lg">{message}</div>}
@@ -153,17 +156,29 @@ export default function StoreAdminTab() {
               </label>
             </div>
 
-            <div>
-              <label className="block text-sm text-gray-300 mb-1">Description text</label>
-              <textarea
-                value={productEdit?.description || ''}
-                onChange={(e) => setProductEdits(prev => ({
+            <div className="grid md:grid-cols-[280px_1fr] gap-5 items-start">
+              <ImageUpload
+                currentImage={productEdit?.imageUrl || null}
+                onImageChange={(imageData) => setProductEdits(prev => ({
                   ...prev,
-                  [product.id]: { ...prev[product.id], description: e.target.value },
+                  [product.id]: { ...prev[product.id], imageUrl: imageData },
                 }))}
-                rows={4}
-                className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500"
+                label="Item image"
+                maxSizeKB={1200}
               />
+              <div>
+                <label className="block text-sm text-gray-300 mb-1">Description text</label>
+                <textarea
+                  value={productEdit?.description || ''}
+                  onChange={(e) => setProductEdits(prev => ({
+                    ...prev,
+                    [product.id]: { ...prev[product.id], description: e.target.value },
+                  }))}
+                  rows={4}
+                  className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500"
+                />
+                <p className="text-xs text-gray-500 mt-2">Uploaded images are compressed in your browser before saving.</p>
+              </div>
             </div>
 
             <div className="grid md:grid-cols-[220px_auto] gap-4 items-end">

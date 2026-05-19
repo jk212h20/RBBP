@@ -698,6 +698,7 @@ model StoreProduct {
   id          String   @id @default(cuid())
   name        String
   description String
+  imageUrl    String?
   priceSats   Int
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())

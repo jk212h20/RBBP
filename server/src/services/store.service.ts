@@ -82,6 +82,7 @@ export async function getStorefront() {
     id: product.id,
     name: product.name,
     description: product.description,
+    imageUrl: product.imageUrl,
     priceSats: product.priceSats,
     variants: product.variants.map(variant => ({
       id: variant.id,
@@ -118,11 +119,21 @@ export async function getAdminStore() {
   return { products, recentOrders };
 }
 
-export async function updateStoreProduct(productId: string, data: { description?: string; priceSats?: number; isActive?: boolean }) {
-  const updateData: { description?: string; priceSats?: number; isActive?: boolean } = {};
+export async function updateStoreProduct(productId: string, data: { description?: string; imageUrl?: string | null; priceSats?: number; isActive?: boolean }) {
+  const updateData: { description?: string; imageUrl?: string | null; priceSats?: number; isActive?: boolean } = {};
 
   if (data.description !== undefined) {
     updateData.description = String(data.description).trim();
+  }
+  if (data.imageUrl !== undefined) {
+    const imageUrl = data.imageUrl === null ? null : String(data.imageUrl).trim();
+    if (imageUrl && imageUrl.length > 2_500_000) {
+      throw new Error('Item image is too large. Please upload a smaller image.');
+    }
+    if (imageUrl && !imageUrl.startsWith('data:image/') && !/^https?:\/\//i.test(imageUrl)) {
+      throw new Error('Item image must be an uploaded image or a valid URL');
+    }
+    updateData.imageUrl = imageUrl || null;
   }
   if (data.priceSats !== undefined) {
     const priceSats = Number(data.priceSats);

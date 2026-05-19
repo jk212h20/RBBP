@@ -229,11 +229,19 @@ export default function StorePage() {
         ) : (
           <div className="grid lg:grid-cols-[1fr_420px] gap-6">
             <section className="bg-white/10 backdrop-blur rounded-2xl border border-white/20 p-6 md:p-8 text-white">
-              <div className="aspect-video bg-black/20 rounded-2xl flex items-center justify-center mb-6 border border-white/10">
-                <div className="text-center">
-                  <div className="text-8xl mb-3">👕</div>
-                  <p className="text-blue-100">Official RBBP Shirt</p>
-                </div>
+              <div className="aspect-video bg-black/20 rounded-2xl flex items-center justify-center mb-6 border border-white/10 overflow-hidden">
+                {product.imageUrl ? (
+                  <img
+                    src={product.imageUrl}
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="text-center">
+                    <div className="text-8xl mb-3">👕</div>
+                    <p className="text-blue-100">Official RBBP Shirt</p>
+                  </div>
+                )}
               </div>
               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-4">
                 <div>
