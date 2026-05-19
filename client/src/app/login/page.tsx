@@ -115,7 +115,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen page-gradient-auth">
       <MobileNav />
       <div className="flex items-center justify-center py-8">
       <div className="max-w-md w-full mx-4">

@@ -106,7 +106,7 @@ export default function ClaimPage() {
 
   if (loading || validating) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen page-gradient-auth flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500 mx-auto mb-4"></div>
           <p className="text-gray-400">Validating claim link...</p>
@@ -117,7 +117,7 @@ export default function ClaimPage() {
 
   if (error && !guestName) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center px-4">
+      <div className="min-h-screen page-gradient-auth flex items-center justify-center px-4">
         <div className="max-w-md w-full bg-gray-800 rounded-xl p-8 text-center">
           <div className="text-red-400 text-4xl mb-4">⚠️</div>
           <h1 className="text-2xl font-bold text-white mb-4">Invalid Claim Link</h1>
@@ -138,7 +138,7 @@ export default function ClaimPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center px-4">
+      <div className="min-h-screen page-gradient-auth flex items-center justify-center px-4">
         <div className="max-w-md w-full bg-gray-800 rounded-xl p-8 text-center">
           <div className="text-blue-300 text-4xl mb-4">✅</div>
           <h1 className="text-2xl font-bold text-white mb-4">Account Claimed!</h1>
@@ -150,7 +150,7 @@ export default function ClaimPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center px-4">
+    <div className="min-h-screen page-gradient-auth flex items-center justify-center px-4">
       <div className="max-w-md w-full">
         <div className="bg-gray-800 rounded-xl p-8">
           {/* Header */}

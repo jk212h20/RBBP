@@ -97,14 +97,14 @@ export default function VenueApplyPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen  flex items-center justify-center">
+      <div className="min-h-screen page-gradient-venues flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen ">
+    <div className="min-h-screen page-gradient-venues ">
       <MobileNav currentPage="venues" />
 
       <main className="max-w-3xl mx-auto px-4 py-8">

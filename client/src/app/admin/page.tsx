@@ -536,7 +536,7 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+      <div className="min-h-screen page-gradient-admin flex items-center justify-center">
         <div className="text-white text-xl">Loading...</div>
       </div>
     );
@@ -545,7 +545,7 @@ export default function AdminPage() {
   // Show access denied if user is not admin
   if (user && user.role !== 'ADMIN') {
     return (
-      <div className="min-h-screen bg-gray-900 text-white p-8">
+      <div className="min-h-screen page-gradient-admin text-white p-8">
         <div className="max-w-md mx-auto">
           <Link href="/dashboard" className="text-blue-300 hover:text-blue-200 mb-8 inline-block">
             ← Back to Dashboard
@@ -569,7 +569,7 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen page-gradient-admin text-white">
       {/* Header */}
       <header className="bg-gray-800 border-b border-gray-700 p-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">

@@ -74,7 +74,7 @@ export default function CreateSideBetPage() {
   if (loading) return null;
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen page-gradient-bets">
       <MobileNav currentPage="home" />
       <main className="max-w-lg mx-auto px-4 py-6 md:py-8">
         <Link href="/" className="text-blue-300 hover:text-blue-200 mb-4 inline-block text-sm">← Back</Link>

@@ -68,7 +68,7 @@ export default function VenueDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center ">
+      <div className="min-h-screen page-gradient-venues flex items-center justify-center ">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
       </div>
     );
@@ -76,7 +76,7 @@ export default function VenueDetailPage() {
 
   if (error || !venue) {
     return (
-      <div className="min-h-screen  text-white p-8">
+      <div className="min-h-screen page-gradient-venues text-white p-8">
         <div className="max-w-4xl mx-auto">
           <Link href="/venues" className="text-blue-300 hover:text-blue-200 mb-8 inline-block">
             ← Back to Venues
@@ -94,7 +94,7 @@ export default function VenueDetailPage() {
   const pastEvents = events.filter(e => new Date(e.dateTime) <= new Date() || e.status === 'COMPLETED');
 
   return (
-    <div className="min-h-screen  text-white">
+    <div className="min-h-screen page-gradient-venues text-white">
       <MobileNav currentPage="venues" />
 
       <main className="max-w-4xl mx-auto p-4 md:p-8">

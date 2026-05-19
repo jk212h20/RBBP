@@ -36,7 +36,7 @@ export default function FAQPage() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: 'linear-gradient(to bottom right, #3d7a94, #5595b0, #2a5f78)' }}>
+    <div className="min-h-screen page-gradient-faq">
       <MobileNav currentPage="faq" />
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">

@@ -11,7 +11,7 @@ import { referralAPI } from '@/lib/api';
 export default function RegisterPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen page-gradient-auth flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
     }>
@@ -82,7 +82,7 @@ function RegisterForm() {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen page-gradient-auth">
       <MobileNav />
       <div className="flex items-center justify-center py-8">
       <div className="max-w-md w-full mx-4">

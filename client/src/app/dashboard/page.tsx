@@ -69,7 +69,7 @@ function DashboardContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center ">
+      <div className="min-h-screen page-gradient-dashboard flex items-center justify-center ">
         <div className="text-white text-xl">Loading...</div>
       </div>
     );
@@ -98,7 +98,7 @@ function DashboardContent() {
   };
 
   return (
-    <div className="min-h-screen ">
+    <div className="min-h-screen page-gradient-dashboard ">
       {/* Lightning Bonus Notification */}
       {showLightningBonus && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 animate-bounce">
@@ -260,7 +260,7 @@ function DashboardContent() {
 
 function LoadingFallback() {
   return (
-    <div className="min-h-screen flex items-center justify-center ">
+    <div className="min-h-screen page-gradient-dashboard flex items-center justify-center ">
       <div className="text-white text-xl">Loading...</div>
     </div>
   );

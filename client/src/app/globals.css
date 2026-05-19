@@ -20,6 +20,40 @@ body {
   min-height: 100vh;
 }
 
+/* Unified page gradients: same saturated, fixed gradient language with
+   slightly different color stops so every page feels related but distinct. */
+.page-gradient-home { background: linear-gradient(to bottom right, #1e5f86, #3d7a94, #256f68); }
+.page-gradient-dashboard { background: linear-gradient(to bottom right, #123c69, #1f6f8b, #2b7a62); }
+.page-gradient-events { background: linear-gradient(to bottom right, #1d4f8f, #2563a6, #1f8a70); }
+.page-gradient-event-detail { background: linear-gradient(to bottom right, #173b73, #245f92, #2b6f7d); }
+.page-gradient-venues { background: linear-gradient(to bottom right, #1d6b76, #2f8a9d, #246f64); }
+.page-gradient-leaderboard { background: linear-gradient(to bottom right, #283b8f, #246aa3, #1e7a73); }
+.page-gradient-profile { background: linear-gradient(to bottom right, #203f8f, #2d6b9f, #236f73); }
+.page-gradient-store { background: linear-gradient(to bottom right, #1e3a8a, #1e6b9d, #166f5f); }
+.page-gradient-blog { background: linear-gradient(to bottom right, #245b87, #4b82a2, #2f6f7c); }
+.page-gradient-faq { background: linear-gradient(to bottom right, #28647f, #4b8ea3, #2c736d); }
+.page-gradient-puzzle { background: linear-gradient(to bottom right, #16213f, #1d4f8f, #165f68); }
+.page-gradient-auth { background: linear-gradient(to bottom right, #18376f, #245f8f, #1f6f68); }
+.page-gradient-admin { background: linear-gradient(to bottom right, #111827, #1e3a5f, #123f4d); }
+.page-gradient-bets { background: linear-gradient(to bottom right, #25306f, #245f92, #1f7868); }
+
+.page-gradient-home,
+.page-gradient-dashboard,
+.page-gradient-events,
+.page-gradient-event-detail,
+.page-gradient-venues,
+.page-gradient-leaderboard,
+.page-gradient-profile,
+.page-gradient-store,
+.page-gradient-blog,
+.page-gradient-faq,
+.page-gradient-puzzle,
+.page-gradient-auth,
+.page-gradient-admin,
+.page-gradient-bets {
+  background-attachment: fixed;
+}
+
 /* Announcement bar: horizontal marquee.
    The track holds the message twice back-to-back; we translate -50% so the
    second copy seamlessly takes over as the first scrolls off-screen. */

@@ -131,7 +131,7 @@ export default function SideBetDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen page-gradient-bets">
         <MobileNav currentPage="home" />
         <div className="flex items-center justify-center py-20">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
@@ -142,7 +142,7 @@ export default function SideBetDetailPage() {
 
   if (!bet) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen page-gradient-bets">
         <MobileNav currentPage="home" />
         <div className="max-w-2xl mx-auto px-4 py-8 text-center">
           <p className="text-red-400 text-lg">{error || 'Side bet not found'}</p>
@@ -153,7 +153,7 @@ export default function SideBetDetailPage() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen page-gradient-bets">
       <MobileNav currentPage="home" />
       <main className="max-w-2xl mx-auto px-4 py-6 md:py-8">
         <Link href="/" className="text-blue-300 hover:text-blue-200 mb-4 inline-block text-sm">← Back</Link>

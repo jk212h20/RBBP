@@ -753,7 +753,7 @@ export default function EventDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen  flex items-center justify-center">
+      <div className="min-h-screen page-gradient-event-detail flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto"></div>
           <p className="text-blue-100 mt-4">Loading event...</p>
@@ -764,7 +764,7 @@ export default function EventDetailPage() {
 
   if (error || !event) {
     return (
-      <div className="min-h-screen  flex items-center justify-center">
+      <div className="min-h-screen page-gradient-event-detail flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-400 text-xl">{error || 'Event not found'}</p>
           <Link href="/events" className="text-blue-300 mt-4 inline-block hover:underline">
@@ -792,7 +792,7 @@ export default function EventDetailPage() {
   const playerRegBlocked = isRegistrationClosed && !isAdmin;
 
   return (
-    <div className="min-h-screen ">
+    <div className="min-h-screen page-gradient-event-detail ">
       <MobileNav currentPage="events" />
 
       <main className="max-w-4xl mx-auto px-4 py-6 md:py-8">

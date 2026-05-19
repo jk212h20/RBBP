@@ -108,7 +108,7 @@ export default function LeaderboardPage() {
   };
 
   return (
-    <div className="min-h-screen ">
+    <div className="min-h-screen page-gradient-leaderboard ">
       <MobileNav currentPage="leaderboard" />
 
       <main className="max-w-4xl mx-auto px-4 py-8">

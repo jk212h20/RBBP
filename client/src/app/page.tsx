@@ -104,7 +104,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: 'linear-gradient(to bottom right, #3d7a94, #5595b0, #2a5f78)' }}>
+    <div className="min-h-screen page-gradient-home">
       <MobileNav currentPage="home" />
 
       {/* Hero Section */}

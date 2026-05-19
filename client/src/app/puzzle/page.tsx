@@ -129,7 +129,7 @@ export default function PuzzlePage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900">
+      <div className="min-h-screen page-gradient-puzzle">
         <MobileNav currentPage="puzzle" />
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-white/60 text-lg">Loading...</div>
@@ -140,7 +140,7 @@ export default function PuzzlePage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900">
+      <div className="min-h-screen page-gradient-puzzle">
         <MobileNav currentPage="puzzle" />
         <div className="max-w-2xl mx-auto px-4 py-12 text-center">
           <div className="text-4xl mb-4">🧩</div>
@@ -158,7 +158,7 @@ export default function PuzzlePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900">
+    <div className="min-h-screen page-gradient-puzzle">
       <MobileNav currentPage="puzzle" />
       
       <div className="max-w-2xl mx-auto px-4 py-8">

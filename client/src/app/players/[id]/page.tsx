@@ -196,7 +196,7 @@ export default function PlayerProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen page-gradient-profile">
         <MobileNav />
         <main className="max-w-4xl mx-auto px-4 py-8">
           <div className="text-center py-12">
@@ -210,7 +210,7 @@ export default function PlayerProfilePage() {
 
   if (error || !profile) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen page-gradient-profile">
         <MobileNav />
         <main className="max-w-4xl mx-auto px-4 py-8">
           <div className="text-center py-12">
@@ -228,7 +228,7 @@ export default function PlayerProfilePage() {
   const currentSeason = profile.currentSeasonStanding;
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen page-gradient-profile">
       <MobileNav />
 
       <main className="max-w-4xl mx-auto px-4 py-8">
