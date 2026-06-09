@@ -169,6 +169,7 @@ function PlayerSideBets({ playerId }: { playerId: string }) {
 export default function PlayerProfilePage() {
   const params = useParams();
   const playerId = params.id as string;
+  const { user } = useAuth();
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -226,6 +227,7 @@ export default function PlayerProfilePage() {
 
   const imageUrl = getProfileImageUrl();
   const currentSeason = profile.currentSeasonStanding;
+  const canViewBalanceHistory = user?.id === playerId || user?.role === 'ADMIN';
 
   return (
     <div className="min-h-screen page-gradient-profile">
@@ -263,6 +265,15 @@ export default function PlayerProfilePage() {
               </p>
               {profile.bio && (
                 <p className="text-blue-100 mt-3">{profile.bio}</p>
+              )}
+
+              {canViewBalanceHistory && (
+                <Link
+                  href={`/players/${playerId}/balance-history`}
+                  className="inline-flex items-center gap-2 mt-4 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-200 border border-yellow-400/30 px-3 py-2 rounded-lg text-sm font-semibold transition"
+                >
+                  ⚡ View Balance History
+                </Link>
               )}
 
               {/* Telegram */}

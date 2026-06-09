@@ -715,6 +715,21 @@ export const balanceAPI = {
     fetchAPI<{ id: string; status: string; amountSats: number; paidAt: string | null }>(
       `/balance/withdrawal/${withdrawalId}/status`
     ),
+
+  getPlayerHistory: (userId: string, limit?: number) => {
+    const query = limit ? `?limit=${limit}` : '';
+    return fetchAPI<{
+      user: { id: string; name: string; lightningBalanceSats: number };
+      transactions: {
+        id: string;
+        type: string;
+        amountSats: number;
+        note: string | null;
+        balanceAfter: number;
+        createdAt: string;
+      }[];
+    }>(`/balance/player/${userId}/history${query}`);
+  },
   
   // Admin endpoints
   getAllUsers: () => fetchAPI<{
@@ -1089,13 +1104,13 @@ export const sideBetsAPI = {
   getPlayerBets: (playerId: string) => fetchAPI<any[]>(`/side-bets/player/${playerId}`),
 
   create: (data: { label: string; description?: string; entrySats: number; eventId?: string }) =>
-    fetchAPI<{ sideBet: any; invoice: { paymentRequest: string; paymentHash: string; amountSats: number } }>(
+    fetchAPI<{ sideBet: any; invoice: { paymentRequest: string; paymentHash: string; amountSats: number } | null; paidWithBalance?: boolean; balanceSats?: number }>(
       '/side-bets',
       { method: 'POST', body: JSON.stringify(data) }
     ),
 
   enter: (id: string) =>
-    fetchAPI<{ invoice: { paymentRequest: string; paymentHash: string; amountSats: number } }>(
+    fetchAPI<{ invoice: { paymentRequest: string; paymentHash: string; amountSats: number } | null; paidWithBalance?: boolean; balanceSats?: number }>(
       `/side-bets/${id}/enter`,
       { method: 'POST' }
     ),

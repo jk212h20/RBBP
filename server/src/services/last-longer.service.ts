@@ -13,7 +13,11 @@ export class LastLongerService {
   /**
    * Create a Lightning invoice for a player to enter the Last Longer pool
    */
-  async createEntryInvoice(eventId: string, userId: string) {
+  async createEntryInvoice(_eventId: string, _userId: string): Promise<{ paymentRequest: string; paymentHash: string; amountSats: number }> {
+    throw new Error('Last Longer pools are disabled. Please use Side Bets instead.');
+  }
+
+  async createEntryInvoiceDisabled(eventId: string, userId: string) {
     // Get event with last longer config
     const event = await prisma.event.findUnique({
       where: { id: eventId },
@@ -193,7 +197,7 @@ export class LastLongerService {
     const totalPoolSats = event.lastLongerSeedSats + totalEntrySats;
 
     return {
-      enabled: event.lastLongerEnabled,
+      enabled: false,
       seedSats: event.lastLongerSeedSats,
       entrySats: event.lastLongerEntrySats,
       entryCount,

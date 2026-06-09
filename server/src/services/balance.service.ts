@@ -332,6 +332,40 @@ export async function getUserTransactions(
 }
 
 /**
+ * Get a user's balance history for the user themself or an authorized viewer.
+ * Does not expose email/admin metadata.
+ */
+export async function getPlayerBalanceHistory(
+  userId: string,
+  limit: number = 100
+) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, name: true, lightningBalanceSats: true },
+  });
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  const transactions = await prisma.balanceTransaction.findMany({
+    where: { userId },
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+    select: {
+      id: true,
+      type: true,
+      amountSats: true,
+      note: true,
+      balanceAfter: true,
+      createdAt: true,
+    },
+  });
+
+  return { user, transactions };
+}
+
+/**
  * Get all transactions across all users (admin) — paginated
  */
 export async function getAllTransactions(

@@ -957,7 +957,7 @@ export default function EventDetailPage() {
           )}
         </div>
 
-        {/* Last Longer Pool - Player Section (shown before TD panel for visibility) */}
+        {/* Last Longer Pool disabled: backend now always reports disabled. */}
         {lastLongerPool?.enabled && (
           <div id="last-longer-pool" className="bg-purple-500/10 backdrop-blur-sm rounded-xl border border-purple-500/30 p-6 mb-6">
             <h2 className="text-xl font-bold text-purple-300 mb-4">⚡ Last Longer Pool</h2>

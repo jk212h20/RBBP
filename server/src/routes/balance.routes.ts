@@ -6,6 +6,7 @@
 
 import { Router, Request, Response } from 'express';
 import { authenticate, requireAdmin } from '../middleware/auth.middleware';
+import { UserRole } from '@prisma/client';
 import {
   getUserBalance,
   getAllUsersWithBalances,
@@ -15,6 +16,7 @@ import {
   getBalanceStats,
   initiateWithdrawal,
   getUserTransactions,
+  getPlayerBalanceHistory,
   getAllTransactions,
 } from '../services/balance.service';
 import { getWithdrawalWithLnurl } from '../services/withdrawal.service';
@@ -184,6 +186,34 @@ router.get('/deposits', authenticate, async (req: Request, res: Response) => {
   } catch (error) {
     console.error('[Balance] Get deposits error:', error);
     return res.status(500).json({ error: 'Failed to get deposits' });
+  }
+});
+
+/**
+ * GET /api/balance/player/:userId/history
+ *
+ * Get balance history for your own player profile, or for admins.
+ */
+router.get('/player/:userId/history', authenticate, async (req: Request, res: Response) => {
+  try {
+    const requesterId = req.user?.userId;
+    if (!requesterId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const requesterRole = req.user?.role as UserRole | undefined;
+    if (requesterId !== req.params.userId && requesterRole !== UserRole.ADMIN) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    const limit = Math.min(parseInt(req.query.limit as string, 10) || 100, 250);
+    const result = await getPlayerBalanceHistory(req.params.userId, limit);
+    return res.json(result);
+  } catch (error) {
+    console.error('[Balance] Get player history error:', error);
+    const message = error instanceof Error ? error.message : 'Failed to get balance history';
+    const status = message === 'User not found' ? 404 : 500;
+    return res.status(status).json({ error: message });
   }
 });
 

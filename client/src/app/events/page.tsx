@@ -248,11 +248,6 @@ export default function EventsPage() {
               <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(event.status)}`}>
                 {event.status.replace('_', ' ')}
               </span>
-              {event.lastLongerEnabled && (
-                <span className="px-2 py-1 rounded-full text-xs font-bold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
-                  ⚡ Last Longer
-                </span>
-              )}
             </div>
             {event.buyInSats != null && event.buyInSats > 0 && (
               <span className="text-yellow-400 font-bold">{event.buyInSats.toLocaleString()} sats</span>
@@ -349,8 +344,8 @@ export default function EventsPage() {
               </span>
             )}
           </div>
-          {/* Last Longer Entry CTA */}
-          {event.lastLongerEnabled && isUserSignedUp(event) && (event.status === 'SCHEDULED' || event.status === 'REGISTRATION_OPEN' || event.status === 'IN_PROGRESS') && (
+          {/* Last Longer disabled: Side Bets are now the supported betting flow. */}
+          {false && event.lastLongerEnabled && isUserSignedUp(event) && (event.status === 'SCHEDULED' || event.status === 'REGISTRATION_OPEN' || event.status === 'IN_PROGRESS') && (
             <Link
               href={`/events/${event.slug || event.id}#last-longer-pool`}
               className="mt-2 block w-full text-center bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 py-2 rounded-lg font-medium transition border border-purple-500/30"

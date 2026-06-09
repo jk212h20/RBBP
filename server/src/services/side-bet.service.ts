@@ -64,7 +64,68 @@ export class SideBetService {
 
     const feePct = getSideBetFeePct();
 
-    // Create the side bet
+    const creator = await prisma.user.findUnique({
+      where: { id: data.creatorId },
+      select: { id: true, lightningBalanceSats: true },
+    });
+    if (!creator) throw new Error('User not found');
+
+    // Create the side bet. If the creator has enough site balance, debit it and activate immediately.
+    if (creator.lightningBalanceSats >= data.entrySats) {
+      const result = await prisma.$transaction(async (tx) => {
+        const sideBet = await tx.sideBet.create({
+          data: {
+            label: data.label.trim(),
+            description: data.description?.trim() || null,
+            creatorId: data.creatorId,
+            eventId: data.eventId || null,
+            entrySats: data.entrySats,
+            feePct,
+          },
+        });
+
+        const debit = await tx.user.updateMany({
+          where: { id: data.creatorId, lightningBalanceSats: { gte: data.entrySats } },
+          data: { lightningBalanceSats: { decrement: data.entrySats } },
+        });
+        if (debit.count !== 1) throw new Error('Insufficient balance');
+
+        const updatedUser = await tx.user.findUnique({
+          where: { id: data.creatorId },
+          select: { lightningBalanceSats: true },
+        });
+
+        await tx.sideBetEntry.create({
+          data: {
+            sideBetId: sideBet.id,
+            userId: data.creatorId,
+            amountSats: data.entrySats,
+            paidAt: new Date(),
+          },
+        });
+
+        await tx.balanceTransaction.create({
+          data: {
+            userId: data.creatorId,
+            type: 'SIDE_BET_ENTRY',
+            amountSats: data.entrySats,
+            note: `Side Bet entry: "${sideBet.label}"`,
+            balanceAfter: updatedUser?.lightningBalanceSats ?? 0,
+          },
+        });
+
+        return { sideBet, balanceSats: updatedUser?.lightningBalanceSats ?? 0 };
+      });
+
+      return {
+        sideBet: result.sideBet,
+        invoice: null,
+        paidWithBalance: true,
+        balanceSats: result.balanceSats,
+      };
+    }
+
+    // Otherwise use the existing direct Lightning invoice flow.
     const sideBet = await prisma.sideBet.create({
       data: {
         label: data.label.trim(),
@@ -76,7 +137,6 @@ export class SideBetService {
       },
     });
 
-    // Create creator's entry + Lightning invoice
     const memo = `Side Bet: ${sideBet.label}`;
     const { paymentRequest, paymentHash } = await createInvoice(data.entrySats, memo);
 
@@ -96,6 +156,8 @@ export class SideBetService {
         paymentHash,
         amountSats: data.entrySats,
       },
+      paidWithBalance: false,
+      balanceSats: creator.lightningBalanceSats,
     };
   }
 
@@ -125,6 +187,55 @@ export class SideBetService {
       orderBy: { createdAt: 'desc' },
     });
 
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { lightningBalanceSats: true },
+    });
+    if (!user) throw new Error('User not found');
+
+    // Prefer site balance when there is enough available.
+    if (user.lightningBalanceSats >= sideBet.entrySats) {
+      const result = await prisma.$transaction(async (tx) => {
+        const debit = await tx.user.updateMany({
+          where: { id: userId, lightningBalanceSats: { gte: sideBet.entrySats } },
+          data: { lightningBalanceSats: { decrement: sideBet.entrySats } },
+        });
+        if (debit.count !== 1) throw new Error('Insufficient balance');
+
+        const updatedUser = await tx.user.findUnique({
+          where: { id: userId },
+          select: { lightningBalanceSats: true },
+        });
+
+        await tx.sideBetEntry.create({
+          data: {
+            sideBetId,
+            userId,
+            amountSats: sideBet.entrySats,
+            paidAt: new Date(),
+          },
+        });
+
+        await tx.balanceTransaction.create({
+          data: {
+            userId,
+            type: 'SIDE_BET_ENTRY',
+            amountSats: sideBet.entrySats,
+            note: `Side Bet entry: "${sideBet.label}"`,
+            balanceAfter: updatedUser?.lightningBalanceSats ?? 0,
+          },
+        });
+
+        return { balanceSats: updatedUser?.lightningBalanceSats ?? 0 };
+      });
+
+      return {
+        invoice: null,
+        paidWithBalance: true,
+        balanceSats: result.balanceSats,
+      };
+    }
+
     const memo = `Side Bet: ${sideBet.label}`;
     const { paymentRequest, paymentHash } = await createInvoice(sideBet.entrySats, memo);
 
@@ -152,6 +263,8 @@ export class SideBetService {
         paymentHash,
         amountSats: sideBet.entrySats,
       },
+      paidWithBalance: false,
+      balanceSats: user.lightningBalanceSats,
     };
   }
 

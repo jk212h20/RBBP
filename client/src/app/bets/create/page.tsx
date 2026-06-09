@@ -22,6 +22,7 @@ export default function CreateSideBetPage() {
   const [invoice, setInvoice] = useState<{ paymentRequest: string; amountSats: number } | null>(null);
   const [betId, setBetId] = useState('');
   const [paymentPaid, setPaymentPaid] = useState(false);
+  const [paidWithBalance, setPaidWithBalance] = useState(false);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) router.push('/login');
@@ -63,7 +64,13 @@ export default function CreateSideBetPage() {
         eventId: eventId || undefined,
       });
       setBetId(result.sideBet.id);
-      setInvoice({ paymentRequest: result.invoice.paymentRequest, amountSats: result.invoice.amountSats });
+      if (result.paidWithBalance || !result.invoice) {
+        setPaidWithBalance(true);
+        setPaymentPaid(true);
+        setTimeout(() => router.push(`/bets/${result.sideBet.id}`), 1200);
+      } else {
+        setInvoice({ paymentRequest: result.invoice.paymentRequest, amountSats: result.invoice.amountSats });
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to create side bet');
     } finally {
@@ -136,17 +143,22 @@ export default function CreateSideBetPage() {
             {error && (
               <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-3 text-red-300 text-sm">{error}</div>
             )}
+            {paidWithBalance && (
+              <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-3 text-green-300 text-sm text-center">
+                ✅ Paid from your site balance. Redirecting to the bet...
+              </div>
+            )}
 
             <button
               onClick={handleCreate}
-              disabled={creating}
+              disabled={creating || paidWithBalance}
               className="w-full bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-600 text-black font-bold py-3 rounded-lg transition"
             >
-              {creating ? '⏳ Creating...' : '⚡ Create & Pay Entry'}
+              {creating ? '⏳ Creating...' : paidWithBalance ? '✅ Bet Created' : 'Create & Enter'}
             </button>
 
             <p className="text-blue-300/50 text-xs text-center">
-              You'll pay the entry amount via Lightning to activate the bet. You're automatically entered.
+              If your site balance covers the entry, it will be used automatically. Otherwise, you’ll get a Lightning invoice to activate the bet.
             </p>
           </div>
         ) : (

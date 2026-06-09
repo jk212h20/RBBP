@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import MobileNav from '@/components/MobileNav';
 import { useAuth } from '@/context/AuthContext';
-import { eventsAPI, seasonsAPI, blogAPI, type BlogListItem } from '@/lib/api';
+import { eventsAPI, seasonsAPI, blogAPI, sideBetsAPI, type BlogListItem } from '@/lib/api';
 import { calculatePossiblePoints } from '@/lib/points';
 
 interface UpcomingEvent {
@@ -24,6 +24,17 @@ interface TopPlayer {
   user: { id: string; name: string };
   totalPoints: number;
   wins: number;
+}
+
+interface ActiveSideBet {
+  id: string;
+  label: string;
+  creator?: { id: string; name: string } | null;
+  event?: { id: string; name: string; slug?: string | null } | null;
+  entrySats: number;
+  entryCount: number;
+  totalPot: number;
+  createdAt: string;
 }
 
 // Format countdown string from now until event time
@@ -48,6 +59,7 @@ export default function HomePage() {
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
   const [topPlayers, setTopPlayers] = useState<TopPlayer[]>([]);
   const [latestPosts, setLatestPosts] = useState<BlogListItem[]>([]);
+  const [activeSideBets, setActiveSideBets] = useState<ActiveSideBet[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [, setTick] = useState(0);
 
@@ -84,6 +96,14 @@ export default function HomePage() {
         setLatestPosts(posts.slice(0, 3));
       } catch (err) {
         // ignore
+      }
+
+      // Load all active side bets. Fail quiet — side bets should not block the home page.
+      try {
+        const bets = await sideBetsAPI.listOpen();
+        setActiveSideBets(bets);
+      } catch (err) {
+        setActiveSideBets([]);
       }
     } catch (err) {
       console.error('Failed to load home data:', err);
@@ -170,11 +190,6 @@ export default function HomePage() {
                         <div className="flex justify-between items-start">
                           <div>
                             <h3 className="text-white font-semibold text-lg">{event.name}</h3>
-                            {event.lastLongerEnabled && (
-                              <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-bold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
-                                ⚡ Last Longer
-                              </span>
-                            )}
                           </div>
                           {/* Countdown badge */}
                           <span className="bg-blue-600/30 text-blue-200 text-xs font-bold px-2 py-1 rounded-lg whitespace-nowrap ml-2">
@@ -316,17 +331,70 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Side Bets — discrete link for logged-in users */}
-        {isAuthenticated && (
-          <div className="flex justify-center mb-8">
-            <Link
-              href="/bets/create"
-              className="text-white/50 hover:text-white/80 text-sm flex items-center gap-1.5 transition"
-            >
-              🎲 Create a Side Bet
-            </Link>
+        {/* Side Bets */}
+        <div className="mb-8">
+          {isAuthenticated && (
+            <div className="flex justify-center mb-4">
+              <Link
+                href="/bets/create"
+                className="text-white/50 hover:text-white/80 text-sm flex items-center gap-1.5 transition"
+              >
+                🎲 Create a Side Bet
+              </Link>
+            </div>
+          )}
+
+          <div className="max-w-3xl mx-auto bg-white/10 backdrop-blur rounded-2xl p-5 border border-white/10">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <h2 className="text-xl font-bold text-white">🎲 Active Side Bets</h2>
+              <Link href="/bets/create" className="text-blue-300 hover:text-blue-200 text-sm">
+                New Bet →
+              </Link>
+            </div>
+
+            {loadingData ? (
+              <div className="text-center py-6">
+                <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-blue-400 mx-auto"></div>
+              </div>
+            ) : activeSideBets.length === 0 ? (
+              <p className="text-white/60 text-center py-4">No active side bets yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {activeSideBets.map((bet) => (
+                  <Link
+                    key={bet.id}
+                    href={`/bets/${bet.id}`}
+                    className="block bg-white/5 rounded-xl hover:bg-white/10 transition p-4 border border-white/5"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                      <div>
+                        <h3 className="text-white font-semibold text-lg">{bet.label}</h3>
+                        <p className="text-white/50 text-sm">
+                          Created by {bet.creator?.name || 'Unknown'}
+                          {bet.event ? ` · ${bet.event.name}` : ''}
+                        </p>
+                      </div>
+                      <div className="sm:text-right shrink-0">
+                        <p className="text-yellow-300 font-bold">⚡ {bet.totalPot.toLocaleString()} pot</p>
+                        <p className="text-white/50 text-sm">{bet.entrySats.toLocaleString()} sats entry</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-3 text-xs">
+                      <span className="bg-blue-500/20 text-blue-200 px-2 py-1 rounded-full">
+                        {bet.entryCount} {bet.entryCount === 1 ? 'entry' : 'entries'}
+                      </span>
+                      {bet.event && (
+                        <span className="bg-purple-500/20 text-purple-200 px-2 py-1 rounded-full">
+                          Event bet
+                        </span>
+                      )}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
         {/* CTA */}
         {!isAuthenticated && (

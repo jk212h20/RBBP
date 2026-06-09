@@ -38,6 +38,7 @@ export default function SideBetDetailPage() {
   const [invoice, setInvoice] = useState<{ paymentRequest: string; paymentHash: string; amountSats: number } | null>(null);
   const [paying, setPaying] = useState(false);
   const [paymentPaid, setPaymentPaid] = useState(false);
+  const [entryMessage, setEntryMessage] = useState('');
 
   // Settle state
   const [settling, setSettling] = useState(false);
@@ -87,8 +88,16 @@ export default function SideBetDetailPage() {
     setError('');
     try {
       const result = await sideBetsAPI.enter(id as string);
-      setInvoice(result.invoice);
-      setPaymentPaid(false);
+      if (result.paidWithBalance || !result.invoice) {
+        setInvoice(null);
+        setPaymentPaid(true);
+        setEntryMessage('✅ Entry paid from your site balance. You’re in the bet.');
+        await loadBet();
+      } else {
+        setInvoice(result.invoice);
+        setPaymentPaid(false);
+        setEntryMessage('');
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to generate invoice');
     } finally {
@@ -229,7 +238,7 @@ export default function SideBetDetailPage() {
         )}
         {paymentPaid && (
           <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-3 mb-4 text-green-300 text-sm">
-            ✅ Payment confirmed! You&apos;re in the bet.
+            {entryMessage || '✅ Payment confirmed! You&apos;re in the bet.'}
           </div>
         )}
 
@@ -249,12 +258,16 @@ export default function SideBetDetailPage() {
                   disabled={paying}
                   className="w-full bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-600 text-black font-bold py-3 rounded-lg transition"
                 >
-                  {paying ? '⏳ Generating Invoice...' : myEntryCount > 0
-                    ? `⚡ Enter Again (${bet.entrySats.toLocaleString()} sats)`
-                    : `⚡ Enter for ${bet.entrySats.toLocaleString()} sats`}
+                  {paying ? '⏳ Entering...' : myEntryCount > 0
+                    ? `Enter Again (${bet.entrySats.toLocaleString()} sats)`
+                    : `Enter for ${bet.entrySats.toLocaleString()} sats`}
                 </button>
               </>
             )}
+
+            <p className="text-blue-300/50 text-xs text-center mt-3">
+              If your site balance covers the entry, it is used automatically. Otherwise, you’ll get a Lightning invoice.
+            </p>
 
             {/* Lightning Invoice QR */}
             {invoice && !paymentPaid && (
