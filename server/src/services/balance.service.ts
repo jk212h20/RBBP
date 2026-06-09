@@ -266,7 +266,8 @@ export async function initiateWithdrawal(
       userId,
       withdrawAmount,
       `Balance withdrawal - ${user.name}`,
-      24 // 24 hour expiry
+      24, // 24 hour expiry
+      true // user's site balance was reserved up front
     );
 
     console.log(`[Balance] Created withdrawal for ${withdrawAmount} sats for user ${userId}`);
@@ -287,25 +288,9 @@ export async function handleWithdrawalComplete(
   withdrawalId: string,
   status: 'PAID' | 'EXPIRED' | 'FAILED'
 ): Promise<void> {
-  const withdrawal = await prisma.withdrawal.findUnique({
-    where: { id: withdrawalId },
-    select: { userId: true, amountSats: true, status: true },
-  });
-
-  if (!withdrawal) {
-    console.error(`[Balance] Withdrawal ${withdrawalId} not found`);
-    return;
-  }
-
-  // If withdrawal failed or expired, refund the balance
-  if (status === 'EXPIRED' || status === 'FAILED') {
-    await creditBalance(
-      withdrawal.userId,
-      withdrawal.amountSats,
-      `Refund - withdrawal ${status.toLowerCase()}`
-    );
-    console.log(`[Balance] Refunded ${withdrawal.amountSats} sats to user ${withdrawal.userId} (withdrawal ${status})`);
-  }
+  // Refunds are now handled atomically in withdrawal.service so cancellation/payment
+  // races cannot double-credit a user. Keep this compatibility wrapper as a no-op.
+  console.log(`[Balance] handleWithdrawalComplete(${withdrawalId}, ${status}) is handled by withdrawal.service`);
 }
 
 // ============================================

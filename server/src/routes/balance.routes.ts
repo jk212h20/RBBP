@@ -19,7 +19,7 @@ import {
   getPlayerBalanceHistory,
   getAllTransactions,
 } from '../services/balance.service';
-import { getWithdrawalWithLnurl } from '../services/withdrawal.service';
+import { cancelWithdrawal, getWithdrawalWithLnurl } from '../services/withdrawal.service';
 import {
   createDeposit,
   getDepositLimits,
@@ -107,10 +107,36 @@ router.get('/withdrawal/:id/status', authenticate, async (req: Request, res: Res
       status: withdrawal.status,
       amountSats: withdrawal.amountSats,
       paidAt: withdrawal.paidAt,
+      refundedAt: withdrawal.refundedAt,
     });
   } catch (error) {
     console.error('[Balance] Get withdrawal status error:', error);
     return res.status(500).json({ error: 'Failed to get withdrawal status' });
+  }
+});
+
+/**
+ * DELETE /api/balance/withdrawal/:id
+ *
+ * Cancel an unclaimed withdrawal and refund reserved site balance.
+ */
+router.delete('/withdrawal/:id', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const success = await cancelWithdrawal(req.params.id, userId);
+    if (!success) {
+      return res.status(400).json({ error: 'Cannot cancel withdrawal. It may already be claimed, paid, cancelled, or expired.' });
+    }
+
+    const balanceSats = await getUserBalance(userId);
+    return res.json({ message: 'Withdrawal cancelled and balance refunded', balanceSats });
+  } catch (error) {
+    console.error('[Balance] Cancel withdrawal error:', error);
+    return res.status(500).json({ error: 'Failed to cancel withdrawal' });
   }
 });
 

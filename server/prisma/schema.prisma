@@ -421,6 +421,7 @@ enum WithdrawalStatus {
   PAID       // Successfully paid
   EXPIRED    // Timed out
   FAILED     // Payment failed
+  CANCELLED  // User/admin cancelled before wallet claim
 }
 
 model Withdrawal {
@@ -431,11 +432,13 @@ model Withdrawal {
   description String?                   // e.g., "1st Place - Tuesday Poker"
   status      WithdrawalStatus @default(PENDING)
   invoice     String?                   // BOLT11 invoice when claimed
-  paymentHash String?                   // Payment hash after successful payment
-  paidAt      DateTime?
-  expiresAt   DateTime
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  paymentHash       String?                   // Payment hash after successful payment
+  paidAt            DateTime?
+  expiresAt         DateTime
+  fundedFromBalance Boolean          @default(false) // True when user's site balance was reserved up front
+  refundedAt        DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
   // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -147,46 +147,6 @@ router.post('/cleanup', authenticate, requireAdmin, async (req: Request, res: Re
   }
 });
 
-/**
- * GET /api/withdrawals/:id
- * 
- * Get a single withdrawal with LNURL data (admin only)
- */
-router.get('/:id', authenticate, requireAdmin, async (req: Request, res: Response) => {
-  try {
-    const withdrawal = await getWithdrawalWithLnurl(req.params.id);
-
-    if (!withdrawal) {
-      return res.status(404).json({ error: 'Withdrawal not found' });
-    }
-
-    return res.json(withdrawal);
-  } catch (error) {
-    console.error('[Withdrawal] Get error:', error);
-    return res.status(500).json({ error: 'Failed to fetch withdrawal' });
-  }
-});
-
-/**
- * DELETE /api/withdrawals/:id
- * 
- * Cancel a pending withdrawal (admin only)
- */
-router.delete('/:id', authenticate, requireAdmin, async (req: Request, res: Response) => {
-  try {
-    const success = await cancelWithdrawal(req.params.id);
-
-    if (!success) {
-      return res.status(400).json({ error: 'Cannot cancel withdrawal (not found or not pending)' });
-    }
-
-    return res.json({ message: 'Withdrawal cancelled' });
-  } catch (error) {
-    console.error('[Withdrawal] Cancel error:', error);
-    return res.status(500).json({ error: 'Failed to cancel withdrawal' });
-  }
-});
-
 // ============================================
 // USER ENDPOINTS
 // ============================================
@@ -238,6 +198,70 @@ router.get('/my/:id', authenticate, async (req: Request, res: Response) => {
   } catch (error) {
     console.error('[Withdrawal] My withdrawal error:', error);
     return res.status(500).json({ error: 'Failed to fetch withdrawal' });
+  }
+});
+
+/**
+ * DELETE /api/withdrawals/my/:id
+ *
+ * Cancel a current user's unclaimed withdrawal and refund reserved site balance.
+ */
+router.delete('/my/:id', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const success = await cancelWithdrawal(req.params.id, userId);
+    if (!success) {
+      return res.status(400).json({ error: 'Cannot cancel withdrawal. It may already be claimed, paid, cancelled, or expired.' });
+    }
+
+    return res.json({ message: 'Withdrawal cancelled and balance refunded' });
+  } catch (error) {
+    console.error('[Withdrawal] User cancel error:', error);
+    return res.status(500).json({ error: 'Failed to cancel withdrawal' });
+  }
+});
+
+/**
+ * GET /api/withdrawals/:id
+ * 
+ * Get a single withdrawal with LNURL data (admin only)
+ */
+router.get('/:id', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const withdrawal = await getWithdrawalWithLnurl(req.params.id);
+
+    if (!withdrawal) {
+      return res.status(404).json({ error: 'Withdrawal not found' });
+    }
+
+    return res.json(withdrawal);
+  } catch (error) {
+    console.error('[Withdrawal] Get error:', error);
+    return res.status(500).json({ error: 'Failed to fetch withdrawal' });
+  }
+});
+
+/**
+ * DELETE /api/withdrawals/:id
+ * 
+ * Cancel a pending withdrawal (admin only)
+ */
+router.delete('/:id', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const success = await cancelWithdrawal(req.params.id);
+
+    if (!success) {
+      return res.status(400).json({ error: 'Cannot cancel withdrawal (not found or not pending)' });
+    }
+
+    return res.json({ message: 'Withdrawal cancelled' });
+  } catch (error) {
+    console.error('[Withdrawal] Cancel error:', error);
+    return res.status(500).json({ error: 'Failed to cancel withdrawal' });
   }
 });
 

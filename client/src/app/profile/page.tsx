@@ -144,7 +144,8 @@ export default function ProfilePage() {
     lightningUri: string;
     amountSats: number;
   } | null>(null);
-  const [withdrawalStatus, setWithdrawalStatus] = useState<'PENDING' | 'PAID' | 'FAILED' | 'EXPIRED'>('PENDING');
+  const [withdrawalStatus, setWithdrawalStatus] = useState<'PENDING' | 'PAID' | 'FAILED' | 'EXPIRED' | 'CANCELLED'>('PENDING');
+  const [cancellingWithdrawal, setCancellingWithdrawal] = useState(false);
 
   // Lightning deposit state
   const [showDepositModal, setShowDepositModal] = useState(false);
@@ -311,8 +312,10 @@ export default function ProfilePage() {
             loadBalance();
             loadWithdrawals();
           }, 3000);
-        } else if (status.status === 'FAILED' || status.status === 'EXPIRED') {
-          setWithdrawalStatus(status.status as 'FAILED' | 'EXPIRED');
+        } else if (status.status === 'FAILED' || status.status === 'EXPIRED' || status.status === 'CANCELLED') {
+          setWithdrawalStatus(status.status as 'FAILED' | 'EXPIRED' | 'CANCELLED');
+          loadBalance();
+          loadWithdrawals();
         }
       } catch (err) {
         console.error('Failed to poll withdrawal status:', err);
@@ -455,10 +458,47 @@ export default function ProfilePage() {
     try {
       const data = await withdrawalsAPI.getMy();
       setMyWithdrawals(data);
+
+      const pending = data.find((w: any) => w.status === 'PENDING');
+      if (pending && !withdrawalData) {
+        try {
+          const full = await withdrawalsAPI.getMyById(pending.id);
+          if (full?.status === 'PENDING' && full.qrData && full.lightningUri) {
+            setWithdrawalData({
+              id: full.id,
+              lnurl: full.lnurl,
+              qrData: full.qrData,
+              lightningUri: full.lightningUri,
+              amountSats: full.amountSats,
+            });
+            setWithdrawalStatus('PENDING');
+          }
+        } catch (err) {
+          console.error('Failed to load pending withdrawal QR:', err);
+        }
+      }
     } catch (err) {
       console.error('Failed to load withdrawals:', err);
     } finally {
       setLoadingWithdrawals(false);
+    }
+  };
+
+  const handleCancelWithdrawal = async () => {
+    if (!withdrawalData || cancellingWithdrawal) return;
+    setCancellingWithdrawal(true);
+    setSaveMessage(null);
+    try {
+      const result = await balanceAPI.cancelWithdrawal(withdrawalData.id);
+      setLightningBalance(result.balanceSats);
+      setWithdrawalStatus('CANCELLED');
+      setSaveMessage({ type: 'success', text: 'Withdrawal cancelled and balance returned.' });
+      await loadWithdrawals();
+    } catch (err: any) {
+      setSaveMessage({ type: 'error', text: err.message || 'Failed to cancel withdrawal' });
+      await loadWithdrawals();
+    } finally {
+      setCancellingWithdrawal(false);
     }
   };
 
@@ -1672,15 +1712,15 @@ export default function ProfilePage() {
                     {withdrawalData.amountSats.toLocaleString()} sats sent to your wallet
                   </p>
                 </div>
-              ) : withdrawalStatus === 'FAILED' || withdrawalStatus === 'EXPIRED' ? (
+              ) : withdrawalStatus === 'FAILED' || withdrawalStatus === 'EXPIRED' || withdrawalStatus === 'CANCELLED' ? (
                 // Failed/Expired state
                 <div className="flex flex-col items-center gap-4 py-8">
                   <div className="text-4xl">❌</div>
                   <h3 className="text-red-400 font-bold text-xl text-center">
-                    Withdrawal {withdrawalStatus === 'EXPIRED' ? 'Expired' : 'Failed'}
+                    Withdrawal {withdrawalStatus === 'EXPIRED' ? 'Expired' : withdrawalStatus === 'CANCELLED' ? 'Cancelled' : 'Failed'}
                   </h3>
                   <p className="text-red-200 text-center">
-                    Your balance has been refunded.
+                    Your balance has been returned to your account.
                   </p>
                   <button
                     onClick={() => {
@@ -1697,10 +1737,10 @@ export default function ProfilePage() {
                 // Pending state - show QR
                 <>
                   <h3 className="text-white font-bold mb-2 text-center">
-                    ⚡ Scan to Withdraw {withdrawalData.amountSats.toLocaleString()} sats
+                    ⚡ Pending Withdrawal: {withdrawalData.amountSats.toLocaleString()} sats
                   </h3>
                   <p className="text-yellow-400 text-xs text-center mb-4">
-                    Your balance has been reserved. Scan the QR code to complete the withdrawal.
+                    Your balance is reserved for this cashout. Scan this QR with your Lightning wallet to collect it, or cancel below to return the sats to your site balance.
                   </p>
                   <div className="flex flex-col items-center gap-4">
                     <div className="bg-white p-4 rounded-lg">
@@ -1722,22 +1762,31 @@ export default function ProfilePage() {
                       </a>
                     </div>
                     <div className="text-center text-xs text-gray-300 mt-2">
-                      <p>If you don't complete the withdrawal, your balance will be refunded when it expires (24 hours).</p>
+                      <p>If you don't complete the withdrawal, you can cancel it now or it will be refunded when it expires (24 hours).</p>
                     </div>
                     <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-center max-w-xs">
                       <p className="text-yellow-300 text-xs font-medium mb-1">📱 Using Phoenix Wallet?</p>
                       <p className="text-yellow-200 text-xs">Tap <strong className="text-yellow-300">SEND</strong> first, then scan this QR code to receive your sats.</p>
                     </div>
-                    <button
-                      onClick={() => {
-                        setWithdrawalData(null);
-                        setWithdrawalStatus('PENDING');
-                        loadBalance();
-                      }}
-                      className="text-gray-400 hover:text-white text-sm mt-2"
-                    >
-                      ✕ Close
-                    </button>
+                    <div className="flex flex-col sm:flex-row gap-3 mt-2">
+                      <button
+                        onClick={handleCancelWithdrawal}
+                        disabled={cancellingWithdrawal}
+                        className="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold px-4 py-2 rounded-lg transition"
+                      >
+                        {cancellingWithdrawal ? 'Cancelling...' : 'Cancel Cashout & Return Balance'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setWithdrawalData(null);
+                          setWithdrawalStatus('PENDING');
+                          loadBalance();
+                        }}
+                        className="text-gray-400 hover:text-white text-sm px-4 py-2"
+                      >
+                        ✕ Close
+                      </button>
+                    </div>
                   </div>
                 </>
               )}

@@ -18,7 +18,7 @@ import prisma from '../lib/prisma';
 import { payInvoice, decodeInvoice, isVoltageConfigured, getChannelBalance } from './voltage.service';
 import { notifyWithdrawalProcessed } from './telegram.service';
 import { sendWithdrawalReadyEmail } from './email.service';
-import { WithdrawalStatus } from '@prisma/client';
+import { Prisma, WithdrawalStatus } from '@prisma/client';
 
 const LNURL_BASE_URL = process.env.LNURL_BASE_URL || process.env.LIGHTNING_AUTH_URL?.replace('/auth/lightning', '') || 'http://localhost:3001/api';
 
@@ -53,7 +53,8 @@ export async function createWithdrawal(
   userId: string,
   amountSats: number,
   description?: string,
-  expiresInHours: number = 24
+  expiresInHours: number = 24,
+  fundedFromBalance: boolean = false
 ): Promise<{
   withdrawal: {
     id: string;
@@ -95,6 +96,7 @@ export async function createWithdrawal(
       description,
       expiresAt,
       status: 'PENDING',
+      fundedFromBalance,
     },
   });
 
@@ -159,11 +161,7 @@ export async function handleWithdrawRequest(k1: string): Promise<{
   }
 
   if (withdrawal.expiresAt < new Date()) {
-    // Mark as expired
-    await prisma.withdrawal.update({
-      where: { id: withdrawal.id },
-      data: { status: 'EXPIRED' },
-    });
+    await refundReservedWithdrawal(withdrawal.id, 'EXPIRED', 'Refund - withdrawal expired');
     return { status: 'ERROR', reason: 'Withdrawal expired' };
   }
 
@@ -204,93 +202,146 @@ export async function handleWithdrawCallback(
   }
 
   if (withdrawal.expiresAt < new Date()) {
-    await prisma.withdrawal.update({
-      where: { id: withdrawal.id },
-      data: { status: 'EXPIRED' },
-    });
+    await refundReservedWithdrawal(withdrawal.id, 'EXPIRED', 'Refund - withdrawal expired');
     return { status: 'ERROR', reason: 'Withdrawal expired' };
   }
 
-  // Decode invoice to verify amount
+  // Decode invoice to verify amount before claiming the withdrawal.
+  let invoiceAmountSats = 0;
   try {
     const decoded = await decodeInvoice(paymentRequest);
-    const invoiceAmountSats = parseInt(decoded.num_satoshis, 10);
-
-    // For LNURL-withdraw, invoice should match our amount exactly
-    // (or be zero-amount, which we'll fill in)
-    if (invoiceAmountSats > 0 && invoiceAmountSats !== withdrawal.amountSats) {
-      return { 
-        status: 'ERROR', 
-        reason: `Invoice amount (${invoiceAmountSats}) doesn't match withdrawal (${withdrawal.amountSats})` 
-      };
-    }
-
-    // Mark as claimed (payment in progress)
-    await prisma.withdrawal.update({
-      where: { id: withdrawal.id },
-      data: { 
-        status: 'CLAIMED',
-        invoice: paymentRequest,
-      },
-    });
-
-    // Pay the invoice
-    const paymentResult = await payInvoice(paymentRequest, withdrawal.amountSats);
-
-    if (paymentResult.success) {
-      // Mark as paid
-      const paidWithdrawal = await prisma.withdrawal.update({
-        where: { id: withdrawal.id },
-        data: {
-          status: 'PAID',
-          paymentHash: paymentResult.paymentHash,
-          paidAt: new Date(),
-        },
-        include: { user: { select: { name: true, email: true } } },
-      });
-
-      console.log(`[Withdrawal] Successfully paid ${withdrawal.amountSats} sats to user ${withdrawal.userId}`);
-
-      // Notify admins (non-blocking)
-      notifyWithdrawalProcessed({
-        userName: paidWithdrawal.user.name,
-        userEmail: paidWithdrawal.user.email,
-        amountSats: withdrawal.amountSats,
-        description: withdrawal.description,
-      }).catch(() => {});
-
-      return { status: 'OK' };
-    } else {
-      // Payment failed
-      await prisma.withdrawal.update({
-        where: { id: withdrawal.id },
-        data: {
-          status: 'FAILED',
-        },
-      });
-
-      console.error(`[Withdrawal] Payment failed: ${paymentResult.error}`);
-      return { status: 'ERROR', reason: paymentResult.error || 'Payment failed' };
-    }
+    invoiceAmountSats = parseInt(decoded.num_satoshis, 10);
   } catch (error) {
-    console.error('[Withdrawal] Error processing callback:', error);
-    
-    // Reset to pending so user can try again
-    await prisma.withdrawal.update({
-      where: { id: withdrawal.id },
-      data: { status: 'PENDING', invoice: null },
-    });
-
-    return { 
-      status: 'ERROR', 
-      reason: error instanceof Error ? error.message : 'Failed to process withdrawal' 
+    console.error('[Withdrawal] Invoice decode failed:', error);
+    return {
+      status: 'ERROR',
+      reason: error instanceof Error ? error.message : 'Failed to decode invoice',
     };
   }
+
+  // For LNURL-withdraw, invoice should match our amount exactly
+  // (or be zero-amount, which we'll fill in).
+  if (invoiceAmountSats > 0 && invoiceAmountSats !== withdrawal.amountSats) {
+    return {
+      status: 'ERROR',
+      reason: `Invoice amount (${invoiceAmountSats}) doesn't match withdrawal (${withdrawal.amountSats})`,
+    };
+  }
+
+  // Atomically claim PENDING -> CLAIMED before any external payment call. This prevents
+  // a cancel/refund request from racing with the wallet callback and double-spending.
+  const claimed = await prisma.withdrawal.updateMany({
+    where: { id: withdrawal.id, status: 'PENDING' },
+    data: {
+      status: 'CLAIMED',
+      invoice: paymentRequest,
+    },
+  });
+
+  if (claimed.count !== 1) {
+    const latest = await prisma.withdrawal.findUnique({ where: { id: withdrawal.id }, select: { status: true } });
+    return { status: 'ERROR', reason: `Withdrawal already ${latest?.status.toLowerCase() || 'processed'}` };
+  }
+
+  // Pay the invoice. From here on, cancellation is not allowed because an irreversible
+  // Lightning payment may already be in flight.
+  const paymentResult = await payInvoice(paymentRequest, withdrawal.amountSats);
+
+  if (paymentResult.success) {
+    // Mark as paid only if still CLAIMED.
+    const paidWithdrawal = await prisma.withdrawal.update({
+      where: { id: withdrawal.id },
+      data: {
+        status: 'PAID',
+        paymentHash: paymentResult.paymentHash,
+        paidAt: new Date(),
+      },
+      include: { user: { select: { name: true, email: true } } },
+    });
+
+    console.log(`[Withdrawal] Successfully paid ${withdrawal.amountSats} sats to user ${withdrawal.userId}`);
+
+    // Notify admins (non-blocking)
+    notifyWithdrawalProcessed({
+      userName: paidWithdrawal.user.name,
+      userEmail: paidWithdrawal.user.email,
+      amountSats: withdrawal.amountSats,
+      description: withdrawal.description,
+    }).catch(() => {});
+
+    return { status: 'OK' };
+  }
+
+  // Payment failed after CLAIMED. Mark failed and refund reserved site balance exactly once.
+  await refundReservedWithdrawal(withdrawal.id, 'FAILED', paymentResult.error || 'Payment failed');
+  console.error(`[Withdrawal] Payment failed: ${paymentResult.error}`);
+  return { status: 'ERROR', reason: paymentResult.error || 'Payment failed' };
 }
 
 // ============================================
 // WITHDRAWAL MANAGEMENT
 // ============================================
+
+async function refundReservedWithdrawal(
+  withdrawalId: string,
+  terminalStatus: 'FAILED' | 'EXPIRED' | 'CANCELLED',
+  reason?: string
+): Promise<boolean> {
+  return prisma.$transaction(async (tx) => {
+    const withdrawal = await tx.withdrawal.findUnique({
+      where: { id: withdrawalId },
+      select: {
+        id: true,
+        userId: true,
+        amountSats: true,
+        status: true,
+        fundedFromBalance: true,
+        refundedAt: true,
+      },
+    });
+
+    if (!withdrawal) return false;
+    if (withdrawal.status === 'PAID') return false;
+    if (withdrawal.status === 'CLAIMED' && terminalStatus !== 'FAILED') return false;
+    if (!['PENDING', 'CLAIMED', 'FAILED', 'EXPIRED', 'CANCELLED'].includes(withdrawal.status)) return false;
+
+    const shouldRefund = withdrawal.fundedFromBalance && !withdrawal.refundedAt;
+    let balanceAfter: number | null = null;
+
+    if (shouldRefund) {
+      const updatedUser = await tx.user.update({
+        where: { id: withdrawal.userId },
+        data: { lightningBalanceSats: { increment: withdrawal.amountSats } },
+        select: { lightningBalanceSats: true },
+      });
+      balanceAfter = updatedUser.lightningBalanceSats;
+
+      await tx.balanceTransaction.create({
+        data: {
+          userId: withdrawal.userId,
+          type: 'REFUND',
+          amountSats: withdrawal.amountSats,
+          note: reason || `Refund - withdrawal ${terminalStatus.toLowerCase()}`,
+          balanceAfter,
+        },
+      });
+    }
+
+    await tx.withdrawal.update({
+      where: { id: withdrawal.id },
+      data: {
+        status: terminalStatus,
+        refundedAt: shouldRefund ? new Date() : withdrawal.refundedAt,
+      },
+    });
+
+    if (shouldRefund) {
+      console.log(`[Withdrawal] Refunded ${withdrawal.amountSats} sats to user ${withdrawal.userId} (${terminalStatus}). New balance: ${balanceAfter}`);
+    }
+
+    return true;
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
 
 /**
  * Get all withdrawals (admin)
@@ -342,6 +393,18 @@ export async function getWithdrawalWithLnurl(withdrawalId: string) {
     return null;
   }
 
+  if (withdrawal.status === 'PENDING' && withdrawal.expiresAt < new Date()) {
+    await refundReservedWithdrawal(withdrawal.id, 'EXPIRED', 'Refund - withdrawal expired');
+    return prisma.withdrawal.findUnique({
+      where: { id: withdrawalId },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true },
+        },
+      },
+    });
+  }
+
   // Generate LNURL data if still pending
   if (withdrawal.status === 'PENDING') {
     const callbackUrl = `${LNURL_BASE_URL}/lnurl/withdraw?k1=${withdrawal.k1}`;
@@ -361,36 +424,81 @@ export async function getWithdrawalWithLnurl(withdrawalId: string) {
 /**
  * Cancel a pending withdrawal
  */
-export async function cancelWithdrawal(withdrawalId: string): Promise<boolean> {
-  const withdrawal = await prisma.withdrawal.findUnique({
-    where: { id: withdrawalId },
-  });
+export async function cancelWithdrawal(withdrawalId: string, userId?: string): Promise<boolean> {
+  return prisma.$transaction(async (tx) => {
+    const withdrawal = await tx.withdrawal.findUnique({
+      where: { id: withdrawalId },
+      select: {
+        id: true,
+        userId: true,
+        amountSats: true,
+        status: true,
+        fundedFromBalance: true,
+        refundedAt: true,
+      },
+    });
 
-  if (!withdrawal || withdrawal.status !== 'PENDING') {
-    return false;
-  }
+    if (!withdrawal || withdrawal.status !== 'PENDING') {
+      return false;
+    }
 
-  await prisma.withdrawal.update({
-    where: { id: withdrawalId },
-    data: { status: 'EXPIRED' },
-  });
+    if (userId && withdrawal.userId !== userId) {
+      return false;
+    }
 
-  return true;
+    const cancelled = await tx.withdrawal.updateMany({
+      where: { id: withdrawalId, status: 'PENDING' },
+      data: {
+        status: 'CANCELLED',
+        refundedAt: withdrawal.fundedFromBalance && !withdrawal.refundedAt ? new Date() : withdrawal.refundedAt,
+      },
+    });
+
+    if (cancelled.count !== 1) {
+      return false;
+    }
+
+    if (withdrawal.fundedFromBalance && !withdrawal.refundedAt) {
+      const updatedUser = await tx.user.update({
+        where: { id: withdrawal.userId },
+        data: { lightningBalanceSats: { increment: withdrawal.amountSats } },
+        select: { lightningBalanceSats: true },
+      });
+
+      await tx.balanceTransaction.create({
+        data: {
+          userId: withdrawal.userId,
+          type: 'REFUND',
+          amountSats: withdrawal.amountSats,
+          note: 'Refund - withdrawal cancelled',
+          balanceAfter: updatedUser.lightningBalanceSats,
+        },
+      });
+    }
+
+    return true;
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
 /**
  * Clean up expired withdrawals
  */
 export async function cleanupExpiredWithdrawals(): Promise<number> {
-  const result = await prisma.withdrawal.updateMany({
+  const expired = await prisma.withdrawal.findMany({
     where: {
       status: 'PENDING',
       expiresAt: { lt: new Date() },
     },
-    data: { status: 'EXPIRED' },
+    select: { id: true },
   });
 
-  return result.count;
+  let count = 0;
+  for (const withdrawal of expired) {
+    const updated = await refundReservedWithdrawal(withdrawal.id, 'EXPIRED', 'Refund - withdrawal expired');
+    if (updated) count += 1;
+  }
+
+  return count;
 }
 
 /**

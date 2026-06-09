@@ -653,6 +653,8 @@ export const withdrawalsAPI = {
   getMy: () => fetchAPI<any[]>('/withdrawals/my'),
   
   getMyById: (id: string) => fetchAPI<any>(`/withdrawals/my/${id}`),
+
+  cancelMy: (id: string) => fetchAPI<{ message: string }>(`/withdrawals/my/${id}`, { method: 'DELETE' }),
 };
 
 // ============================================
@@ -712,9 +714,12 @@ export const balanceAPI = {
     }),
   
   getWithdrawalStatus: (withdrawalId: string) =>
-    fetchAPI<{ id: string; status: string; amountSats: number; paidAt: string | null }>(
+    fetchAPI<{ id: string; status: string; amountSats: number; paidAt: string | null; refundedAt?: string | null }>(
       `/balance/withdrawal/${withdrawalId}/status`
     ),
+
+  cancelWithdrawal: (withdrawalId: string) =>
+    fetchAPI<{ message: string; balanceSats: number }>(`/balance/withdrawal/${withdrawalId}`, { method: 'DELETE' }),
 
   getPlayerHistory: (userId: string, limit?: number) => {
     const query = limit ? `?limit=${limit}` : '';
