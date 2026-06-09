@@ -313,24 +313,6 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Features */}
-        <div className="grid md:grid-cols-2 gap-8 mb-16">
-          <div className="bg-white/10 backdrop-blur rounded-2xl p-8 border border-white/10">
-            <div className="text-2xl mb-3">🏆</div>
-            <h3 className="text-white font-bold text-xl mb-2">Leaderboards</h3>
-            <p className="text-white/70">
-              Track your ranking across seasons and compete for the top spot.
-            </p>
-          </div>
-          <div className="bg-white/10 backdrop-blur rounded-2xl p-8 border border-white/10">
-            <div className="text-2xl mb-3">📅</div>
-            <h3 className="text-white font-bold text-xl mb-2">Events</h3>
-            <p className="text-white/70">
-              Find poker nights at venues across Roatan and sign up instantly.
-            </p>
-          </div>
-        </div>
-
         {/* Side Bets */}
         <div className="mb-8">
           {isAuthenticated && (
