@@ -312,8 +312,14 @@ export default function ProfilePage() {
             loadBalance();
             loadWithdrawals();
           }, 3000);
-        } else if (status.status === 'FAILED' || status.status === 'EXPIRED' || status.status === 'CANCELLED') {
-          setWithdrawalStatus(status.status as 'FAILED' | 'EXPIRED' | 'CANCELLED');
+        } else if (status.status === 'CANCELLED') {
+          setWithdrawalData(null);
+          setWithdrawalStatus('PENDING');
+          setSaveMessage({ type: 'success', text: 'Withdrawal cancelled and balance returned.' });
+          loadBalance();
+          loadWithdrawals();
+        } else if (status.status === 'FAILED' || status.status === 'EXPIRED') {
+          setWithdrawalStatus(status.status as 'FAILED' | 'EXPIRED');
           loadBalance();
           loadWithdrawals();
         }
@@ -491,7 +497,8 @@ export default function ProfilePage() {
     try {
       const result = await balanceAPI.cancelWithdrawal(withdrawalData.id);
       setLightningBalance(result.balanceSats);
-      setWithdrawalStatus('CANCELLED');
+      setWithdrawalData(null);
+      setWithdrawalStatus('PENDING');
       setSaveMessage({ type: 'success', text: 'Withdrawal cancelled and balance returned.' });
       await loadWithdrawals();
     } catch (err: any) {
@@ -1712,12 +1719,12 @@ export default function ProfilePage() {
                     {withdrawalData.amountSats.toLocaleString()} sats sent to your wallet
                   </p>
                 </div>
-              ) : withdrawalStatus === 'FAILED' || withdrawalStatus === 'EXPIRED' || withdrawalStatus === 'CANCELLED' ? (
+              ) : withdrawalStatus === 'FAILED' || withdrawalStatus === 'EXPIRED' ? (
                 // Failed/Expired state
                 <div className="flex flex-col items-center gap-4 py-8">
                   <div className="text-4xl">❌</div>
                   <h3 className="text-red-400 font-bold text-xl text-center">
-                    Withdrawal {withdrawalStatus === 'EXPIRED' ? 'Expired' : withdrawalStatus === 'CANCELLED' ? 'Cancelled' : 'Failed'}
+                    Withdrawal {withdrawalStatus === 'EXPIRED' ? 'Expired' : 'Failed'}
                   </h3>
                   <p className="text-red-200 text-center">
                     Your balance has been returned to your account.
