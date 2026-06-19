@@ -15,7 +15,7 @@ import { createInvoice, lookupInvoice } from './voltage.service';
 // Well-known FEE account name — created lazily on first use
 const FEE_ACCOUNT_NAME = '__FEE_ACCOUNT__';
 const SIDE_BET_SYSTEM_ACCOUNT_NAME = '__SIDE_BET_SYSTEM__';
-const EVENT_SIDE_BET_DEFAULT_ENTRY_SATS = parseInt(process.env.EVENT_SIDE_BET_ENTRY_SATS || '25000', 10);
+const EVENT_SIDE_BET_DEFAULT_ENTRY_SATS = parseInt(process.env.EVENT_SIDE_BET_ENTRY_SATS || '30000', 10);
 
 function eventSideBetLabel(eventName: string): string {
   return `Side Bet: ${eventName}`;
@@ -79,12 +79,29 @@ export class SideBetService {
       where: { eventId: event.id, creatorId: systemUser.id },
       orderBy: { createdAt: 'asc' },
     });
-    if (existing) return existing;
+    const entrySats = EVENT_SIDE_BET_DEFAULT_ENTRY_SATS;
+    if (existing) {
+      if (existing.status === 'OPEN' && existing.entrySats !== entrySats) {
+        const entryCount = await prisma.sideBetEntry.count({ where: { sideBetId: existing.id } });
+        if (entryCount === 0) {
+          const updated = await prisma.sideBet.update({
+            where: { id: existing.id },
+            data: {
+              entrySats,
+              description: eventSideBetDescription(entrySats),
+            },
+          });
+          console.log(`[SideBet] Updated empty automatic event side bet entry amount: event=${event.id} sideBet=${existing.id} entrySats=${entrySats}`);
+          return updated;
+        }
+        console.log(`[SideBet] Leaving existing automatic event side bet amount unchanged because it already has entries: event=${event.id} sideBet=${existing.id} existingEntrySats=${existing.entrySats} desiredEntrySats=${entrySats} entryCount=${entryCount}`);
+      }
+      return existing;
+    }
     if (event.status === EventStatus.COMPLETED || event.status === EventStatus.CANCELLED) {
       return null;
     }
 
-    const entrySats = EVENT_SIDE_BET_DEFAULT_ENTRY_SATS;
     try {
       const sideBet = await prisma.sideBet.create({
         data: {

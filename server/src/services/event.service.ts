@@ -151,6 +151,37 @@ export function calculateEventPoints(checkedInCount: number) {
   };
 }
 
+async function awardAttendancePointOnce(eventId: string, userId: string) {
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    select: { seasonId: true, name: true },
+  });
+  if (!event) return null;
+
+  // Historical explicit check-ins used "Check-in point". New result finalization
+  // awards use "Attendance point". Either one means this event's attendance
+  // point has already been awarded.
+  const existing = await prisma.pointsHistory.findFirst({
+    where: {
+      userId,
+      seasonId: event.seasonId,
+      points: 1,
+      OR: [
+        { reason: `Check-in point: ${event.name}` },
+        { reason: `Attendance point: ${event.name}` },
+      ],
+    },
+  });
+  if (existing) return existing;
+
+  return pointsService.adjustPoints({
+    userId,
+    seasonId: event.seasonId,
+    points: 1,
+    reason: `Attendance point: ${event.name}`,
+  });
+}
+
 export class EventService {
   /**
    * Get all events with optional filters
@@ -920,22 +951,11 @@ export class EventService {
       },
     });
 
-    // Award 1 check-in point for the season
+    // Award 1 attendance/check-in point for the season, once per event.
     try {
-      const event = await prisma.event.findUnique({
-        where: { id: eventId },
-        select: { seasonId: true, name: true },
-      });
-      if (event) {
-        await pointsService.adjustPoints({
-          userId,
-          seasonId: event.seasonId,
-          points: 1,
-          reason: `Check-in point: ${event.name}`,
-        });
-      }
+      await awardAttendancePointOnce(eventId, userId);
     } catch (err) {
-      console.error(`[CheckIn] Error awarding check-in point for user ${userId}:`, err);
+      console.error(`[CheckIn] Error awarding attendance point for user ${userId}:`, err);
     }
 
     // Process referral reward (non-blocking, idempotent — only pays once)
@@ -1121,6 +1141,35 @@ export class EventService {
     // Only finalization changes the event status and processes no-shows.
     // Draft saves and completed-event corrections should not re-run no-show
     // penalties or force a status transition.
+    if (options.finalize) {
+      // Every player with a submitted result attended the event. Mark matching
+      // signups checked-in before no-show processing; otherwise TDs who use the
+      // results attendance form without separately clicking each check-in would
+      // accidentally leave attendees as REGISTERED and have them no-showed.
+      const attendedUserIds = resultsWithPoints.map(result => result.userId);
+      if (attendedUserIds.length > 0) {
+        await prisma.eventSignup.updateMany({
+          where: {
+            eventId,
+            userId: { in: attendedUserIds },
+            status: { in: [SignupStatus.REGISTERED, SignupStatus.CONFIRMED, SignupStatus.WAITLISTED] },
+          },
+          data: { status: SignupStatus.CHECKED_IN, checkedInAt: new Date() },
+        });
+      }
+
+      // Award the once-per-event attendance point here too; relying only on
+      // the explicit check-in button misses players when TDs enter attendance/
+      // results in the results form without separately clicking check-in.
+      for (const result of resultsWithPoints) {
+        try {
+          await awardAttendancePointOnce(eventId, result.userId);
+        } catch (error) {
+          console.error(`[Attendance] Failed awarding attendance point for event=${eventId} user=${result.userId}:`, error);
+        }
+      }
+    }
+
     if (options.finalize && event.status !== EventStatus.COMPLETED) {
       await prisma.event.update({
         where: { id: eventId },
