@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import MobileNav from '@/components/MobileNav';
@@ -30,7 +30,7 @@ interface ActiveSideBet {
   id: string;
   label: string;
   creator?: { id: string; name: string } | null;
-  event?: { id: string; name: string; slug?: string | null } | null;
+  event?: { id: string; name: string; slug?: string | null; dateTime?: string } | null;
   entrySats: number;
   entryCount: number;
   totalPot: number;
@@ -315,23 +315,10 @@ export default function HomePage() {
 
         {/* Side Bets */}
         <div className="mb-8">
-          {isAuthenticated && (
-            <div className="flex justify-center mb-4">
-              <Link
-                href="/bets/create"
-                className="text-white/50 hover:text-white/80 text-sm flex items-center gap-1.5 transition"
-              >
-                🎲 Create a Side Bet
-              </Link>
-            </div>
-          )}
-
           <div className="max-w-3xl mx-auto bg-white/10 backdrop-blur rounded-2xl p-5 border border-white/10">
-            <div className="flex items-center justify-between gap-3 mb-4">
-              <h2 className="text-xl font-bold text-white">🎲 Active Side Bets</h2>
-              <Link href="/bets/create" className="text-blue-300 hover:text-blue-200 text-sm">
-                New Bet →
-              </Link>
+            <div className="mb-4">
+              <h2 className="text-xl font-bold text-white">🎲 Event Side Bets</h2>
+              <p className="text-white/50 text-sm mt-1">Shown here starting 15 minutes before the event. Event pages always show their side bet.</p>
             </div>
 
             {loadingData ? (
@@ -339,7 +326,7 @@ export default function HomePage() {
                 <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-blue-400 mx-auto"></div>
               </div>
             ) : activeSideBets.length === 0 ? (
-              <p className="text-white/60 text-center py-4">No active side bets yet.</p>
+              <p className="text-white/60 text-center py-4">No event side bets are within 15 minutes of starting.</p>
             ) : (
               <div className="space-y-3">
                 {activeSideBets.map((bet) => (
@@ -352,8 +339,7 @@ export default function HomePage() {
                       <div>
                         <h3 className="text-white font-semibold text-lg">{bet.label}</h3>
                         <p className="text-white/50 text-sm">
-                          Created by {bet.creator?.name || 'Unknown'}
-                          {bet.event ? ` · ${bet.event.name}` : ''}
+                          {bet.event ? bet.event.name : `Created by ${bet.creator?.name || 'Unknown'}`}
                         </p>
                       </div>
                       <div className="sm:text-right shrink-0">
@@ -367,7 +353,12 @@ export default function HomePage() {
                       </span>
                       {bet.event && (
                         <span className="bg-purple-500/20 text-purple-200 px-2 py-1 rounded-full">
-                          Event bet
+                          Event side bet
+                        </span>
+                      )}
+                      {bet.event?.dateTime && (
+                        <span className="bg-yellow-500/20 text-yellow-200 px-2 py-1 rounded-full">
+                          Starts {formatCountdown(bet.event.dateTime)}
                         </span>
                       )}
                     </div>

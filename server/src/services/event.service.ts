@@ -6,6 +6,7 @@ import { pointsService } from './points.service';
 import { processReferralReward } from './referral.service';
 import { sendEventSignupEmail } from './email.service';
 import { createInvoice, lookupInvoice } from './voltage.service';
+import { sideBetService } from './side-bet.service';
 
 /**
  * Compute the buy-in price a player owes at this moment.
@@ -175,7 +176,7 @@ export class EventService {
       where.dateTime = { gte: new Date() };
     }
 
-    return prisma.event.findMany({
+    const events = await prisma.event.findMany({
       where,
       include: {
         venue: {
@@ -214,13 +215,21 @@ export class EventService {
         dateTime: 'asc',
       },
     });
+
+    if (filters?.upcoming) {
+      Promise.all(events.map(event => sideBetService.ensureEventSideBet(event.id))).catch((error) => {
+        console.error('[SideBet] Failed ensuring side bets for events list:', error);
+      });
+    }
+
+    return events;
   }
 
   /**
    * Get upcoming events
    */
   async getUpcomingEvents(limit = 10) {
-    return prisma.event.findMany({
+    const events = await prisma.event.findMany({
       where: {
         dateTime: { gte: new Date() },
         status: {
@@ -253,6 +262,13 @@ export class EventService {
       },
       take: limit,
     });
+
+    // Best-effort: every event should have its automatic side bet available.
+    Promise.all(events.map(event => sideBetService.ensureEventSideBet(event.id))).catch((error) => {
+      console.error('[SideBet] Failed ensuring side bets for upcoming events:', error);
+    });
+
+    return events;
   }
 
   /**
@@ -261,7 +277,7 @@ export class EventService {
    * falls back to slug.
    */
   async getEventById(idOrSlug: string) {
-    return prisma.event.findFirst({
+    const event = await prisma.event.findFirst({
       where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
       include: {
         venue: true,
@@ -325,6 +341,16 @@ export class EventService {
         },
       },
     });
+
+    if (event) {
+      try {
+        await sideBetService.ensureEventSideBet(event.id);
+      } catch (error) {
+        console.error(`[SideBet] Failed ensuring side bet for event ${event.id}:`, error);
+      }
+    }
+
+    return event;
   }
 
   /**
@@ -332,7 +358,7 @@ export class EventService {
    */
   async createEvent(data: CreateEventInput) {
     const slug = await generateUniqueEventSlug(data.name);
-    return prisma.event.create({
+    const event = await prisma.event.create({
       data: {
         name: data.name,
         slug,
@@ -368,6 +394,14 @@ export class EventService {
         },
       },
     });
+
+    try {
+      await sideBetService.ensureEventSideBet(event.id);
+    } catch (error) {
+      console.error(`[SideBet] Failed creating automatic side bet for new event ${event.id}:`, error);
+    }
+
+    return event;
   }
 
   /**
@@ -1095,6 +1129,13 @@ export class EventService {
 
       // Process no-shows: penalize registered players who didn't attend
       await this.processNoShows(eventId);
+
+      // Settle the automatic event side bet from tournament results.
+      try {
+        await sideBetService.settleEventSideBet(eventId);
+      } catch (error) {
+        console.error(`[SideBet] Failed settling event side bet for event ${eventId}:`, error);
+      }
     }
 
     // Recalculate season standings (for stats like eventsPlayed, wins, etc.)

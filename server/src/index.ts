@@ -21,7 +21,7 @@ import faqRoutes from './routes/faq.routes';
 import venueApplicationRoutes from './routes/venue-application.routes';
 import puzzleRoutes from './routes/puzzle.routes';
 import sideBetRoutes from './routes/side-bet.routes';
-import { checkPendingSideBetEntries } from './services/side-bet.service';
+import { checkPendingSideBetEntries, sideBetService } from './services/side-bet.service';
 import blogRoutes from './routes/blog.routes';
 import announcementRoutes from './routes/announcement.routes';
 import storeRoutes from './routes/store.routes';
@@ -238,6 +238,11 @@ setInterval(() => {
   );
 }, 10 * 60 * 1000);
 
+// Ensure automatic side bets exist for already-scheduled future events on startup.
+sideBetService.ensureEventSideBetsForUpcoming().catch(err =>
+  console.error('Initial event side bet ensure error:', err)
+);
+
 // Check pending Lightning deposits every minute so users can close the page after paying
 setInterval(() => {
   checkPendingDeposits().catch(err =>
@@ -248,6 +253,9 @@ setInterval(() => {
   );
   checkPendingSideBetEntries().catch(err =>
     console.error('Side bet settlement error:', err)
+  );
+  sideBetService.ensureEventSideBetsForUpcoming().catch(err =>
+    console.error('Event side bet ensure error:', err)
   );
 }, 60 * 1000);
 

@@ -1121,7 +1121,7 @@ export const sideBetsAPI = {
     ),
 
   checkPayment: (id: string) =>
-    fetchAPI<{ paid: boolean; paidAt?: string }>(`/side-bets/${id}/check-payment`),
+    fetchAPI<{ paid: boolean; paidAt?: string; pendingCount?: number; lookupFailures?: number }>(`/side-bets/${id}/check-payment`),
 
   settle: (id: string, winnerId: string) =>
     fetchAPI<{ message: string; winnerId: string; winnerName: string; prizeAmount: number; feeAmount: number }>(

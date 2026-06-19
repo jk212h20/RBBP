@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import MobileNav from '@/components/MobileNav';
 import RegistrantsPanel from '@/components/RegistrantsPanel';
-import { eventsAPI } from '@/lib/api';
+import { eventsAPI, sideBetsAPI } from '@/lib/api';
 
 interface EventDetail {
   id: string;
@@ -102,6 +102,16 @@ interface PointsPreview {
   playerCount: number;
 }
 
+interface EventSideBet {
+  id: string;
+  label: string;
+  entrySats: number;
+  entryCount: number;
+  totalPot: number;
+  status: string;
+  entries?: { userId: string; userName: string; entryCount: number; paidAt: string | null }[];
+}
+
 export default function EventDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -162,15 +172,39 @@ export default function EventDetailPage() {
   const [selectingWinner, setSelectingWinner] = useState(false);
   const [paymentPolling, setPaymentPolling] = useState(false);
 
+  // Automatic event side bet state
+  const [eventSideBet, setEventSideBet] = useState<EventSideBet | null>(null);
+  const [sideBetInvoice, setSideBetInvoice] = useState<{ paymentRequest: string; paymentHash: string; amountSats: number } | null>(null);
+  const [sideBetLoading, setSideBetLoading] = useState(false);
+  const [sideBetPaid, setSideBetPaid] = useState(false);
+  const [sideBetMessage, setSideBetMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
   const canManageEvent = user && (user.role === 'ADMIN' || user.role === 'TOURNAMENT_DIRECTOR' || user.role === 'VENUE_MANAGER');
 
-  // Load Last Longer Pool data
+  const loadEventSideBet = async (actualEventId = event?.id) => {
+    if (!actualEventId) return;
+    try {
+      const bets = await sideBetsAPI.listOpen(actualEventId);
+      if (bets.length > 0) {
+        const detail = await sideBetsAPI.getById(bets[0].id);
+        setEventSideBet(detail);
+      } else {
+        setEventSideBet(null);
+      }
+    } catch (err) {
+      console.error('Failed to load event side bet:', err);
+      setEventSideBet(null);
+    }
+  };
+
+  // Load Last Longer Pool data and automatic side bet data
   useEffect(() => {
     if (event) {
       eventsAPI.getLastLongerPool(eventId).then(data => {
         setLastLongerPool(data);
         if (data.winnerId) setSelectedWinnerId(data.winnerId);
       }).catch(() => setLastLongerPool(null));
+      loadEventSideBet(event.id);
     }
   }, [event, eventId]);
 
@@ -207,6 +241,50 @@ export default function EventDetailPage() {
       setLastLongerMessage({ type: 'error', text: err.message || 'Failed to enter Last Longer pool' });
     } finally {
       setLastLongerLoading(false);
+    }
+  };
+
+  // Poll for automatic side bet payment when a Lightning invoice is displayed
+  useEffect(() => {
+    if (!sideBetInvoice || sideBetPaid || !eventSideBet) return;
+    const interval = setInterval(async () => {
+      try {
+        const result = await sideBetsAPI.checkPayment(eventSideBet.id);
+        if (result.paid) {
+          setSideBetPaid(true);
+          setSideBetInvoice(null);
+          setSideBetMessage({ type: 'success', text: 'Payment received! You are in the event side bet.' });
+          await loadEventSideBet();
+        }
+      } catch { /* ignore polling errors */ }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [sideBetInvoice, sideBetPaid, eventSideBet]);
+
+  const handleEnterEventSideBet = async () => {
+    if (!isAuthenticated) {
+      router.push('/login');
+      return;
+    }
+    if (!eventSideBet) return;
+
+    setSideBetLoading(true);
+    setSideBetMessage(null);
+    try {
+      const result = await sideBetsAPI.enter(eventSideBet.id);
+      if (result.paidWithBalance || !result.invoice) {
+        setSideBetInvoice(null);
+        setSideBetPaid(true);
+        setSideBetMessage({ type: 'success', text: 'Entry paid from your site balance. You are in the event side bet.' });
+        await loadEventSideBet();
+      } else {
+        setSideBetInvoice(result.invoice);
+        setSideBetPaid(false);
+      }
+    } catch (err: any) {
+      setSideBetMessage({ type: 'error', text: err.message || 'Failed to enter side bet' });
+    } finally {
+      setSideBetLoading(false);
     }
   };
 
@@ -1743,6 +1821,92 @@ export default function EventDetailPage() {
             </div>
           )}
         </div>
+
+        {/* Automatic Event Side Bet */}
+        {eventSideBet && (
+          <div className="mt-8 bg-white/10 backdrop-blur rounded-xl p-5 border border-yellow-500/30">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-xl font-bold text-white">🎲 Event Side Bet</h2>
+                <p className="text-yellow-200/80 text-sm mt-1">
+                  Top finishers in this event split the side pot.
+                </p>
+              </div>
+              <div className="sm:text-right">
+                <p className="text-yellow-300 font-bold text-2xl">⚡ {eventSideBet.totalPot.toLocaleString()}</p>
+                <p className="text-white/50 text-xs">current pot</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+              <div className="bg-white/5 rounded-lg p-3 text-center">
+                <p className="text-white font-bold">{eventSideBet.entrySats.toLocaleString()}</p>
+                <p className="text-white/50 text-xs">sats entry</p>
+              </div>
+              <div className="bg-white/5 rounded-lg p-3 text-center">
+                <p className="text-white font-bold">{eventSideBet.entryCount}</p>
+                <p className="text-white/50 text-xs">entries</p>
+              </div>
+              <div className="bg-white/5 rounded-lg p-3 text-center sm:col-span-2">
+                <p className="text-white/80 text-xs leading-relaxed">
+                  7+ players: 3rd gets one entry back, then 2nd gets 30% and 1st gets 70% of the remainder. 3–6 players: 30%/70%. 1–2 players: winner takes all.
+                </p>
+              </div>
+            </div>
+
+            {sideBetMessage && (
+              <div className={`rounded-lg p-3 mb-4 text-sm ${sideBetMessage.type === 'success' ? 'bg-green-500/20 border border-green-500/30 text-green-300' : 'bg-red-500/20 border border-red-500/30 text-red-300'}`}>
+                {sideBetMessage.text}
+              </div>
+            )}
+
+            {isAuthenticated && user && eventSideBet.entries?.some(e => e.userId === user.id) && (
+              <p className="text-green-300 text-center font-medium mb-3">
+                ✅ You have {eventSideBet.entries.find(e => e.userId === user.id)?.entryCount || 0} {(eventSideBet.entries.find(e => e.userId === user.id)?.entryCount || 0) === 1 ? 'entry' : 'entries'} in this side bet
+              </p>
+            )}
+
+            {!sideBetInvoice ? (
+              <button
+                onClick={handleEnterEventSideBet}
+                disabled={sideBetLoading || eventSideBet.status !== 'OPEN'}
+                className="w-full bg-yellow-500 hover:bg-yellow-400 disabled:bg-gray-600 disabled:text-white text-black font-bold py-3 rounded-lg transition"
+              >
+                {sideBetLoading ? '⏳ Entering…' : `Enter Side Bet (${eventSideBet.entrySats.toLocaleString()} sats)`}
+              </button>
+            ) : (
+              <div className="text-center bg-black/20 rounded-xl p-4">
+                <h3 className="text-white font-bold mb-3">⚡ Pay {sideBetInvoice.amountSats.toLocaleString()} sats to enter</h3>
+                <div className="bg-white p-4 rounded-lg inline-block mb-3">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(sideBetInvoice.paymentRequest)}`}
+                    alt="Lightning side bet invoice QR"
+                    className="w-52 h-52"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => navigator.clipboard.writeText(sideBetInvoice.paymentRequest)}
+                    className="text-blue-300 hover:text-blue-200 text-xs underline"
+                  >
+                    Copy invoice
+                  </button>
+                  <button
+                    onClick={() => setSideBetInvoice(null)}
+                    className="block mx-auto text-gray-400 hover:text-white text-sm"
+                  >
+                    ✕ Close
+                  </button>
+                </div>
+                <p className="text-white/50 text-xs mt-3">Waiting for payment…</p>
+              </div>
+            )}
+
+            <Link href={`/bets/${eventSideBet.id}`} className="block text-center text-blue-300 hover:text-blue-200 text-xs mt-3">
+              View full side bet details →
+            </Link>
+          </div>
+        )}
       </main>
 
       {/* Buy-in Payment Modal

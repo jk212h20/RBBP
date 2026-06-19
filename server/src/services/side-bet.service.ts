@@ -9,14 +9,43 @@
  */
 
 import prisma from '../lib/prisma';
+import { EventStatus } from '@prisma/client';
 import { createInvoice, lookupInvoice } from './voltage.service';
 
 // Well-known FEE account name — created lazily on first use
 const FEE_ACCOUNT_NAME = '__FEE_ACCOUNT__';
+const SIDE_BET_SYSTEM_ACCOUNT_NAME = '__SIDE_BET_SYSTEM__';
+const EVENT_SIDE_BET_DEFAULT_ENTRY_SATS = parseInt(process.env.EVENT_SIDE_BET_ENTRY_SATS || '25000', 10);
+
+function eventSideBetLabel(eventName: string): string {
+  return `Side Bet: ${eventName}`;
+}
+
+function eventSideBetDescription(entrySats: number): string {
+  return `Automatic event side bet. Highest-finishing entrants split the pot: with 7+ players, 3rd gets one ${entrySats.toLocaleString()} sats entry back, then 2nd gets 30% and 1st gets 70% of the remainder. With 3–6 players, 2nd gets 30% and 1st gets 70%. With 1–2 players, 1st gets the full pot.`;
+}
 
 /** Default fee percentage (0%) — overridable via env or admin endpoint */
 export function getSideBetFeePct(): number {
   return parseFloat(process.env.SIDE_BET_FEE_PCT || '0');
+}
+
+/** Get or create the system user that owns automatic event side bets */
+async function getSideBetSystemAccount() {
+  let systemUser = await prisma.user.findFirst({
+    where: { name: SIDE_BET_SYSTEM_ACCOUNT_NAME, isActive: false },
+  });
+  if (!systemUser) {
+    systemUser = await prisma.user.create({
+      data: {
+        name: SIDE_BET_SYSTEM_ACCOUNT_NAME,
+        isActive: false,
+        isGuest: true,
+        authProvider: 'EMAIL',
+      },
+    });
+  }
+  return systemUser;
 }
 
 /** Get or create the special FEE user for accounting */
@@ -38,6 +67,70 @@ async function getFeeAccount() {
 }
 
 export class SideBetService {
+  async ensureEventSideBet(eventId: string) {
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      select: { id: true, name: true, status: true },
+    });
+    if (!event) throw new Error('Event not found');
+
+    const systemUser = await getSideBetSystemAccount();
+    const existing = await prisma.sideBet.findFirst({
+      where: { eventId: event.id, creatorId: systemUser.id },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (existing) return existing;
+    if (event.status === EventStatus.COMPLETED || event.status === EventStatus.CANCELLED) {
+      return null;
+    }
+
+    const entrySats = EVENT_SIDE_BET_DEFAULT_ENTRY_SATS;
+    try {
+      const sideBet = await prisma.sideBet.create({
+        data: {
+          // Deterministic id prevents duplicate automatic side bets if two
+          // requests try to create the event side bet at the same time.
+          id: `event-side-bet-${event.id}`,
+          label: eventSideBetLabel(event.name),
+          description: eventSideBetDescription(entrySats),
+          creatorId: systemUser.id,
+          eventId: event.id,
+          entrySats,
+          feePct: getSideBetFeePct(),
+        },
+      });
+      console.log(`[SideBet] Created automatic event side bet: event=${event.id} sideBet=${sideBet.id} entrySats=${entrySats}`);
+      return sideBet;
+    } catch (error) {
+      const racedExisting = await prisma.sideBet.findFirst({
+        where: { eventId: event.id, creatorId: systemUser.id },
+        orderBy: { createdAt: 'asc' },
+      });
+      if (racedExisting) return racedExisting;
+      throw error;
+    }
+  }
+
+  async ensureEventSideBetsForUpcoming(limit = 100) {
+    const events = await prisma.event.findMany({
+      where: {
+        dateTime: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+        status: { in: [EventStatus.SCHEDULED, EventStatus.REGISTRATION_OPEN] },
+      },
+      select: { id: true },
+      orderBy: { dateTime: 'asc' },
+      take: limit,
+    });
+
+    for (const event of events) {
+      try {
+        await this.ensureEventSideBet(event.id);
+      } catch (error) {
+        console.error(`[SideBet] Failed to ensure automatic event side bet: event=${event.id}`, error);
+      }
+    }
+  }
+
   /**
    * Create a new side bet AND generate the creator's entry invoice.
    * The bet only becomes visible once the creator pays.
@@ -173,12 +266,15 @@ export class SideBetService {
     if (!sideBet) throw new Error('Side bet not found');
     if (sideBet.status !== 'OPEN') throw new Error('This side bet is no longer open');
 
-    // Check creator has paid (bet is active)
-    const creatorPaidEntry = await prisma.sideBetEntry.findFirst({
-      where: { sideBetId, userId: sideBet.creatorId, paidAt: { not: null } },
-    });
-    if (!creatorPaidEntry) {
-      throw new Error('This side bet has not been activated yet');
+    // Legacy user-created side bets only become active after the creator pays.
+    // Automatic event side bets are created/visible before anyone enters.
+    if (!sideBet.eventId) {
+      const creatorPaidEntry = await prisma.sideBetEntry.findFirst({
+        where: { sideBetId, userId: sideBet.creatorId, paidAt: { not: null } },
+      });
+      if (!creatorPaidEntry) {
+        throw new Error('This side bet has not been activated yet');
+      }
     }
 
     // Check user doesn't have an outstanding unpaid entry (prevent invoice spam)
@@ -334,7 +430,7 @@ export class SideBetService {
       include: {
         creator: { select: { id: true, name: true } },
         winner: { select: { id: true, name: true } },
-        event: { select: { id: true, name: true, slug: true } },
+        event: { select: { id: true, name: true, slug: true, dateTime: true } },
         entries: {
           where: { paidAt: { not: null } },
           include: { user: { select: { id: true, name: true } } },
@@ -405,7 +501,7 @@ export class SideBetService {
     const bets = await prisma.sideBet.findMany({
       include: {
         creator: { select: { id: true, name: true } },
-        event: { select: { id: true, name: true, slug: true } },
+        event: { select: { id: true, name: true, slug: true, dateTime: true } },
         winner: { select: { id: true, name: true } },
         entries: {
           where: { paidAt: { not: null } },
@@ -432,7 +528,7 @@ export class SideBetService {
         label: b.label,
         description: b.description,
         creator: b.creator,
-        event: b.event,
+        event: b.event ? { id: b.event.id, name: b.event.name, slug: b.event.slug, dateTime: b.event.dateTime } : null,
         winner: b.winner,
         entrySats: b.entrySats,
         feePct: b.feePct,
@@ -441,6 +537,7 @@ export class SideBetService {
         participantCount: userMap.size,
         totalPot: b.entries.reduce((s, e) => s + e.amountSats, 0),
         createdAt: b.createdAt,
+        startsAt: b.event?.dateTime || null,
         settledAt: b.settledAt,
         participants: Array.from(userMap.values()),
       };
@@ -517,6 +614,120 @@ export class SideBetService {
     };
   }
 
+  async settleEventSideBet(eventId: string) {
+    const systemUser = await getSideBetSystemAccount();
+    const sideBet = await prisma.sideBet.findFirst({
+      where: { eventId, creatorId: systemUser.id },
+      include: {
+        event: { select: { name: true } },
+        entries: { where: { paidAt: { not: null } } },
+      },
+    });
+
+    if (!sideBet) return null;
+    if (sideBet.status !== 'OPEN') return null;
+    if (sideBet.entries.length === 0) {
+      await prisma.sideBet.update({
+        where: { id: sideBet.id },
+        data: { status: 'CANCELLED' },
+      });
+      console.log(`[SideBet] Cancelled empty event side bet: event=${eventId} sideBet=${sideBet.id}`);
+      return { message: 'No side bet entries to settle', sideBetId: sideBet.id, payouts: [] };
+    }
+
+    const paidUserIds = Array.from(new Set(sideBet.entries.map(e => e.userId)));
+    const results = await prisma.result.findMany({
+      where: { eventId, userId: { in: paidUserIds } },
+      orderBy: { position: 'asc' },
+      include: { user: { select: { id: true, name: true } } },
+    });
+
+    if (results.length === 0) {
+      console.warn(`[SideBet] Cannot settle event side bet yet; no paid entrants have results: event=${eventId} sideBet=${sideBet.id}`);
+      return null;
+    }
+
+    const totalPot = sideBet.entries.reduce((s, e) => s + e.amountSats, 0);
+    const feeAmount = Math.floor(totalPot * sideBet.feePct / 100);
+    const prizePool = totalPot - feeAmount;
+    const participantCount = paidUserIds.length;
+    const payouts: Array<{ userId: string; userName: string; position: number; place: 1 | 2 | 3; amountSats: number }> = [];
+
+    if (participantCount <= 2 || results.length === 1) {
+      payouts.push({ userId: results[0].userId, userName: results[0].user.name, position: results[0].position, place: 1, amountSats: prizePool });
+    } else if (participantCount <= 6 || results.length === 2) {
+      const secondAmount = Math.floor(prizePool * 0.30);
+      const firstAmount = prizePool - secondAmount;
+      payouts.push({ userId: results[0].userId, userName: results[0].user.name, position: results[0].position, place: 1, amountSats: firstAmount });
+      payouts.push({ userId: results[1].userId, userName: results[1].user.name, position: results[1].position, place: 2, amountSats: secondAmount });
+    } else {
+      const thirdRefund = Math.min(sideBet.entrySats, prizePool);
+      const remainder = prizePool - thirdRefund;
+      const secondAmount = Math.floor(remainder * 0.30);
+      const firstAmount = remainder - secondAmount;
+      payouts.push({ userId: results[0].userId, userName: results[0].user.name, position: results[0].position, place: 1, amountSats: firstAmount });
+      payouts.push({ userId: results[1].userId, userName: results[1].user.name, position: results[1].position, place: 2, amountSats: secondAmount });
+      payouts.push({ userId: results[2].userId, userName: results[2].user.name, position: results[2].position, place: 3, amountSats: thirdRefund });
+    }
+
+    const positivePayouts = payouts.filter(p => p.amountSats > 0);
+    let feeAccountId: string | null = null;
+    if (feeAmount > 0) {
+      feeAccountId = (await getFeeAccount()).id;
+    }
+
+    await prisma.$transaction(async (tx) => {
+      const claim = await tx.sideBet.updateMany({
+        where: { id: sideBet.id, status: 'OPEN' },
+        data: { status: 'SETTLED', winnerId: positivePayouts[0]?.userId || null, settledAt: new Date() },
+      });
+      if (claim.count !== 1) return;
+
+      for (const payout of positivePayouts) {
+        const updatedUser = await tx.user.update({
+          where: { id: payout.userId },
+          data: { lightningBalanceSats: { increment: payout.amountSats } },
+          select: { lightningBalanceSats: true },
+        });
+        await tx.balanceTransaction.create({
+          data: {
+            userId: payout.userId,
+            type: 'CREDIT',
+            amountSats: payout.amountSats,
+            note: `Event Side Bet ${payout.place}${payout.place === 1 ? 'st' : payout.place === 2 ? 'nd' : 'rd'} payout: "${sideBet.event?.name || sideBet.label}"`,
+            balanceAfter: updatedUser.lightningBalanceSats,
+          },
+        });
+      }
+
+      if (feeAmount > 0 && feeAccountId) {
+        const feeUser = await tx.user.update({
+          where: { id: feeAccountId },
+          data: { lightningBalanceSats: { increment: feeAmount } },
+          select: { lightningBalanceSats: true },
+        });
+        await tx.balanceTransaction.create({
+          data: {
+            userId: feeAccountId,
+            type: 'CREDIT',
+            amountSats: feeAmount,
+            note: `Event Side Bet fee: "${sideBet.event?.name || sideBet.label}"`,
+            balanceAfter: feeUser.lightningBalanceSats,
+          },
+        });
+      }
+    });
+
+    console.log(`[SideBet] Settled event side bet: event=${eventId} sideBet=${sideBet.id} participantCount=${participantCount} totalPot=${totalPot} fee=${feeAmount} payouts=${positivePayouts.map(p => `${p.place}:${p.userId}:${p.amountSats}`).join(',')}`);
+    return {
+      message: 'Event side bet settled',
+      sideBetId: sideBet.id,
+      totalPot,
+      feeAmount,
+      payouts: positivePayouts,
+    };
+  }
+
   /**
    * Admin cancel — admin can cancel any bet (bypasses creator check)
    */
@@ -572,18 +783,30 @@ export class SideBetService {
    * List open side bets, optionally filtered by eventId
    */
   async listOpen(eventId?: string) {
-    const where: any = {
+    if (eventId) {
+      await this.ensureEventSideBet(eventId);
+    } else {
+      await this.ensureEventSideBetsForUpcoming();
+    }
+
+    const systemUser = await getSideBetSystemAccount();
+    const where: any = eventId ? {
       status: 'OPEN',
-      // Only show bets where creator has paid
-      entries: { some: { paidAt: { not: null } } },
+      eventId,
+      creatorId: systemUser.id,
+    } : {
+      status: 'OPEN',
+      eventId: { not: null },
+      creatorId: systemUser.id,
+      // Event side bets show on the home page starting 15 minutes before the event.
+      event: { is: { dateTime: { lte: new Date(Date.now() + 15 * 60 * 1000) } } },
     };
-    if (eventId) where.eventId = eventId;
 
     const bets = await prisma.sideBet.findMany({
       where,
       include: {
         creator: { select: { id: true, name: true } },
-        event: { select: { id: true, name: true, slug: true } },
+        event: { select: { id: true, name: true, slug: true, dateTime: true } },
         entries: { where: { paidAt: { not: null } }, select: { amountSats: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -599,6 +822,7 @@ export class SideBetService {
       entryCount: b.entries.length,
       totalPot: b.entries.reduce((s, e) => s + e.amountSats, 0),
       createdAt: b.createdAt,
+      startsAt: b.event?.dateTime || null,
     }));
   }
 
