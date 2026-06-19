@@ -21,6 +21,7 @@ import faqRoutes from './routes/faq.routes';
 import venueApplicationRoutes from './routes/venue-application.routes';
 import puzzleRoutes from './routes/puzzle.routes';
 import sideBetRoutes from './routes/side-bet.routes';
+import { checkPendingSideBetEntries } from './services/side-bet.service';
 import blogRoutes from './routes/blog.routes';
 import announcementRoutes from './routes/announcement.routes';
 import storeRoutes from './routes/store.routes';
@@ -244,6 +245,9 @@ setInterval(() => {
   );
   checkPendingStoreOrders().catch(err =>
     console.error('Store checkout settlement error:', err)
+  );
+  checkPendingSideBetEntries().catch(err =>
+    console.error('Side bet settlement error:', err)
   );
 }, 60 * 1000);
 

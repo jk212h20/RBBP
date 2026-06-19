@@ -195,6 +195,7 @@ export class SideBetService {
 
     // Prefer site balance when there is enough available.
     if (user.lightningBalanceSats >= sideBet.entrySats) {
+      console.log(`[SideBet] Charging entry from balance: sideBet=${sideBetId} user=${userId} amount=${sideBet.entrySats} pendingInvoice=${pendingEntry?.id || 'none'}`);
       const result = await prisma.$transaction(async (tx) => {
         const debit = await tx.user.updateMany({
           where: { id: userId, lightningBalanceSats: { gte: sideBet.entrySats } },
@@ -239,23 +240,21 @@ export class SideBetService {
     const memo = `Side Bet: ${sideBet.label}`;
     const { paymentRequest, paymentHash } = await createInvoice(sideBet.entrySats, memo);
 
-    if (pendingEntry) {
-      // Update the existing pending entry with new invoice
-      await prisma.sideBetEntry.update({
-        where: { id: pendingEntry.id },
-        data: { paymentHash, amountSats: sideBet.entrySats },
-      });
-    } else {
-      // Create a new entry
-      await prisma.sideBetEntry.create({
-        data: {
-          sideBetId,
-          userId,
-          amountSats: sideBet.entrySats,
-          paymentHash,
-        },
-      });
-    }
+    // Important: create a new pending row for every Lightning invoice.
+    // Do NOT overwrite an existing pending entry's paymentHash. A player may
+    // already have an invoice open in a wallet; if we replace that hash and
+    // they pay the old invoice, we can no longer match their payment to an
+    // entry. Multiple unpaid pending rows are harmless; only settled invoices
+    // are counted in pots/participants.
+    const createdEntry = await prisma.sideBetEntry.create({
+      data: {
+        sideBetId,
+        userId,
+        amountSats: sideBet.entrySats,
+        paymentHash,
+      },
+    });
+    console.log(`[SideBet] Created Lightning entry invoice: sideBet=${sideBetId} entry=${createdEntry.id} user=${userId} amount=${sideBet.entrySats} hash=${paymentHash.substring(0, 16)}... priorPending=${pendingEntry?.id || 'none'}`);
 
     return {
       invoice: {
@@ -269,35 +268,60 @@ export class SideBetService {
   }
 
   /**
-   * Check if user's latest pending entry has been paid
+   * Check if any of the user's pending side bet invoices have been paid.
+   *
+   * A user can have multiple outstanding invoices for the same side bet if
+   * they re-open the entry flow or request multiple rebuys. We must check all
+   * unpaid invoice-backed entries, not just the newest one; otherwise an older
+   * invoice can be paid after a newer invoice was generated and the sats will
+   * be received by the node but never credited to the side pool.
    */
   async checkPayment(sideBetId: string, userId: string) {
-    // Find the user's most recent unpaid entry for this bet
-    const entry = await prisma.sideBetEntry.findFirst({
-      where: { sideBetId, userId, paidAt: null },
+    const pendingEntries = await prisma.sideBetEntry.findMany({
+      where: { sideBetId, userId, paidAt: null, paymentHash: { not: null } },
       orderBy: { createdAt: 'desc' },
     });
-    if (!entry) {
-      // No pending entry — maybe they already paid or don't have one
-      // Check if they have any paid entries
-      const paidEntry = await prisma.sideBetEntry.findFirst({
-        where: { sideBetId, userId, paidAt: { not: null } },
-        orderBy: { paidAt: 'desc' },
-      });
-      if (paidEntry) return { paid: true, paidAt: paidEntry.paidAt };
-      throw new Error('No entry found');
-    }
-    if (!entry.paymentHash) return { paid: false };
 
-    const { settled } = await lookupInvoice(entry.paymentHash);
-    if (settled) {
-      await prisma.sideBetEntry.update({
-        where: { id: entry.id },
-        data: { paidAt: new Date() },
-      });
-      return { paid: true, paidAt: new Date() };
+    let latestPaidEntry: { paidAt: Date | null } | null = null;
+    let lookupFailures = 0;
+
+    for (const entry of pendingEntries) {
+      try {
+        console.log(`[SideBet] Checking invoice: sideBet=${sideBetId} entry=${entry.id} user=${userId} hash=${entry.paymentHash?.substring(0, 16)}...`);
+        const { settled, amountPaidSats } = await lookupInvoice(entry.paymentHash!);
+        console.log(`[SideBet] Invoice lookup result: sideBet=${sideBetId} entry=${entry.id} settled=${settled} amountPaidSats=${amountPaidSats}`);
+
+        if (settled) {
+          const updated = await prisma.sideBetEntry.update({
+            where: { id: entry.id },
+            data: { paidAt: new Date() },
+          });
+          latestPaidEntry = updated;
+          console.log(`[SideBet] Marked entry paid: sideBet=${sideBetId} entry=${entry.id} user=${userId} amount=${entry.amountSats}`);
+        }
+      } catch (error) {
+        lookupFailures += 1;
+        console.error(`[SideBet] Invoice lookup failed: sideBet=${sideBetId} entry=${entry.id} user=${userId} hash=${entry.paymentHash?.substring(0, 16)}...`, error);
+      }
     }
-    return { paid: false };
+
+    if (latestPaidEntry) {
+      return { paid: true, paidAt: latestPaidEntry.paidAt };
+    }
+
+    if (pendingEntries.length > 0) {
+      return { paid: false, pendingCount: pendingEntries.length, lookupFailures };
+    }
+
+    // No pending invoice entries — maybe they already paid with balance or a
+    // previously checked Lightning invoice.
+    const paidEntry = await prisma.sideBetEntry.findFirst({
+      where: { sideBetId, userId, paidAt: { not: null } },
+      orderBy: { paidAt: 'desc' },
+    });
+    if (paidEntry) return { paid: true, paidAt: paidEntry.paidAt };
+
+    throw new Error('No entry found');
   }
 
   /**
@@ -807,6 +831,49 @@ export class SideBetService {
       refundedCount: sideBet.entries.length,
     };
   }
+}
+
+export async function checkPendingSideBetEntries() {
+  const pendingEntries = await prisma.sideBetEntry.findMany({
+    where: {
+      paidAt: null,
+      paymentHash: { not: null },
+      sideBet: { status: 'OPEN' },
+    },
+    include: {
+      sideBet: { select: { id: true, label: true, entrySats: true, status: true } },
+    },
+    take: 50,
+    orderBy: { createdAt: 'asc' },
+  });
+
+  let checked = 0;
+  let settled = 0;
+  let failed = 0;
+
+  for (const entry of pendingEntries) {
+    try {
+      checked += 1;
+      const invoice = await lookupInvoice(entry.paymentHash!);
+      if (!invoice.settled) continue;
+
+      await prisma.sideBetEntry.updateMany({
+        where: { id: entry.id, paidAt: null },
+        data: { paidAt: new Date() },
+      });
+      settled += 1;
+      console.log(`[SideBet] Background settled entry: sideBet=${entry.sideBetId} entry=${entry.id} user=${entry.userId} amount=${entry.amountSats} amountPaidSats=${invoice.amountPaidSats}`);
+    } catch (error) {
+      failed += 1;
+      console.error(`[SideBet] Background invoice check failed: sideBet=${entry.sideBetId} entry=${entry.id} user=${entry.userId} hash=${entry.paymentHash?.substring(0, 16)}...`, error);
+    }
+  }
+
+  if (checked > 0 || failed > 0) {
+    console.log(`[SideBet] Background check complete: checked=${checked} settled=${settled} failed=${failed}`);
+  }
+
+  return { checked, settled, failed };
 }
 
 export const sideBetService = new SideBetService();
