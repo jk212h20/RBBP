@@ -10,38 +10,63 @@ interface MobileNavProps {
   currentPage?: 'home' | 'events' | 'leaderboard' | 'venues' | 'dashboard' | 'faq' | 'puzzle' | 'blog' | 'store';
 }
 
+type NavItem = {
+  href: string;
+  label: string;
+  key?: string;
+  external?: boolean;
+  broken?: boolean; // link not live yet
+};
+
 export default function MobileNav({ currentPage }: MobileNavProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const groupRef = useRef<HTMLDivElement>(null);
   const { isAuthenticated, user, logout } = useAuth();
 
-  // Close user dropdown when clicking outside
+  // Close any open dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
         setUserMenuOpen(false);
+      }
+      if (groupRef.current && !groupRef.current.contains(event.target as Node)) {
+        setOpenGroup(null);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const navLinks = [
-    { href: '/', label: 'Home', key: 'home' },
-    { href: '/events', label: 'Events', key: 'events' },
+  // Top-level links shown directly in the bar.
+  const topLinks: NavItem[] = [
     { href: '/leaderboard', label: 'Leaderboard', key: 'leaderboard' },
-    { href: '/venues', label: 'Venues', key: 'venues' },
-    { href: '/blog', label: 'Blog', key: 'blog' },
     { href: '/store', label: 'Store', key: 'store' },
-    { href: '/faq', label: 'FAQ', key: 'faq' },
-    { href: '/puzzle', label: '🧩 Daily Puzzle', key: 'puzzle' },
   ];
 
-  const externalLinks = [
-    { href: 'https://btcpokerchamp.com/why-bitcoin', label: 'Why Bitcoin' },
-    { href: 'https://btcpokerchamp.com/rules', label: "Hold'em Rules" },
-    { href: 'https://btcpokerchamp.com', label: 'BTC Poker Champ' },
+  // Grouped dropdown menus to reduce clutter.
+  const groups: { title: string; items: NavItem[] }[] = [
+    {
+      title: 'Find A Game',
+      items: [
+        { href: '/register', label: 'Sign Up' },
+        { href: '/events', label: 'Events', key: 'events' },
+        { href: '/puzzle', label: '🧩 Daily Puzzle', key: 'puzzle' },
+        { href: 'https://btcpokerchamp.com', label: 'BTC Poker Champ August', external: true },
+      ],
+    },
+    {
+      title: 'About',
+      items: [
+        { href: '/faq', label: 'FAQ', key: 'faq' },
+        { href: '/blog', label: 'Blog', key: 'blog' },
+        { href: '/venues', label: 'Venues', key: 'venues' },
+        { href: 'https://btcpokerchamp.com/why-bitcoin', label: 'Why Bitcoin', external: true, broken: true },
+        { href: 'https://btcpokerchamp.com/rules', label: "Hold'em Rules", external: true, broken: true },
+      ],
+    },
   ];
 
   return (
@@ -56,8 +81,52 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-4">
-            {navLinks.slice(1).map((link) => (
+          <nav className="hidden md:flex items-center gap-4" ref={groupRef}>
+            {/* Grouped dropdowns: Find A Game, About */}
+            {groups.map((group) => (
+              <div key={group.title} className="relative">
+                <button
+                  onClick={() => setOpenGroup(openGroup === group.title ? null : group.title)}
+                  className="flex items-center gap-1 text-white/80 hover:text-white transition"
+                >
+                  {group.title}
+                  <svg className={`w-3 h-3 transition-transform ${openGroup === group.title ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {openGroup === group.title && (
+                  <div className="absolute left-0 mt-2 w-56 bg-gray-900 border border-blue-700/50 rounded-lg shadow-xl z-50 py-1">
+                    {group.items.map((item) =>
+                      item.external ? (
+                        <a
+                          key={item.href}
+                          href={item.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => setOpenGroup(null)}
+                          className="block px-4 py-2 text-white/80 hover:bg-blue-900/50 transition"
+                        >
+                          {item.label}{item.broken ? ' ↗' : ' ↗'}
+                        </a>
+                      ) : (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          onClick={() => setOpenGroup(null)}
+                          className={`block px-4 py-2 transition hover:bg-blue-900/50 ${
+                            currentPage === item.key ? 'text-blue-300 font-medium' : 'text-white/80'
+                          }`}
+                        >
+                          {item.label}
+                        </Link>
+                      )
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+            {/* Top-level links */}
+            {topLinks.map((link) => (
               <Link
                 key={link.key}
                 href={link.href}
@@ -69,17 +138,6 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
               >
                 {link.label}
               </Link>
-            ))}
-            {externalLinks.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-white/80 hover:text-white transition"
-              >
-                {link.label}
-              </a>
             ))}
             {isAuthenticated ? (
               <div className="relative" ref={userMenuRef}>
@@ -165,34 +223,56 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
         {isOpen && (
           <nav className="md:hidden mt-4 pb-4 border-t border-blue-700/50 pt-4">
             <div className="flex flex-col space-y-3">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.key}
-                  href={link.href}
-                  onClick={() => setIsOpen(false)}
-                  className={`${
-                    currentPage === link.key
-                      ? 'text-blue-300 font-medium'
-                      : 'text-white/80'
-                  } py-2 text-lg`}
-                >
-                  {link.label}
-                </Link>
+              {/* Home */}
+              <Link
+                href="/"
+                onClick={() => setIsOpen(false)}
+                className={`${currentPage === 'home' ? 'text-blue-300 font-medium' : 'text-white/80'} py-2 text-lg`}
+              >
+                Home
+              </Link>
+
+              {/* Grouped sections */}
+              {groups.map((group) => (
+                <div key={group.title} className="border-t border-blue-700/50 pt-3 mt-1">
+                  <p className="text-sm uppercase tracking-wide text-white/50 mb-1">{group.title}</p>
+                  {group.items.map((item) =>
+                    item.external ? (
+                      <a
+                        key={item.href}
+                        href={item.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => setIsOpen(false)}
+                        className="block py-2 text-lg text-white/80"
+                      >
+                        {item.label} ↗
+                      </a>
+                    ) : (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setIsOpen(false)}
+                        className={`block py-2 text-lg ${currentPage === item.key ? 'text-blue-300 font-medium' : 'text-white/80'}`}
+                      >
+                        {item.label}
+                      </Link>
+                    )
+                  )}
+                </div>
               ))}
 
-              {/* External Links */}
-              <div className="border-t border-blue-700/50 pt-3 mt-2">
-                {externalLinks.map((link) => (
-                  <a
-                    key={link.href}
+              {/* Top-level links */}
+              <div className="border-t border-blue-700/50 pt-3 mt-1">
+                {topLinks.map((link) => (
+                  <Link
+                    key={link.key}
                     href={link.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
                     onClick={() => setIsOpen(false)}
-                    className="block py-2 text-lg text-white/80"
+                    className={`block py-2 text-lg ${currentPage === link.key ? 'text-blue-300 font-medium' : 'text-white/80'}`}
                   >
-                    {link.label} ↗
-                  </a>
+                    {link.label}
+                  </Link>
                 ))}
               </div>
               

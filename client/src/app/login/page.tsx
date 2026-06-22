@@ -19,6 +19,7 @@ export default function LoginPage() {
     lnurl: string;
   } | null>(null);
   const [pollingLightning, setPollingLightning] = useState(false);
+  const [copiedLnurl, setCopiedLnurl] = useState(false);
 
   const { login, loginWithToken, isAuthenticated } = useAuth();
   const router = useRouter();
@@ -146,6 +147,30 @@ export default function LoginPage() {
                 >
                   📱 Tap to open wallet (mobile)
                 </a>
+                {/* Explicit copy button: copies the lnurl TEXT, not the QR image.
+                    On Android, tapping the QR image copies the base64 data URL
+                    instead of the login code, which does not work in wallets. */}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(lightningData.lnurl);
+                      setCopiedLnurl(true);
+                      setTimeout(() => setCopiedLnurl(false), 2000);
+                    } catch {
+                      // Fallback: select-and-copy via a temporary element
+                      const ta = document.createElement('textarea');
+                      ta.value = lightningData.lnurl;
+                      document.body.appendChild(ta);
+                      ta.select();
+                      try { document.execCommand('copy'); setCopiedLnurl(true); setTimeout(() => setCopiedLnurl(false), 2000); } catch {}
+                      document.body.removeChild(ta);
+                    }
+                  }}
+                  className="w-full mb-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg text-sm font-semibold transition"
+                >
+                  {copiedLnurl ? '✓ Copied login code' : '📋 Copy login code (paste into wallet)'}
+                </button>
                 <p className="text-xs text-gray-500 mb-1">
                   <a href="https://phoenix.acinq.co" target="_blank" rel="noopener noreferrer" className="text-yellow-600 hover:text-yellow-700 underline">Phoenix</a> • Wallet of Satoshi • Zeus • Blue Wallet
                 </p>

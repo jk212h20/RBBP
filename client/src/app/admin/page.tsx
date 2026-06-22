@@ -45,6 +45,7 @@ interface VenueForm {
   address: string;
   description: string;
   imageUrl: string | null;
+  menuUrl: string;
 }
 
 interface Season {
@@ -74,6 +75,7 @@ interface EventForm {
   prepayDiscountHours: number;
   registrationCloseMinutes: number;
   registrationPointsEnabled: boolean;
+  rulesUrl: string;
   lastLongerEnabled: boolean;
   lastLongerSeedSats: number;
   lastLongerEntrySats: number;
@@ -148,7 +150,7 @@ export default function AdminPage() {
   const [statsError, setStatsError] = useState('');
 
   // Forms
-  const [venueForm, setVenueForm] = useState<VenueForm>({ name: '', address: '', description: '', imageUrl: null });
+  const [venueForm, setVenueForm] = useState<VenueForm>({ name: '', address: '', description: '', imageUrl: null, menuUrl: '' });
   const [seasonForm, setSeasonForm] = useState<SeasonForm>({ 
     name: '', 
     startDate: '', 
@@ -166,6 +168,7 @@ export default function AdminPage() {
     prepayDiscountHours: 3,
     registrationCloseMinutes: 30,
     registrationPointsEnabled: true,
+    rulesUrl: '',
     lastLongerEnabled: false,
     lastLongerSeedSats: 10000,
     lastLongerEntrySats: 25000
@@ -206,7 +209,7 @@ export default function AdminPage() {
   
   // Edit modals
   const [editingVenue, setEditingVenue] = useState<Venue | null>(null);
-  const [editVenueForm, setEditVenueForm] = useState<VenueForm>({ name: '', address: '', description: '', imageUrl: null });
+  const [editVenueForm, setEditVenueForm] = useState<VenueForm>({ name: '', address: '', description: '', imageUrl: null, menuUrl: '' });
   const [editingSeason, setEditingSeason] = useState<Season | null>(null);
   const [editSeasonForm, setEditSeasonForm] = useState<SeasonForm>({ name: '', startDate: '', endDate: '' });
   
@@ -229,7 +232,7 @@ export default function AdminPage() {
   
   // Event edit state
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
-  const [editEventForm, setEditEventForm] = useState({ name: '', description: '', dateTime: '', maxPlayers: 50, buyInSats: 0, prepayDiscountSats: 0, prepayDiscountHours: 3, venueId: '', seasonId: '', registrationPointsEnabled: true });
+  const [editEventForm, setEditEventForm] = useState({ name: '', description: '', dateTime: '', maxPlayers: 50, buyInSats: 0, prepayDiscountSats: 0, prepayDiscountHours: 3, venueId: '', seasonId: '', registrationPointsEnabled: true, rulesUrl: '' });
 
   useEffect(() => {
     if (!loading && !user) {
@@ -330,7 +333,7 @@ export default function AdminPage() {
       setMessage('');
       await venuesAPI.create(venueForm);
       setMessage('Venue created successfully!');
-      setVenueForm({ name: '', address: '', description: '', imageUrl: null });
+      setVenueForm({ name: '', address: '', description: '', imageUrl: null, menuUrl: '' });
       fetchVenues();
       fetchStats();
     } catch (err: any) {
@@ -364,7 +367,7 @@ export default function AdminPage() {
       setMessage('');
       await eventsAPI.create(eventForm);
       setMessage('Event created successfully!');
-      setEventForm({ name: '', description: '', dateTime: '', venueId: '', seasonId: '', maxPlayers: 50, buyInSats: 0, prepayDiscountSats: 0, prepayDiscountHours: 3, registrationCloseMinutes: 30, registrationPointsEnabled: true, lastLongerEnabled: false, lastLongerSeedSats: 10000, lastLongerEntrySats: 25000 });
+      setEventForm({ name: '', description: '', dateTime: '', venueId: '', seasonId: '', maxPlayers: 50, buyInSats: 0, prepayDiscountSats: 0, prepayDiscountHours: 3, registrationCloseMinutes: 30, registrationPointsEnabled: true, rulesUrl: '', lastLongerEnabled: false, lastLongerSeedSats: 10000, lastLongerEntrySats: 25000 });
       fetchStats();
     } catch (err: any) {
       setError(err.message || 'Failed to create event');
@@ -376,6 +379,7 @@ export default function AdminPage() {
     setEditingVenue(venue);
     setEditVenueForm({
       name: venue.name,
+      menuUrl: (venue as any).menuUrl || '',
       address: venue.address,
       description: venue.description || '',
       imageUrl: (venue as any).imageUrl || null
@@ -851,6 +855,16 @@ export default function AdminPage() {
                     className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
                     rows={3}
                     placeholder="Describe the venue..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 mb-1">Menu URL</label>
+                  <input
+                    type="url"
+                    value={venueForm.menuUrl}
+                    onChange={(e) => setVenueForm({ ...venueForm, menuUrl: e.target.value })}
+                    className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
+                    placeholder="https://... (link to food/drink menu, HTML or PDF)"
                   />
                 </div>
                 <ImageUpload
@@ -1547,7 +1561,8 @@ export default function AdminPage() {
                                   prepayDiscountHours: event.prepayDiscountHours ?? 3,
                                   venueId: event.venue.id,
                                   seasonId: event.season.id,
-                                  registrationPointsEnabled: event.registrationPointsEnabled ?? true
+                                  registrationPointsEnabled: event.registrationPointsEnabled ?? true,
+                                  rulesUrl: (event as any).rulesUrl || ''
                                 });
                               }}
                               className="text-yellow-400 hover:text-yellow-300 text-xs"
@@ -1928,6 +1943,16 @@ export default function AdminPage() {
                     placeholder="Event description..."
                   />
                 </div>
+                <div className="md:col-span-2">
+                  <label className="block text-gray-400 mb-1">Rules / Blind Structure URL</label>
+                  <input
+                    type="url"
+                    value={eventForm.rulesUrl}
+                    onChange={(e) => setEventForm({ ...eventForm, rulesUrl: e.target.value })}
+                    className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
+                    placeholder="https://... (blog post or PDF with rules and blind structure)"
+                  />
+                </div>
                 {/* Registration Points Toggle */}
                 <div className="md:col-span-2 border-t border-gray-700 pt-4">
                   <label className="flex items-center gap-3 cursor-pointer">
@@ -2086,6 +2111,16 @@ export default function AdminPage() {
                 <label className="block text-gray-400 mb-1">Description</label>
                 <textarea value={editEventForm.description} onChange={(e) => setEditEventForm({ ...editEventForm, description: e.target.value })} className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white" rows={3} />
               </div>
+              <div>
+                <label className="block text-gray-400 mb-1">Rules / Blind Structure URL</label>
+                <input
+                  type="url"
+                  value={editEventForm.rulesUrl}
+                  onChange={(e) => setEditEventForm({ ...editEventForm, rulesUrl: e.target.value })}
+                  className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
+                  placeholder="https://... (blog post or PDF)"
+                />
+              </div>
               <div className="border-t border-gray-700 pt-4">
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input
@@ -2142,6 +2177,16 @@ export default function AdminPage() {
                   onChange={(e) => setEditVenueForm({ ...editVenueForm, description: e.target.value })}
                   className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
                   rows={3}
+                />
+              </div>
+              <div>
+                <label className="block text-gray-400 mb-1">Menu URL</label>
+                <input
+                  type="url"
+                  value={editVenueForm.menuUrl}
+                  onChange={(e) => setEditVenueForm({ ...editVenueForm, menuUrl: e.target.value })}
+                  className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white"
+                  placeholder="https://... (link to food/drink menu, HTML or PDF)"
                 />
               </div>
               <ImageUpload

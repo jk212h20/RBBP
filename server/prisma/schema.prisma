@@ -136,6 +136,7 @@ model Venue {
   address     String
   description String?
   imageUrl    String?
+  menuUrl     String?  // Link to the venue's food/drink menu (HTML or PDF)
   phone       String?
   email       String?
   isActive    Boolean  @default(true)
@@ -206,6 +207,7 @@ model Event {
   prepayDiscountSats    Int?        @default(0)
   prepayDiscountHours   Int         @default(3) // How many hours before event start the prepay discount applies
   totalEntrants         Int?        // Manual override for total player count (for points calc)
+  rulesUrl              String?     // Link to rules / blind-structure doc (blog post or PDF)
   registrationPointsEnabled Boolean @default(true)  // If false, no points awarded for signup and no penalties for cancel/no-show
   status                EventStatus @default(SCHEDULED)
   

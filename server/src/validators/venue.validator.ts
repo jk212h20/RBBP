@@ -20,6 +20,7 @@ export const createVenueSchema = z.object({
   address: z.string().min(5, 'Address must be at least 5 characters'),
   description: z.string().optional(),
   imageUrl: imageUrlSchema,
+  menuUrl: z.string().url('Menu URL must be a valid URL').optional().or(z.literal('')).nullable(),
   phone: z.string().optional(),
   email: z.string().email().optional().or(z.literal('')),
 });

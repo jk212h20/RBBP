@@ -140,12 +140,30 @@ export default function HomePage() {
             priority
           />
           <div className="text-center md:text-left">
-            <h1 className="text-5xl md:text-7xl font-bold text-white mb-4">
+            <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold text-white mb-3">
               Welcome to Roatan Bitcoin Bar Poker
             </h1>
-            <p className="text-xl md:text-2xl text-white/80 max-w-2xl">
+            <p className="text-lg sm:text-xl md:text-2xl text-white/80 max-w-2xl">
               Play in free tournaments, win real bitcoin
             </p>
+
+            {/* Above-the-fold call to action (only for logged-out visitors) */}
+            {!isAuthenticated && (
+              <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
+                <Link
+                  href="/register"
+                  className="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition text-base"
+                >
+                  Join Free
+                </Link>
+                <Link
+                  href="/login"
+                  className="inline-flex items-center justify-center bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semibold px-6 py-3 rounded-lg transition text-base"
+                >
+                  Sign In
+                </Link>
+              </div>
+            )}
           </div>
         </div>
 

@@ -20,12 +20,14 @@ interface EventDetail {
   prepayDiscountHours?: number;
   registrationCloseMinutes?: number;
   status: string;
+  rulesUrl?: string;
   venue: {
     id: string;
     name: string;
     address: string;
     phone?: string;
     imageUrl?: string;
+    menuUrl?: string;
   };
   season: {
     id: string;
@@ -931,6 +933,29 @@ export default function EventDetailPage() {
                   >
                     {event.venue.address}
                   </a>
+                  {/* Venue menu + event rules links */}
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
+                    {event.venue.menuUrl && (
+                      <a
+                        href={event.venue.menuUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-300/80 hover:text-blue-200 underline underline-offset-2"
+                      >
+                        🍽️ Venue Menu
+                      </a>
+                    )}
+                    {event.rulesUrl && (
+                      <a
+                        href={event.rulesUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-300/80 hover:text-blue-200 underline underline-offset-2"
+                      >
+                        📐 Rules & Blind Structure
+                      </a>
+                    )}
+                  </div>
                 </div>
               </div>
               {event.director && (

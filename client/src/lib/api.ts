@@ -121,13 +121,13 @@ export const venuesAPI = {
   
   getById: (id: string) => fetchAPI<any>(`/venues/${id}`),
   
-  create: (data: { name: string; address: string; description?: string; phone?: string; email?: string; managerId?: string; imageUrl?: string | null }) =>
+  create: (data: { name: string; address: string; description?: string; phone?: string; email?: string; managerId?: string; imageUrl?: string | null; menuUrl?: string }) =>
     fetchAPI<any>('/venues', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   
-  update: (id: string, data: Partial<{ name: string; address: string; description?: string; phone?: string; email?: string; isActive?: boolean; imageUrl?: string | null }>) =>
+  update: (id: string, data: Partial<{ name: string; address: string; description?: string; phone?: string; email?: string; isActive?: boolean; imageUrl?: string | null; menuUrl?: string }>) =>
     fetchAPI<any>(`/venues/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -204,6 +204,8 @@ export const eventsAPI = {
     buyInSats?: number | null;
     prepayDiscountSats?: number;
     prepayDiscountHours?: number;
+    rulesUrl?: string;
+    [key: string]: any;
   }) =>
     fetchAPI<any>('/events', {
       method: 'POST',
