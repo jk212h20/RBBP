@@ -1,0 +1,7 @@
+node_modules/
+report/
+.auth/
+test-results/
+*-snapshots/
+playwright-report/
+findings/

@@ -73,17 +73,17 @@ export default function ReferralTab() {
         <p className="text-sm text-gray-600 mb-3">
           Share this link with friends. When they sign up and get checked in at their first event, you earn <strong>{REWARD_SATS.toLocaleString()} sats</strong>!
         </p>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="text"
             readOnly
             value={referralUrl}
-            className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 font-mono"
+            className="flex-1 min-w-0 w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-base text-gray-700 font-mono"
             onClick={(e) => (e.target as HTMLInputElement).select()}
           />
           <button
             onClick={handleCopy}
-            className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-semibold hover:bg-orange-600 transition whitespace-nowrap"
+            className="w-full sm:w-auto px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-semibold hover:bg-orange-600 transition whitespace-nowrap"
           >
             {copied ? '✓ Copied!' : 'Copy'}
           </button>

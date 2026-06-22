@@ -228,7 +228,7 @@ export default function StorePage() {
           <div className="bg-white/10 rounded-2xl p-8 text-white text-center">No store items are available yet.</div>
         ) : (
           <div className="grid lg:grid-cols-[1fr_420px] gap-6">
-            <section className="bg-white/10 backdrop-blur rounded-2xl border border-white/20 p-6 md:p-8 text-white">
+            <section className="min-w-0 bg-white/10 backdrop-blur rounded-2xl border border-white/20 p-4 sm:p-6 md:p-8 text-white">
               <div className="aspect-video bg-black/20 rounded-2xl flex items-center justify-center mb-6 border border-white/10 overflow-hidden">
                 {product.imageUrl ? (
                   <img
@@ -244,9 +244,9 @@ export default function StorePage() {
                 )}
               </div>
               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-4">
-                <div>
-                  <h2 className="text-3xl font-bold">{product.name}</h2>
-                  <p className="text-blue-100 mt-2 whitespace-pre-wrap">{product.description}</p>
+                <div className="min-w-0">
+                  <h2 className="text-2xl sm:text-3xl font-bold break-words">{product.name}</h2>
+                  <p className="text-blue-100 mt-2 whitespace-pre-wrap break-words">{product.description}</p>
                 </div>
                 <div className="text-right shrink-0">
                   {promo && <p className="text-sm text-green-300 line-through">{product.priceSats.toLocaleString()} sats</p>}
@@ -256,7 +256,7 @@ export default function StorePage() {
               <p className="text-sm text-blue-200">Inventory available: {totalInventory} shirts</p>
             </section>
 
-            <aside className="bg-gray-950/70 backdrop-blur rounded-2xl border border-yellow-400/30 p-6 text-white h-fit">
+            <aside className="min-w-0 bg-gray-950/70 backdrop-blur rounded-2xl border border-yellow-400/30 p-4 sm:p-6 text-white h-fit">
               <h3 className="text-xl font-bold mb-4">Choose your shirt</h3>
 
               <label className="block text-sm text-yellow-100 mb-2">Size</label>
