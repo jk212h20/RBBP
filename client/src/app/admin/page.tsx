@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -144,6 +144,10 @@ export default function AdminPage() {
   const [seasons, setSeasons] = useState<any[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  // User panel search / sort / filter controls
+  const [userSearch, setUserSearch] = useState('');
+  const [userSort, setUserSort] = useState<'name' | 'joined'>('name');
+  const [userFilter, setUserFilter] = useState<'all' | 'guest' | 'registered' | 'noEmail' | 'hasEmail' | 'inactive' | 'admins'>('all');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [statsLoading, setStatsLoading] = useState(true);
@@ -291,6 +295,42 @@ export default function AdminPage() {
       setLoadingUsers(false);
     }
   };
+
+  // Search + filter + sort the admin user list (client-side over loaded users).
+  const displayedUsers = useMemo(() => {
+    const q = userSearch.trim().toLowerCase();
+    let list = users.filter((u) => {
+      // Filter
+      switch (userFilter) {
+        case 'guest': if (!u.isGuest) return false; break;
+        case 'registered': if (u.isGuest) return false; break;
+        case 'noEmail': if (u.email) return false; break;
+        case 'hasEmail': if (!u.email) return false; break;
+        case 'inactive': if (u.isActive) return false; break;
+        case 'admins': if (u.role !== 'ADMIN') return false; break;
+        default: break;
+      }
+      // Search by name or email
+      if (q) {
+        const hay = `${u.name || ''} ${u.email || ''}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+
+    list = [...list].sort((a, b) => {
+      if (userSort === 'joined') {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      // Alphabetical by name (case-insensitive), empty names last
+      const an = (a.name || '').trim().toLowerCase();
+      const bn = (b.name || '').trim().toLowerCase();
+      if (!an && bn) return 1;
+      if (an && !bn) return -1;
+      return an.localeCompare(bn);
+    });
+    return list;
+  }, [users, userSearch, userFilter, userSort]);
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     try {
@@ -1068,7 +1108,46 @@ export default function AdminPage() {
         {activeTab === 'users' && (
           <div className="bg-gray-800 rounded-lg p-6">
             <h2 className="text-xl font-bold mb-4">👥 User Management</h2>
-            
+
+            {/* Search / filter / sort controls */}
+            {users.length > 0 && (
+              <div className="flex flex-col sm:flex-row flex-wrap gap-3 mb-4">
+                <input
+                  type="text"
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  placeholder="Search by name or email..."
+                  className="flex-1 min-w-0 p-2 bg-gray-700 border border-gray-600 rounded text-white text-base"
+                />
+                <select
+                  value={userFilter}
+                  onChange={(e) => setUserFilter(e.target.value as typeof userFilter)}
+                  className="p-2 bg-gray-700 border border-gray-600 rounded text-white"
+                >
+                  <option value="all">All users</option>
+                  <option value="registered">Registered (non-guest)</option>
+                  <option value="guest">Guests only</option>
+                  <option value="noEmail">No email</option>
+                  <option value="hasEmail">Has email</option>
+                  <option value="admins">Admins</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+                <select
+                  value={userSort}
+                  onChange={(e) => setUserSort(e.target.value as typeof userSort)}
+                  className="p-2 bg-gray-700 border border-gray-600 rounded text-white"
+                >
+                  <option value="name">Sort: Name (A–Z)</option>
+                  <option value="joined">Sort: Join date (newest)</option>
+                </select>
+              </div>
+            )}
+            {users.length > 0 && (
+              <p className="text-gray-400 text-sm mb-3">
+                Showing {displayedUsers.length} of {users.length} users
+              </p>
+            )}
+
             {loadingUsers ? (
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto"></div>
@@ -1099,7 +1178,7 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {users.map((u) => (
+                    {displayedUsers.map((u) => (
                       <tr key={u.id} className="border-b border-gray-700/50 hover:bg-gray-700/30">
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2 flex-wrap">
