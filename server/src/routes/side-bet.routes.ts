@@ -67,6 +67,10 @@ router.get('/admin/all', authenticate, requireAdmin, async (_req: Request, res: 
 // Admin: settle any bet (bypass creator check)
 router.post('/admin/:id/settle', authenticate, requireAdmin, async (req: Request, res: Response) => {
   try {
+    const bet = await sideBetService.getSideBet(req.params.id);
+    if (bet.event) {
+      return res.status(400).json({ error: 'Event side bets settle automatically from event results. Enter/finalize event results instead of manually picking a winner.' });
+    }
     const { winnerId } = req.body;
     if (!winnerId) return res.status(400).json({ error: 'winnerId is required' });
     const result = await sideBetService.adminSettleSideBet(req.params.id, winnerId);
@@ -146,6 +150,10 @@ router.get('/:id/check-payment', authenticate, async (req: Request, res: Respons
 router.post('/:id/settle', authenticate, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
+    const bet = await sideBetService.getSideBet(req.params.id);
+    if (bet.event) {
+      return res.status(400).json({ error: 'Event side bets settle automatically from event results. Enter/finalize event results instead of manually picking a winner.' });
+    }
     const { winnerId } = req.body;
     if (!winnerId) return res.status(400).json({ error: 'winnerId is required' });
 

@@ -17,6 +17,7 @@ export const createEventSchema = z.object({
   seasonId: z.string().min(1, 'Season is required'),
   directorId: z.string().optional(),
   status: z.nativeEnum(EventStatus).optional().default(EventStatus.SCHEDULED),
+  leaguePointsEnabled: z.boolean().optional().default(true),
   registrationPointsEnabled: z.boolean().optional().default(true),
   rulesUrl: z.string().url('Rules URL must be a valid URL').optional().or(z.literal('')).nullable(),
   lastLongerEnabled: z.boolean().optional().default(false),
@@ -40,6 +41,7 @@ export const updateEventSchema = z.object({
   seasonId: z.string().optional(),
   directorId: z.string().optional().nullable(),
   status: z.nativeEnum(EventStatus).optional(),
+  leaguePointsEnabled: z.boolean().optional(),
   registrationPointsEnabled: z.boolean().optional(),
   rulesUrl: z.string().url('Rules URL must be a valid URL').optional().or(z.literal('')).nullable(),
   lastLongerEnabled: z.boolean().optional(),
@@ -86,6 +88,7 @@ export const bulkCreateEventsSchema = z.object({
   directorId: z.string().optional(),
   status: z.nativeEnum(EventStatus).optional().default(EventStatus.SCHEDULED),
   startingNumber: z.number().int().min(1).optional().default(1), // Starting # for naming
+  leaguePointsEnabled: z.boolean().optional().default(true),
   registrationPointsEnabled: z.boolean().optional().default(true),
   lastLongerEnabled: z.boolean().optional().default(false),
   lastLongerSeedSats: z.number().int().min(0).optional().default(10000),

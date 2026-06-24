@@ -208,6 +208,7 @@ model Event {
   prepayDiscountHours   Int         @default(3) // How many hours before event start the prepay discount applies
   totalEntrants         Int?        // Manual override for total player count (for points calc)
   rulesUrl              String?     // Link to rules / blind-structure doc (blog post or PDF)
+  leaguePointsEnabled   Boolean     @default(true)  // If false, no league/season points are awarded for this event
   registrationPointsEnabled Boolean @default(true)  // If false, no points awarded for signup and no penalties for cancel/no-show
   status                EventStatus @default(SCHEDULED)
   

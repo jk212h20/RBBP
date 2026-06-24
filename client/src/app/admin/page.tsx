@@ -74,6 +74,7 @@ interface EventForm {
   prepayDiscountSats: number;
   prepayDiscountHours: number;
   registrationCloseMinutes: number;
+  leaguePointsEnabled: boolean;
   registrationPointsEnabled: boolean;
   rulesUrl: string;
   lastLongerEnabled: boolean;
@@ -102,6 +103,7 @@ interface Event {
   slug?: string;
   name: string;
   description: string | null;
+  leaguePointsEnabled?: boolean;
   registrationPointsEnabled?: boolean;
   dateTime: string;
   status: 'SCHEDULED' | 'REGISTRATION_OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
@@ -171,6 +173,7 @@ export default function AdminPage() {
     prepayDiscountSats: 0,
     prepayDiscountHours: 3,
     registrationCloseMinutes: 30,
+    leaguePointsEnabled: true,
     registrationPointsEnabled: true,
     rulesUrl: '',
     lastLongerEnabled: false,
@@ -236,7 +239,7 @@ export default function AdminPage() {
   
   // Event edit state
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
-  const [editEventForm, setEditEventForm] = useState({ name: '', description: '', dateTime: '', maxPlayers: 50, buyInSats: 0, prepayDiscountSats: 0, prepayDiscountHours: 3, venueId: '', seasonId: '', registrationPointsEnabled: true, rulesUrl: '' });
+  const [editEventForm, setEditEventForm] = useState({ name: '', description: '', dateTime: '', maxPlayers: 50, buyInSats: 0, prepayDiscountSats: 0, prepayDiscountHours: 3, venueId: '', seasonId: '', leaguePointsEnabled: true, registrationPointsEnabled: true, rulesUrl: '' });
 
   useEffect(() => {
     if (!loading && !user) {
@@ -407,7 +410,7 @@ export default function AdminPage() {
       setMessage('');
       await eventsAPI.create(eventForm);
       setMessage('Event created successfully!');
-      setEventForm({ name: '', description: '', dateTime: '', venueId: '', seasonId: '', maxPlayers: 50, buyInSats: 0, prepayDiscountSats: 0, prepayDiscountHours: 3, registrationCloseMinutes: 30, registrationPointsEnabled: true, rulesUrl: '', lastLongerEnabled: false, lastLongerSeedSats: 10000, lastLongerEntrySats: 25000 });
+      setEventForm({ name: '', description: '', dateTime: '', venueId: '', seasonId: '', maxPlayers: 50, buyInSats: 0, prepayDiscountSats: 0, prepayDiscountHours: 3, registrationCloseMinutes: 30, leaguePointsEnabled: true, registrationPointsEnabled: true, rulesUrl: '', lastLongerEnabled: false, lastLongerSeedSats: 10000, lastLongerEntrySats: 25000 });
       fetchStats();
     } catch (err: any) {
       setError(err.message || 'Failed to create event');
@@ -1640,6 +1643,7 @@ export default function AdminPage() {
                                   prepayDiscountHours: event.prepayDiscountHours ?? 3,
                                   venueId: event.venue.id,
                                   seasonId: event.season.id,
+                                  leaguePointsEnabled: event.leaguePointsEnabled ?? true,
                                   registrationPointsEnabled: event.registrationPointsEnabled ?? true,
                                   rulesUrl: (event as any).rulesUrl || ''
                                 });
@@ -2032,19 +2036,36 @@ export default function AdminPage() {
                     placeholder="https://... (blog post or PDF with rules and blind structure)"
                   />
                 </div>
-                {/* Registration Points Toggle */}
-                <div className="md:col-span-2 border-t border-gray-700 pt-4">
+                {/* League Points Toggle */}
+                <div className="md:col-span-2 border-t border-gray-700 pt-4 space-y-3">
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={eventForm.registrationPointsEnabled}
-                      onChange={(e) => setEventForm({ ...eventForm, registrationPointsEnabled: e.target.checked })}
+                      checked={eventForm.leaguePointsEnabled}
+                      onChange={(e) => setEventForm({
+                        ...eventForm,
+                        leaguePointsEnabled: e.target.checked,
+                        registrationPointsEnabled: e.target.checked ? eventForm.registrationPointsEnabled : false,
+                      })}
                       className="w-5 h-5 rounded bg-gray-700 border-gray-600 text-yellow-500 focus:ring-yellow-500"
                     />
-                    <span className="text-white font-semibold">🎯 Award registration points</span>
+                    <span className="text-white font-semibold">🏆 Award league points for this event</span>
                   </label>
-                  <p className="text-gray-500 text-xs mt-1 ml-8">
-                    When on (default): players earn 1 pt for signing up, 2 pts for the first 5 (early bird), and incur cancel/no-show penalties. Turn off for finales or special events where pre-registration shouldn’t award points.
+                  <p className="text-gray-500 text-xs ml-8">
+                    When off, results can still be entered and side bets can still settle, but no season/league points, attendance points, signup points, cancellation penalties, or no-show penalties are awarded.
+                  </p>
+                  <label className={`flex items-center gap-3 ${eventForm.leaguePointsEnabled ? 'cursor-pointer' : 'opacity-50'}`}>
+                    <input
+                      type="checkbox"
+                      checked={eventForm.registrationPointsEnabled}
+                      disabled={!eventForm.leaguePointsEnabled}
+                      onChange={(e) => setEventForm({ ...eventForm, registrationPointsEnabled: e.target.checked })}
+                      className="w-5 h-5 rounded bg-gray-700 border-gray-600 text-yellow-500 focus:ring-yellow-500 disabled:opacity-50"
+                    />
+                    <span className="text-white font-semibold">🎯 Award registration/signup points</span>
+                  </label>
+                  <p className="text-gray-500 text-xs ml-8">
+                    Optional sub-setting: players earn signup/early-bird points and incur cancel/no-show penalties only when both league points and this setting are on.
                   </p>
                 </div>
                 <div className="md:col-span-2 border-t border-gray-700 pt-4">
@@ -2200,18 +2221,35 @@ export default function AdminPage() {
                   placeholder="https://... (blog post or PDF)"
                 />
               </div>
-              <div className="border-t border-gray-700 pt-4">
+              <div className="border-t border-gray-700 pt-4 space-y-3">
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={editEventForm.registrationPointsEnabled}
-                    onChange={(e) => setEditEventForm({ ...editEventForm, registrationPointsEnabled: e.target.checked })}
+                    checked={editEventForm.leaguePointsEnabled}
+                    onChange={(e) => setEditEventForm({
+                      ...editEventForm,
+                      leaguePointsEnabled: e.target.checked,
+                      registrationPointsEnabled: e.target.checked ? editEventForm.registrationPointsEnabled : false,
+                    })}
                     className="w-5 h-5 rounded bg-gray-700 border-gray-600 text-yellow-500 focus:ring-yellow-500"
                   />
-                  <span className="text-white font-semibold">🎯 Award registration points</span>
+                  <span className="text-white font-semibold">🏆 Award league points for this event</span>
                 </label>
-                <p className="text-gray-500 text-xs mt-1 ml-8">
-                  When on (default): players earn 1 pt for signing up (2 pts for the first 5 early-bird signups) and incur cancel/no-show penalties. Turn off for finales or special events where pre-registration shouldn’t award points.
+                <p className="text-gray-500 text-xs ml-8">
+                  When off, results can still be entered and side bets can still settle, but no season/league points, attendance points, signup points, cancellation penalties, or no-show penalties are awarded.
+                </p>
+                <label className={`flex items-center gap-3 ${editEventForm.leaguePointsEnabled ? 'cursor-pointer' : 'opacity-50'}`}>
+                  <input
+                    type="checkbox"
+                    checked={editEventForm.registrationPointsEnabled}
+                    disabled={!editEventForm.leaguePointsEnabled}
+                    onChange={(e) => setEditEventForm({ ...editEventForm, registrationPointsEnabled: e.target.checked })}
+                    className="w-5 h-5 rounded bg-gray-700 border-gray-600 text-yellow-500 focus:ring-yellow-500 disabled:opacity-50"
+                  />
+                  <span className="text-white font-semibold">🎯 Award registration/signup points</span>
+                </label>
+                <p className="text-gray-500 text-xs ml-8">
+                  Optional sub-setting: players earn signup/early-bird points and incur cancel/no-show penalties only when both league points and this setting are on.
                 </p>
               </div>
               <div className="flex gap-3">

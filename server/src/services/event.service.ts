@@ -154,9 +154,9 @@ export function calculateEventPoints(checkedInCount: number) {
 async function awardAttendancePointOnce(eventId: string, userId: string) {
   const event = await prisma.event.findUnique({
     where: { id: eventId },
-    select: { seasonId: true, name: true },
+    select: { seasonId: true, name: true, leaguePointsEnabled: true },
   });
-  if (!event) return null;
+  if (!event || !event.leaguePointsEnabled) return null;
 
   // Historical explicit check-ins used "Check-in point". New result finalization
   // awards use "Attendance point". Either one means this event's attendance
@@ -405,7 +405,8 @@ export class EventService {
         seasonId: data.seasonId,
         directorId: data.directorId || null,
         status: data.status || EventStatus.SCHEDULED,
-        registrationPointsEnabled: data.registrationPointsEnabled ?? true,
+        leaguePointsEnabled: data.leaguePointsEnabled ?? true,
+        registrationPointsEnabled: (data.leaguePointsEnabled ?? true) ? (data.registrationPointsEnabled ?? true) : false,
         rulesUrl: data.rulesUrl || null,
         lastLongerEnabled: false,
         lastLongerSeedSats: data.lastLongerSeedSats ?? 10000,
@@ -465,7 +466,9 @@ export class EventService {
         ...(data.seasonId && { seasonId: data.seasonId }),
         ...(data.directorId !== undefined && { directorId: data.directorId }),
         ...(data.status && { status: data.status }),
+        ...(data.leaguePointsEnabled !== undefined && { leaguePointsEnabled: data.leaguePointsEnabled }),
         ...(data.registrationPointsEnabled !== undefined && { registrationPointsEnabled: data.registrationPointsEnabled }),
+        ...(data.leaguePointsEnabled === false && { registrationPointsEnabled: false }),
         ...(data.rulesUrl !== undefined && { rulesUrl: data.rulesUrl || null }),
         ...(data.lastLongerEnabled !== undefined && { lastLongerEnabled: false }),
         ...(data.lastLongerSeedSats !== undefined && { lastLongerSeedSats: data.lastLongerSeedSats }),
@@ -611,7 +614,7 @@ export class EventService {
 
     // Determine if this is an early bird signup (first 5 get bonus)
     const isEarlyBird = registeredCount < EARLY_BIRD_THRESHOLD;
-    const pointsToAward = event.registrationPointsEnabled
+    const pointsToAward = event.leaguePointsEnabled && event.registrationPointsEnabled
       ? (isEarlyBird ? EARLY_BIRD_REGISTRATION_POINTS : REGISTRATION_POINTS)
       : 0;
 
@@ -831,9 +834,9 @@ export class EventService {
     // Honor the per-event registration-points flag
     const eventFlag = await prisma.event.findUnique({
       where: { id: eventId },
-      select: { registrationPointsEnabled: true },
+      select: { leaguePointsEnabled: true, registrationPointsEnabled: true },
     });
-    const pointsEnabled = eventFlag?.registrationPointsEnabled ?? true;
+    const pointsEnabled = (eventFlag?.leaguePointsEnabled ?? true) && (eventFlag?.registrationPointsEnabled ?? true);
 
     const isEarlyBird = registeredCount < EARLY_BIRD_THRESHOLD;
     const pointsToAward = pointsEnabled
@@ -879,6 +882,7 @@ export class EventService {
         dateTime: true,
         seasonId: true,
         status: true,
+        leaguePointsEnabled: true,
         registrationPointsEnabled: true,
       },
     });
@@ -916,6 +920,7 @@ export class EventService {
     // Skip entirely if registration points are disabled for this event
     // (no points were awarded at signup, so nothing to claw back).
     if (
+      event.leaguePointsEnabled &&
       event.registrationPointsEnabled &&
       event.status !== EventStatus.IN_PROGRESS &&
       event.status !== EventStatus.COMPLETED
@@ -1066,9 +1071,12 @@ export class EventService {
     const resultsWithPoints = results.map((result) => {
       let pointsEarned = 0;
 
-      // Only positions 1, 2, 3 get points by default, but admins may
+      // If league points are disabled, save placements but force zero points.
+      // Otherwise only positions 1, 2, 3 get points by default, but admins may
       // explicitly override pointsEarned when correcting completed results.
-      if (result.pointsEarned !== undefined) {
+      if (!event.leaguePointsEnabled) {
+        pointsEarned = 0;
+      } else if (result.pointsEarned !== undefined) {
         pointsEarned = result.pointsEarned;
       } else if (result.position === 1) {
         pointsEarned = pointsCalc.first;
@@ -1423,7 +1431,7 @@ export class EventService {
       // Skip entirely if registration points are disabled for this event
       // (no points were ever awarded, so a no-show penalty would be punitive
       // for registering at all).
-      if (event.registrationPointsEnabled) {
+      if (event.leaguePointsEnabled && event.registrationPointsEnabled) {
         const pointsEarned = wasEarlyBird ? EARLY_BIRD_REGISTRATION_POINTS : REGISTRATION_POINTS;
         await this.adjustUserSeasonPoints(signup.userId, event.seasonId, -(pointsEarned + 2));
       }
@@ -1486,7 +1494,8 @@ export class EventService {
           seasonId: data.seasonId,
           directorId: data.directorId || null,
           status: data.status || EventStatus.SCHEDULED,
-          registrationPointsEnabled: data.registrationPointsEnabled ?? true,
+          leaguePointsEnabled: data.leaguePointsEnabled ?? true,
+          registrationPointsEnabled: (data.leaguePointsEnabled ?? true) ? (data.registrationPointsEnabled ?? true) : false,
           lastLongerEnabled: false,
           lastLongerSeedSats: data.lastLongerSeedSats ?? 10000,
           lastLongerEntrySats: data.lastLongerEntrySats ?? 25000,

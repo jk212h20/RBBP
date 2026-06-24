@@ -74,3 +74,26 @@ body {
     animation: none;
   }
 }
+
+/* Mobile Safari can render translucent/dark form controls as white boxes with
+   white text, especially inside fixed-gradient pages. Force result/admin form
+   controls to keep the app's dark theme and stable dimensions. */
+.result-entry-control,
+.result-entry-control input,
+.result-entry-control select,
+.result-entry-control textarea {
+  color-scheme: dark;
+}
+.result-entry-control {
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: rgba(255, 255, 255, 0.10) !important;
+  color: #fff !important;
+}
+.result-entry-control::placeholder {
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+.result-entry-control option {
+  background-color: #111827;
+  color: #fff;
+}

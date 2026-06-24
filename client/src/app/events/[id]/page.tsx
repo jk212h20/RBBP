@@ -65,6 +65,8 @@ interface EventDetail {
       };
     };
   }[];
+  leaguePointsEnabled?: boolean;
+  registrationPointsEnabled?: boolean;
   totalEntrants?: number | null;
   _count: {
     signups: number;
@@ -110,8 +112,24 @@ interface EventSideBet {
   entrySats: number;
   entryCount: number;
   totalPot: number;
+  feePct: number;
+  feeAmount?: number;
+  prizeAmount?: number;
   status: string;
   entries?: { userId: string; userName: string; entryCount: number; paidAt: string | null }[];
+}
+
+interface EventSideBetSettlementPreview {
+  participantCount: number;
+  requiredPlaces: number;
+  ready: boolean;
+  totalPot: number;
+  feeAmount: number;
+  prizePool: number;
+  rankedResults: { userId: string; userName: string; position: number; entryCount?: number }[];
+  payouts: { userId: string; userName: string; position: number; place: 1 | 2 | 3; amountSats: number }[];
+  missing?: { userId: string; userName: string; entryCount: number }[];
+  missingResultUserIds?: string[];
 }
 
 export default function EventDetailPage() {
@@ -133,6 +151,8 @@ export default function EventDetailPage() {
   const [savingResults, setSavingResults] = useState(false);
   const [resultMessage, setResultMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [pointsPreview, setPointsPreview] = useState<PointsPreview | null>(null);
+  const [sideBetPreview, setSideBetPreview] = useState<EventSideBetSettlementPreview | null>(null);
+  const [sideBetPreviewLoading, setSideBetPreviewLoading] = useState(false);
 
   // Quick Add Player state
   const [quickAddSearch, setQuickAddSearch] = useState('');
@@ -180,8 +200,86 @@ export default function EventDetailPage() {
   const [sideBetLoading, setSideBetLoading] = useState(false);
   const [sideBetPaid, setSideBetPaid] = useState(false);
   const [sideBetMessage, setSideBetMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [pendingFinalizePreview, setPendingFinalizePreview] = useState<EventSideBetSettlementPreview | null>(null);
 
   const canManageEvent = user && (user.role === 'ADMIN' || user.role === 'TOURNAMENT_DIRECTOR' || user.role === 'VENUE_MANAGER');
+
+  const ordinal = (n: number) => {
+    if (n === 1) return '1st';
+    if (n === 2) return '2nd';
+    if (n === 3) return '3rd';
+    return `${n}th`;
+  };
+
+  const getResultRowsForPreview = () => ([
+    ...playerResults
+      .filter(p => p.attended && p.position !== null)
+      .map(p => ({ userId: p.userId, position: p.position! })),
+    ...extraSlots
+      .filter(s => s.userId !== null && s.position !== null)
+      .map(s => ({ userId: s.userId!, position: s.position! })),
+  ]);
+
+  const getSideBetMissingPlayers = (preview: EventSideBetSettlementPreview | null) => {
+    if (!preview || !eventSideBet?.entries?.length) return [];
+    const missingIds = new Set(preview.missingResultUserIds || []);
+    const rankedIds = new Set(preview.rankedResults.map(r => r.userId));
+    const entryMap = new Map<string, { userId: string; userName: string; entryCount: number }>();
+    for (const entry of eventSideBet.entries) {
+      if (!entryMap.has(entry.userId)) {
+        entryMap.set(entry.userId, { userId: entry.userId, userName: entry.userName, entryCount: entry.entryCount || 1 });
+      }
+    }
+    if (missingIds.size > 0) return Array.from(entryMap.values()).filter(e => missingIds.has(e.userId));
+    return Array.from(entryMap.values()).filter(e => !rankedIds.has(e.userId));
+  };
+
+  const refreshSideBetPreview = async () => {
+    if (!eventSideBet || eventSideBet.status !== 'OPEN' || !canManageEvent) {
+      setSideBetPreview(null);
+      return;
+    }
+    setSideBetPreviewLoading(true);
+    try {
+      const preview = await eventsAPI.previewSideBetSettlement(eventId, getResultRowsForPreview());
+      setSideBetPreview(preview);
+    } catch (err) {
+      console.error('Failed to preview side bet settlement:', err);
+      setSideBetPreview(null);
+    } finally {
+      setSideBetPreviewLoading(false);
+    }
+  };
+
+  const addMissingSideBetEntrantsAsRows = () => {
+    if (!eventSideBet?.entries?.length) return;
+    const existingIds = new Set([
+      ...playerResults.map(p => p.userId),
+      ...extraSlots.filter(s => s.userId !== null).map(s => s.userId!),
+    ]);
+    const entrantsToAdd = eventSideBet.entries.filter(e => !existingIds.has(e.userId));
+    if (entrantsToAdd.length === 0) {
+      setResultMessage({ type: 'error', text: 'All paid side-bet entrants already have rows. Mark them as attended and assign positions.' });
+      return;
+    }
+
+    setExtraSlots(prev => [
+      ...prev,
+      ...entrantsToAdd.map(entry => ({
+        id: `sidebet-${entry.userId}-${Date.now()}`,
+        userId: entry.userId,
+        name: entry.userName,
+        attended: true,
+        position: null as number | null,
+        knockouts: 0,
+        pointsEarned: null as number | null,
+        searchQuery: '',
+        searchResults: [] as { id: string; name: string; email: string | null; isGuest: boolean }[],
+        searchLoading: false,
+      })),
+    ]);
+    setResultMessage({ type: 'success', text: `Added ${entrantsToAdd.length} side-bet entrant${entrantsToAdd.length === 1 ? '' : 's'} to the results form.` });
+  };
 
   const loadEventSideBet = async (actualEventId = event?.id) => {
     if (!actualEventId) return;
@@ -245,6 +343,21 @@ export default function EventDetailPage() {
       setLastLongerLoading(false);
     }
   };
+
+  // Keep the admin preview in sync with unsaved result rows. The preview is
+  // fetched from the server so the display uses the exact same payout math as
+  // settlement/balance transactions.
+  useEffect(() => {
+    if (!canManageEvent || !eventSideBet || eventSideBet.status !== 'OPEN') {
+      setSideBetPreview(null);
+      return;
+    }
+    const timer = setTimeout(() => {
+      refreshSideBetPreview();
+    }, 350);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canManageEvent, eventSideBet?.id, eventSideBet?.status, playerResults, extraSlots]);
 
   // Poll for automatic side bet payment when a Lightning invoice is displayed
   useEffect(() => {
@@ -746,7 +859,7 @@ export default function EventDetailPage() {
     ));
   };
 
-  const handleSaveResults = async (finalize: boolean = false) => {
+  const handleSaveResults = async (finalize: boolean = false, confirmedSideBet: boolean = false) => {
     const attendedPlayers = playerResults.filter(p => p.attended);
     // Include extra slots that have a user assigned
     const filledExtraSlots = extraSlots.filter(s => s.userId !== null);
@@ -769,10 +882,37 @@ export default function EventDetailPage() {
     }
 
     if (finalize) {
-      // For finalization, positions 1, 2, and 3 must be assigned
+      // For finalization, positions 1, 2, and 3 must be assigned for league points.
       if (!positions.includes(1) || !positions.includes(2) || !positions.includes(3)) {
         setResultMessage({ type: 'error', text: 'Places 1st, 2nd, and 3rd must be assigned to finalize results' });
         return;
+      }
+
+      if (eventSideBet && eventSideBet.status === 'OPEN') {
+        let preview = sideBetPreview;
+        try {
+          preview = await eventsAPI.previewSideBetSettlement(eventId, playersWithPositions.map(p => ({ userId: p.userId, position: p.position! })));
+          setSideBetPreview(preview);
+        } catch (err: any) {
+          setResultMessage({ type: 'error', text: err.message || 'Failed to preview side-bet settlement' });
+          return;
+        }
+
+        if (preview && preview.participantCount > 0) {
+          if (!preview.ready) {
+            setPendingFinalizePreview(preview);
+            setResultMessage({
+              type: 'error',
+              text: `Enter results down to the ${ordinal(preview.requiredPlaces)} side-bet finisher before finalizing. Current paid side-bet results: ${preview.rankedResults.length}/${preview.requiredPlaces}.`,
+            });
+            return;
+          }
+          if (!confirmedSideBet) {
+            setPendingFinalizePreview(preview);
+            setResultMessage({ type: 'error', text: 'Review and OK the event side-bet payout preview before finalizing.' });
+            return;
+          }
+        }
       }
     }
 
@@ -793,6 +933,7 @@ export default function EventDetailPage() {
       }
 
       if (finalize) {
+        setPendingFinalizePreview(null);
         setResultMessage({ type: 'success', text: 'Results finalized! Standings have been updated.' });
       } else if (isFinalized) {
         setResultMessage({ type: 'success', text: 'Corrections saved. Standings have been updated.' });
@@ -830,6 +971,8 @@ export default function EventDetailPage() {
     };
     return badges[status] || { bg: 'bg-gray-500', text: status };
   };
+
+  const liveSideBetPreview = sideBetPreview;
 
   if (loading) {
     return (
@@ -1377,8 +1520,17 @@ export default function EventDetailPage() {
                   </div>
                 </div>
 
+                {event.leaguePointsEnabled === false && (
+                  <div className="bg-gray-500/10 border border-gray-500/30 rounded-lg p-4">
+                    <h3 className="text-gray-200 font-medium mb-1">🏆 League points disabled</h3>
+                    <p className="text-gray-300/70 text-sm">
+                      Results and side bets can still be entered, but this event will award 0 league/season points.
+                    </p>
+                  </div>
+                )}
+
                 {/* Points Preview */}
-                {pointsPreview && (
+                {pointsPreview && event.leaguePointsEnabled !== false && (
                   <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
                     <h3 className="text-blue-300 font-medium mb-2">💰 Points Pool Preview</h3>
                     <p className="text-blue-100/70 text-sm mb-3">
@@ -1411,6 +1563,61 @@ export default function EventDetailPage() {
                     Mark who attended, then enter their finishing positions. Rows stay in signup order while you type. Leave Points blank to use the automatic top-3 award, or enter a value to override/correct a completed event.
                   </p>
 
+                  {liveSideBetPreview && (
+                    <div className={`mb-4 rounded-lg border p-4 ${liveSideBetPreview.ready ? 'bg-green-500/10 border-green-500/30' : 'bg-yellow-500/10 border-yellow-500/30'}`}>
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                        <div>
+                          <h3 className="text-white font-bold text-sm">🎲 Event Side Bet Settlement Preview</h3>
+                          <p className="text-blue-100/80 text-xs mt-1">
+                            {liveSideBetPreview.participantCount} paid player{liveSideBetPreview.participantCount === 1 ? '' : 's'} · need results through {ordinal(liveSideBetPreview.requiredPlaces)} side-bet place.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={addMissingSideBetEntrantsAsRows}
+                          className="bg-yellow-500 hover:bg-yellow-600 text-black px-3 py-2 rounded-lg text-xs font-bold transition"
+                        >
+                          Add Side-Bet Players
+                        </button>
+                      </div>
+
+                      {liveSideBetPreview.rankedResults.length > 0 && (
+                        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                          {liveSideBetPreview.rankedResults.slice(0, liveSideBetPreview.requiredPlaces).map((r, idx) => (
+                            <div key={r.userId} className="bg-white/5 rounded-lg p-2 text-sm">
+                              <span className="text-yellow-300 font-bold">{ordinal(idx + 1)} side bet:</span>{' '}
+                              <span className="text-white">{r.userName}</span>
+                              <span className="text-blue-200/70 text-xs block">Tournament position #{r.position}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {!liveSideBetPreview.ready && (
+                        <p className="text-yellow-100 text-sm mt-3">
+                          Enter at least {liveSideBetPreview.requiredPlaces} paid side-bet finisher{liveSideBetPreview.requiredPlaces === 1 ? '' : 's'} before finalizing. Missing result rows/positions: {getSideBetMissingPlayers(liveSideBetPreview).map(m => m.userName).join(', ') || 'none'}
+                        </p>
+                      )}
+
+                      {liveSideBetPreview.ready && (
+                        <div className="mt-3">
+                          <p className="text-green-200 text-sm font-medium mb-2">This is how the side bet will pay when finalized:</p>
+                          <div className="space-y-1">
+                            {liveSideBetPreview.payouts.map(p => (
+                              <div key={`${p.place}-${p.userId}`} className="flex items-center justify-between bg-white/5 rounded px-3 py-2 text-sm">
+                                <span className="text-white">{ordinal(p.place)}: {p.userName}</span>
+                                <span className="text-yellow-300 font-bold">⚡ {p.amountSats.toLocaleString()} sats</span>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="text-blue-100/60 text-xs mt-2">
+                            Pot {liveSideBetPreview.totalPot.toLocaleString()} sats{liveSideBetPreview.feeAmount > 0 ? ` · fee ${liveSideBetPreview.feeAmount.toLocaleString()} sats` : ''}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {playerResults.length === 0 ? (
                     <p className="text-orange-200/60">No registered players yet</p>
                   ) : (
@@ -1420,8 +1627,8 @@ export default function EventDetailPage() {
                         <div className="col-span-1">Came</div>
                         <div className="col-span-4">Player</div>
                         <div className="col-span-2">Position</div>
-                        <div className="col-span-2">Points</div>
-                        <div className="col-span-3">Knockouts</div>
+                        {event.leaguePointsEnabled !== false && <div className="col-span-2">Points</div>}
+                        <div className={event.leaguePointsEnabled !== false ? 'col-span-3' : 'col-span-5'}>Knockouts</div>
                       </div>
 
                       {playerResults.map((player) => (
@@ -1457,21 +1664,23 @@ export default function EventDetailPage() {
                                   onChange={(e) => updatePosition(player.userId, e.target.value ? parseInt(e.target.value) : null)}
                                   placeholder="#"
                                   disabled={!player.attended}
-                                  className="w-full p-2 bg-white/10 border border-blue-600/50 rounded text-white text-center disabled:opacity-50"
+                                  className="result-entry-control w-full p-2 border border-blue-600/50 rounded text-white text-center disabled:opacity-50"
                                 />
                               </div>
-                              <div className="flex-1">
-                                <label className="text-orange-200/70 text-xs block mb-1">Points</label>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  value={player.pointsEarned ?? ''}
-                                  onChange={(e) => updatePointsEarned(player.userId, e.target.value ? parseInt(e.target.value) : null)}
-                                  placeholder="auto"
-                                  disabled={!player.attended}
-                                  className="w-full p-2 bg-white/10 border border-blue-600/50 rounded text-white text-center disabled:opacity-50"
-                                />
-                              </div>
+                              {event.leaguePointsEnabled !== false && (
+                                <div className="flex-1">
+                                  <label className="text-orange-200/70 text-xs block mb-1">Points</label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={player.pointsEarned ?? ''}
+                                    onChange={(e) => updatePointsEarned(player.userId, e.target.value ? parseInt(e.target.value) : null)}
+                                    placeholder="auto"
+                                    disabled={!player.attended}
+                                    className="result-entry-control w-full p-2 border border-blue-600/50 rounded text-white text-center disabled:opacity-50"
+                                  />
+                                </div>
+                              )}
                               <div>
                                 <label className="text-orange-200/70 text-xs block mb-1">KOs</label>
                                 <div className="flex items-center gap-1">
@@ -1519,21 +1728,23 @@ export default function EventDetailPage() {
                                 onChange={(e) => updatePosition(player.userId, e.target.value ? parseInt(e.target.value) : null)}
                                 placeholder="#"
                                 disabled={!player.attended}
-                                className={`w-full p-2 bg-white/10 border border-blue-600/50 rounded text-white text-center disabled:opacity-30 ${!player.attended ? 'invisible' : ''}`}
+                                className={`result-entry-control w-full p-2 border border-blue-600/50 rounded text-white text-center disabled:opacity-30 ${!player.attended ? 'invisible' : ''}`}
                               />
                             </div>
-                            <div className="col-span-2">
-                              <input
-                                type="number"
-                                min="0"
-                                value={player.pointsEarned ?? ''}
-                                onChange={(e) => updatePointsEarned(player.userId, e.target.value ? parseInt(e.target.value) : null)}
-                                placeholder="auto"
-                                disabled={!player.attended}
-                                className={`w-full p-2 bg-white/10 border border-blue-600/50 rounded text-white text-center disabled:opacity-30 ${!player.attended ? 'invisible' : ''}`}
-                              />
-                            </div>
-                            <div className="col-span-3">
+                            {event.leaguePointsEnabled !== false && (
+                              <div className="col-span-2">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={player.pointsEarned ?? ''}
+                                  onChange={(e) => updatePointsEarned(player.userId, e.target.value ? parseInt(e.target.value) : null)}
+                                  placeholder="auto"
+                                  disabled={!player.attended}
+                                  className={`result-entry-control w-full p-2 border border-blue-600/50 rounded text-white text-center disabled:opacity-30 ${!player.attended ? 'invisible' : ''}`}
+                                />
+                              </div>
+                            )}
+                            <div className={event.leaguePointsEnabled !== false ? 'col-span-3' : 'col-span-5'}>
                               <div className={`flex items-center gap-1 ${!player.attended ? 'invisible' : ''}`}>
                                 <button
                                   onClick={() => updateKnockouts(player.userId, player.knockouts - 1)}
@@ -1582,19 +1793,21 @@ export default function EventDetailPage() {
                                     value={slot.position || ''}
                                     onChange={(e) => updateExtraPosition(slot.id, e.target.value ? parseInt(e.target.value) : null)}
                                     placeholder="#"
-                                    className="w-full p-2 bg-white/10 border border-orange-500/50 rounded text-white text-center"
+                                    className="result-entry-control w-full p-2 border border-orange-500/50 rounded text-white text-center"
                                   />
                                 </div>
-                                <div className="col-span-2">
-                                  <input
-                                    type="number" min="0"
-                                    value={slot.pointsEarned ?? ''}
-                                    onChange={(e) => updateExtraPointsEarned(slot.id, e.target.value ? parseInt(e.target.value) : null)}
-                                    placeholder="auto"
-                                    className="w-full p-2 bg-white/10 border border-orange-500/50 rounded text-white text-center"
-                                  />
-                                </div>
-                                <div className="col-span-3">
+                                {event.leaguePointsEnabled !== false && (
+                                  <div className="col-span-2">
+                                    <input
+                                      type="number" min="0"
+                                      value={slot.pointsEarned ?? ''}
+                                      onChange={(e) => updateExtraPointsEarned(slot.id, e.target.value ? parseInt(e.target.value) : null)}
+                                      placeholder="auto"
+                                      className="result-entry-control w-full p-2 border border-orange-500/50 rounded text-white text-center"
+                                    />
+                                  </div>
+                                )}
+                                <div className={event.leaguePointsEnabled !== false ? 'col-span-3' : 'col-span-5'}>
                                   <div className="flex items-center gap-1">
                                     <button onClick={() => updateExtraKnockouts(slot.id, slot.knockouts - 1)} className="w-8 h-8 bg-white/10 rounded text-white hover:bg-white/20">-</button>
                                     <span className="w-8 text-center text-white">{slot.knockouts}</span>
@@ -1609,7 +1822,7 @@ export default function EventDetailPage() {
                                   value={slot.searchQuery}
                                   onChange={(e) => handleExtraSlotSearch(slot.id, e.target.value)}
                                   placeholder="Search player by name..."
-                                  className="w-full p-2 bg-white/10 border border-orange-500/50 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-orange-400"
+                                  className="result-entry-control w-full p-2 border border-orange-500/50 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-orange-400"
                                 />
                                 {slot.searchLoading && (
                                   <div className="absolute right-3 top-2.5">
@@ -1649,12 +1862,51 @@ export default function EventDetailPage() {
                     </div>
                   )}
 
+                  {pendingFinalizePreview && (
+                    <div className="mt-4 bg-black/30 border border-yellow-500/40 rounded-xl p-4">
+                      <h3 className="text-yellow-300 font-bold mb-2">Confirm Event Side-Bet Payout</h3>
+                      {pendingFinalizePreview.ready ? (
+                        <>
+                          <div className="space-y-2 mb-3">
+                            {pendingFinalizePreview.payouts.map(p => (
+                              <div key={`${p.place}-${p.userId}`} className="flex justify-between items-center bg-white/5 rounded-lg px-3 py-2">
+                                <span className="text-white text-sm">{ordinal(p.place)} side-bet place: {p.userName} <span className="text-blue-200/60">#{p.position}</span></span>
+                                <span className="text-yellow-300 font-bold">⚡ {p.amountSats.toLocaleString()}</span>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleSaveResults(true, true)}
+                              disabled={savingResults}
+                              className="bg-green-600 hover:bg-green-700 disabled:bg-green-800 text-white px-5 py-3 rounded-lg font-bold transition"
+                            >
+                              OK — Finalize & Pay Side Bet
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setPendingFinalizePreview(null)}
+                              className="bg-white/10 hover:bg-white/20 text-white px-5 py-3 rounded-lg font-medium transition"
+                            >
+                              Keep Editing
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-yellow-100 text-sm">
+                          Need results through {ordinal(pendingFinalizePreview.requiredPlaces)} side-bet place before finalizing. Paid side-bet results entered: {pendingFinalizePreview.rankedResults.length}/{pendingFinalizePreview.requiredPlaces}.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   {playerResults.length > 0 && (
-                    <div className="flex gap-3 mt-4">
+                    <div className="flex flex-col sm:flex-row gap-3 mt-4">
                       <button
                         onClick={() => handleSaveResults(false)}
                         disabled={savingResults}
-                        className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white px-6 py-2 rounded-lg font-medium transition"
+                        className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white px-6 py-3 sm:py-2 rounded-lg font-medium transition"
                       >
                         {savingResults ? 'Saving...' : (isFinalized ? '💾 Save Corrections' : '💾 Save Draft')}
                       </button>
@@ -1662,9 +1914,9 @@ export default function EventDetailPage() {
                         <button
                           onClick={() => handleSaveResults(true)}
                           disabled={savingResults}
-                          className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white px-6 py-2 rounded-lg font-medium transition"
+                          className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white px-6 py-3 sm:py-2 rounded-lg font-medium transition"
                         >
-                          {savingResults ? 'Finalizing...' : '✅ Finalize Results'}
+                          {savingResults ? 'Finalizing...' : '✅ Review & Finalize Results'}
                         </button>
                       )}
                     </div>

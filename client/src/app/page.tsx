@@ -336,7 +336,7 @@ export default function HomePage() {
           <div className="max-w-3xl mx-auto bg-white/10 backdrop-blur rounded-2xl p-5 border border-white/10">
             <div className="mb-4">
               <h2 className="text-xl font-bold text-white">🎲 Event Side Bets</h2>
-              <p className="text-white/50 text-sm mt-1">Shown here starting 15 minutes before the event. Event pages always show their side bet.</p>
+              <p className="text-white/50 text-sm mt-1">Shown here from 15 minutes before the event until a short post-start grace window. Event pages always show their side bet.</p>
             </div>
 
             {loadingData ? (

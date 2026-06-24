@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { eventService } from '../services/event.service';
+import { sideBetService } from '../services/side-bet.service';
 import { lastLongerService } from '../services/last-longer.service';
 import { createEventSchema, updateEventSchema, bulkResultsSchema, bulkCreateEventsSchema } from '../validators/event.validator';
 import { authenticate, requireAdmin, requireTournamentDirector } from '../middleware/auth.middleware';
@@ -426,6 +427,31 @@ router.delete('/:id/signup/:userId', authenticate, requireTournamentDirector, as
 // ============================================
 
 /**
+ * POST /api/events/:id/side-bet-preview
+ * Preview automatic event side-bet settlement using unsaved result rows.
+ */
+router.post('/:id/side-bet-preview', authenticate, requireTournamentDirector, async (req: Request, res: Response) => {
+  try {
+    const rawResults = Array.isArray(req.body?.results) ? req.body.results : [];
+    const results = rawResults.map((r: any) => ({
+      userId: String(r.userId || ''),
+      position: Number(r.position),
+    })).filter((r: any) => r.userId && Number.isInteger(r.position) && r.position >= 1);
+
+    const positions = results.map((r: any) => r.position);
+    if (positions.length !== new Set(positions).size) {
+      return res.status(400).json({ error: 'Duplicate positions are not allowed — each player must have a unique place' });
+    }
+
+    const preview = await sideBetService.previewEventSideBetSettlement(req.params.id, results);
+    res.json(preview);
+  } catch (error: any) {
+    console.error('Error previewing side bet settlement:', error);
+    res.status(400).json({ error: error.message || 'Failed to preview side bet settlement' });
+  }
+});
+
+/**
  * POST /api/events/:id/results
  * Enter results for an event (Admin/Tournament Director)
  */
@@ -440,6 +466,16 @@ router.post('/:id/results', authenticate, requireTournamentDirector, async (req:
       });
     }
     
+    if (validation.data.finalize) {
+      const preview = await sideBetService.previewEventSideBetSettlement(req.params.id, validation.data.results);
+      if (preview && preview.status === 'OPEN' && preview.participantCount > 0 && !preview.ready) {
+        return res.status(400).json({
+          error: `Event side bet needs results down to ${preview.requiredPlaces === 1 ? '1st' : preview.requiredPlaces === 2 ? '2nd' : '3rd'} side-bet place before finalizing`,
+          sideBetPreview: preview,
+        });
+      }
+    }
+
     const results = await eventService.enterResults(req.params.id, validation.data.results, {
       finalize: validation.data.finalize,
     });

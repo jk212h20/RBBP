@@ -16,6 +16,8 @@ import { createInvoice, lookupInvoice } from './voltage.service';
 const FEE_ACCOUNT_NAME = '__FEE_ACCOUNT__';
 const SIDE_BET_SYSTEM_ACCOUNT_NAME = '__SIDE_BET_SYSTEM__';
 const EVENT_SIDE_BET_DEFAULT_ENTRY_SATS = parseInt(process.env.EVENT_SIDE_BET_ENTRY_SATS || '30000', 10);
+const EVENT_SIDE_BET_HOME_LOOKAHEAD_MINUTES = parseInt(process.env.EVENT_SIDE_BET_HOME_LOOKAHEAD_MINUTES || '15', 10);
+const EVENT_SIDE_BET_HOME_GRACE_HOURS = parseInt(process.env.EVENT_SIDE_BET_HOME_GRACE_HOURS || '6', 10);
 
 function eventSideBetLabel(eventName: string): string {
   return `Side Bet: ${eventName}`;
@@ -23,6 +25,94 @@ function eventSideBetLabel(eventName: string): string {
 
 function eventSideBetDescription(entrySats: number): string {
   return `Automatic event side bet. Highest-finishing entrants split the pot: with 7+ players, 3rd gets one ${entrySats.toLocaleString()} sats entry back, then 2nd gets 30% and 1st gets 70% of the remainder. With 3–6 players, 2nd gets 30% and 1st gets 70%. With 1–2 players, 1st gets the full pot.`;
+}
+
+export interface EventSideBetResultInput {
+  userId: string;
+  position: number;
+  user?: { id: string; name: string };
+}
+
+export interface EventSideBetPreviewPayout {
+  userId: string;
+  userName: string;
+  position: number;
+  place: 1 | 2 | 3;
+  amountSats: number;
+}
+
+function requiredEventSideBetPlaces(participantCount: number): number {
+  if (participantCount <= 0) return 0;
+  if (participantCount <= 2) return 1;
+  if (participantCount <= 6) return 2;
+  return 3;
+}
+
+function buildEventSideBetPreview(sideBet: {
+  entrySats: number;
+  feePct: number;
+  entries: Array<{ userId: string; amountSats: number; user?: { id: string; name: string } }>;
+}, rawResults: EventSideBetResultInput[]) {
+  const totalPot = sideBet.entries.reduce((s, e) => s + e.amountSats, 0);
+  const feeAmount = Math.floor(totalPot * sideBet.feePct / 100);
+  const prizePool = totalPot - feeAmount;
+
+  const paidUserMap = new Map<string, string>();
+  for (const entry of sideBet.entries) {
+    if (!paidUserMap.has(entry.userId)) {
+      paidUserMap.set(entry.userId, entry.user?.name || 'Unknown');
+    }
+  }
+
+  const participantCount = paidUserMap.size;
+  const requiredPlaces = requiredEventSideBetPlaces(participantCount);
+  const paidUserIds = new Set(paidUserMap.keys());
+  const rankedResults = rawResults
+    .filter(r => paidUserIds.has(r.userId))
+    .sort((a, b) => a.position - b.position);
+  const ready = participantCount > 0 && rankedResults.length >= requiredPlaces;
+  const missingResultUserIds = Array.from(paidUserMap.keys()).filter(
+    userId => !rankedResults.some(r => r.userId === userId)
+  );
+
+  const payouts: EventSideBetPreviewPayout[] = [];
+  if (ready) {
+    if (participantCount <= 2) {
+      const first = rankedResults[0];
+      payouts.push({ userId: first.userId, userName: first.user?.name || paidUserMap.get(first.userId) || 'Unknown', position: first.position, place: 1, amountSats: prizePool });
+    } else if (participantCount <= 6) {
+      const secondAmount = Math.floor(prizePool * 0.30);
+      const firstAmount = prizePool - secondAmount;
+      const first = rankedResults[0];
+      const second = rankedResults[1];
+      payouts.push({ userId: first.userId, userName: first.user?.name || paidUserMap.get(first.userId) || 'Unknown', position: first.position, place: 1, amountSats: firstAmount });
+      payouts.push({ userId: second.userId, userName: second.user?.name || paidUserMap.get(second.userId) || 'Unknown', position: second.position, place: 2, amountSats: secondAmount });
+    } else {
+      const thirdRefund = Math.min(sideBet.entrySats, prizePool);
+      const remainder = prizePool - thirdRefund;
+      const secondAmount = Math.floor(remainder * 0.30);
+      const firstAmount = remainder - secondAmount;
+      const first = rankedResults[0];
+      const second = rankedResults[1];
+      const third = rankedResults[2];
+      payouts.push({ userId: first.userId, userName: first.user?.name || paidUserMap.get(first.userId) || 'Unknown', position: first.position, place: 1, amountSats: firstAmount });
+      payouts.push({ userId: second.userId, userName: second.user?.name || paidUserMap.get(second.userId) || 'Unknown', position: second.position, place: 2, amountSats: secondAmount });
+      payouts.push({ userId: third.userId, userName: third.user?.name || paidUserMap.get(third.userId) || 'Unknown', position: third.position, place: 3, amountSats: thirdRefund });
+    }
+  }
+
+  return {
+    totalPot,
+    feeAmount,
+    prizePool,
+    participantCount,
+    requiredPlaces,
+    paidResultCount: rankedResults.length,
+    ready,
+    missingResultUserIds,
+    rankedResults: rankedResults.map(r => ({ userId: r.userId, userName: r.user?.name || paidUserMap.get(r.userId) || 'Unknown', position: r.position })),
+    payouts: payouts.filter(p => p.amountSats > 0),
+  };
 }
 
 /** Default fee percentage (0%) — overridable via env or admin endpoint */
@@ -631,13 +721,47 @@ export class SideBetService {
     };
   }
 
+  async previewEventSideBetSettlement(eventId: string, resultInputs?: EventSideBetResultInput[]) {
+    const systemUser = await getSideBetSystemAccount();
+    const sideBet = await prisma.sideBet.findFirst({
+      where: { eventId, creatorId: systemUser.id },
+      include: {
+        event: { select: { name: true } },
+        entries: {
+          where: { paidAt: { not: null } },
+          include: { user: { select: { id: true, name: true } } },
+        },
+      },
+    });
+
+    if (!sideBet) return null;
+
+    const results = resultInputs || await prisma.result.findMany({
+      where: { eventId },
+      orderBy: { position: 'asc' },
+      include: { user: { select: { id: true, name: true } } },
+    });
+
+    return {
+      sideBetId: sideBet.id,
+      label: sideBet.label,
+      status: sideBet.status,
+      eventName: sideBet.event?.name || null,
+      entrySats: sideBet.entrySats,
+      ...buildEventSideBetPreview(sideBet, results),
+    };
+  }
+
   async settleEventSideBet(eventId: string) {
     const systemUser = await getSideBetSystemAccount();
     const sideBet = await prisma.sideBet.findFirst({
       where: { eventId, creatorId: systemUser.id },
       include: {
         event: { select: { name: true } },
-        entries: { where: { paidAt: { not: null } } },
+        entries: {
+          where: { paidAt: { not: null } },
+          include: { user: { select: { id: true, name: true } } },
+        },
       },
     });
 
@@ -652,42 +776,21 @@ export class SideBetService {
       return { message: 'No side bet entries to settle', sideBetId: sideBet.id, payouts: [] };
     }
 
-    const paidUserIds = Array.from(new Set(sideBet.entries.map(e => e.userId)));
     const results = await prisma.result.findMany({
-      where: { eventId, userId: { in: paidUserIds } },
+      where: { eventId },
       orderBy: { position: 'asc' },
       include: { user: { select: { id: true, name: true } } },
     });
 
-    if (results.length === 0) {
-      console.warn(`[SideBet] Cannot settle event side bet yet; no paid entrants have results: event=${eventId} sideBet=${sideBet.id}`);
+    const preview = buildEventSideBetPreview(sideBet, results);
+    if (!preview.ready) {
+      console.warn(`[SideBet] Cannot settle event side bet yet; event=${eventId} sideBet=${sideBet.id} paidResults=${preview.paidResultCount} required=${preview.requiredPlaces}`);
       return null;
     }
 
-    const totalPot = sideBet.entries.reduce((s, e) => s + e.amountSats, 0);
-    const feeAmount = Math.floor(totalPot * sideBet.feePct / 100);
-    const prizePool = totalPot - feeAmount;
-    const participantCount = paidUserIds.length;
-    const payouts: Array<{ userId: string; userName: string; position: number; place: 1 | 2 | 3; amountSats: number }> = [];
-
-    if (participantCount <= 2 || results.length === 1) {
-      payouts.push({ userId: results[0].userId, userName: results[0].user.name, position: results[0].position, place: 1, amountSats: prizePool });
-    } else if (participantCount <= 6 || results.length === 2) {
-      const secondAmount = Math.floor(prizePool * 0.30);
-      const firstAmount = prizePool - secondAmount;
-      payouts.push({ userId: results[0].userId, userName: results[0].user.name, position: results[0].position, place: 1, amountSats: firstAmount });
-      payouts.push({ userId: results[1].userId, userName: results[1].user.name, position: results[1].position, place: 2, amountSats: secondAmount });
-    } else {
-      const thirdRefund = Math.min(sideBet.entrySats, prizePool);
-      const remainder = prizePool - thirdRefund;
-      const secondAmount = Math.floor(remainder * 0.30);
-      const firstAmount = remainder - secondAmount;
-      payouts.push({ userId: results[0].userId, userName: results[0].user.name, position: results[0].position, place: 1, amountSats: firstAmount });
-      payouts.push({ userId: results[1].userId, userName: results[1].user.name, position: results[1].position, place: 2, amountSats: secondAmount });
-      payouts.push({ userId: results[2].userId, userName: results[2].user.name, position: results[2].position, place: 3, amountSats: thirdRefund });
-    }
-
-    const positivePayouts = payouts.filter(p => p.amountSats > 0);
+    const totalPot = preview.totalPot;
+    const feeAmount = preview.feeAmount;
+    const positivePayouts = preview.payouts;
     let feeAccountId: string | null = null;
     if (feeAmount > 0) {
       feeAccountId = (await getFeeAccount()).id;
@@ -735,7 +838,7 @@ export class SideBetService {
       }
     });
 
-    console.log(`[SideBet] Settled event side bet: event=${eventId} sideBet=${sideBet.id} participantCount=${participantCount} totalPot=${totalPot} fee=${feeAmount} payouts=${positivePayouts.map(p => `${p.place}:${p.userId}:${p.amountSats}`).join(',')}`);
+    console.log(`[SideBet] Settled event side bet: event=${eventId} sideBet=${sideBet.id} participantCount=${preview.participantCount} totalPot=${totalPot} fee=${feeAmount} payouts=${positivePayouts.map(p => `${p.place}:${p.userId}:${p.amountSats}`).join(',')}`);
     return {
       message: 'Event side bet settled',
       sideBetId: sideBet.id,
@@ -815,8 +918,17 @@ export class SideBetService {
       status: 'OPEN',
       eventId: { not: null },
       creatorId: systemUser.id,
-      // Event side bets show on the home page starting 15 minutes before the event.
-      event: { is: { dateTime: { lte: new Date(Date.now() + 15 * 60 * 1000) } } },
+      // Event side bets show on the home page shortly before the event and
+      // for a short grace window after it starts. Without the lower bound, old
+      // OPEN event side bets can remain stuck on the home page indefinitely.
+      event: {
+        is: {
+          dateTime: {
+            gte: new Date(Date.now() - EVENT_SIDE_BET_HOME_GRACE_HOURS * 60 * 60 * 1000),
+            lte: new Date(Date.now() + EVENT_SIDE_BET_HOME_LOOKAHEAD_MINUTES * 60 * 1000),
+          },
+        },
+      },
     };
 
     const bets = await prisma.sideBet.findMany({

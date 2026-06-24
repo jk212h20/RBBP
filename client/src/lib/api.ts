@@ -265,6 +265,12 @@ export const eventsAPI = {
     }),
   
   getResults: (eventId: string) => fetchAPI<any[]>(`/events/${eventId}/results`),
+
+  previewSideBetSettlement: (eventId: string, results: { userId: string; position: number }[]) =>
+    fetchAPI<any | null>(`/events/${eventId}/side-bet-preview`, {
+      method: 'POST',
+      body: JSON.stringify({ results }),
+    }),
   
   // Points preview
   getPointsPreview: (eventId: string) => 
