@@ -20,11 +20,19 @@ export default function LoginPage() {
   } | null>(null);
   const [pollingLightning, setPollingLightning] = useState(false);
   const [copiedLnurl, setCopiedLnurl] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
 
   const { login, loginWithToken, isAuthenticated } = useAuth();
   const router = useRouter();
 
   const [lightningError, setLightningError] = useState('');
+
+  useEffect(() => {
+    const ua = window.navigator.userAgent || '';
+    const platform = window.navigator.platform || '';
+    const maxTouchPoints = window.navigator.maxTouchPoints || 0;
+    setIsIOS(/iPad|iPhone|iPod/.test(ua) || (platform === 'MacIntel' && maxTouchPoints > 1));
+  }, []);
 
   // Auto-load Lightning QR code on mount
   useEffect(() => {
@@ -142,10 +150,10 @@ export default function LoginPage() {
                   />
                 </div>
                 <a
-                  href={`lightning:${lightningData.lnurl}`}
+                  href={isIOS ? `phoenix:lightning:${lightningData.lnurl}` : `lightning:${lightningData.lnurl}`}
                   className="block text-center text-sm text-yellow-600 hover:text-yellow-700 font-medium mb-2 underline"
                 >
-                  📱 Tap to open wallet (mobile)
+                  {isIOS ? '📱 Open Phoenix wallet on iPhone' : '📱 Tap to open wallet (mobile)'}
                 </a>
                 {/* Explicit copy button: copies the lnurl TEXT, not the QR image.
                     On Android, tapping the QR image copies the base64 data URL
