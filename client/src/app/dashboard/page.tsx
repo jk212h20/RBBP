@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import MobileNav from '@/components/MobileNav';
 import { standingsAPI } from '@/lib/api';
 import VenueInvoicesPanel from '@/components/VenueInvoicesPanel';
+import ManagedVenuesPanel from '@/components/ManagedVenuesPanel';
 
 interface SeasonStanding {
   season: {
@@ -241,7 +242,8 @@ function DashboardContent() {
         </div>
 
         {(user.role === 'VENUE_MANAGER' || user.role === 'ADMIN') && (
-          <div className="mt-8">
+          <div className="mt-8 space-y-8">
+            <ManagedVenuesPanel />
             <VenueInvoicesPanel mode="manager" />
           </div>
         )}

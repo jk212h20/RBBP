@@ -15,12 +15,26 @@ const imageUrlSchema = z.string().optional().nullable().refine(
   { message: 'Must be a valid URL or base64 image data' }
 );
 
+const menuUrlSchema = z.string().optional().nullable().refine(
+  (val) => {
+    if (!val || val === '') return true;
+    if (val.startsWith('data:image/')) return true;
+    try {
+      new URL(val);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  { message: 'Menu must be a valid URL or uploaded image' }
+);
+
 export const createVenueSchema = z.object({
   name: z.string().min(2, 'Venue name must be at least 2 characters'),
   address: z.string().min(5, 'Address must be at least 5 characters'),
   description: z.string().optional(),
   imageUrl: imageUrlSchema,
-  menuUrl: z.string().url('Menu URL must be a valid URL').optional().or(z.literal('')).nullable(),
+  menuUrl: menuUrlSchema,
   phone: z.string().optional(),
   email: z.string().email().optional().or(z.literal('')),
 });

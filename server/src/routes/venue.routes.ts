@@ -110,7 +110,17 @@ router.put('/:id', authenticate, requireVenueManager, async (req: Request, res: 
       });
     }
     
-    const venue = await venueService.updateVenue(venueId, validation.data);
+    const updateData = req.user?.role === UserRole.VENUE_MANAGER
+      ? {
+          description: validation.data.description,
+          imageUrl: validation.data.imageUrl,
+          menuUrl: validation.data.menuUrl,
+          phone: validation.data.phone,
+          email: validation.data.email,
+        }
+      : validation.data;
+
+    const venue = await venueService.updateVenue(venueId, updateData);
     res.json(venue);
   } catch (error) {
     console.error('Error updating venue:', error);

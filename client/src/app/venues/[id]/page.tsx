@@ -12,6 +12,7 @@ interface Venue {
   address: string;
   description: string | null;
   imageUrl: string | null;
+  menuUrl: string | null;
   phone: string | null;
   email: string | null;
   isActive: boolean;
@@ -145,6 +146,13 @@ export default function VenueDetailPage() {
                 <p className="text-gray-300 mb-4">{venue.description}</p>
               )}
 
+              {venue.menuUrl && venue.menuUrl.startsWith('data:image/') && (
+                <div className="mb-4">
+                  <h2 className="text-lg font-semibold mb-2">Menu</h2>
+                  <img src={venue.menuUrl} alt={`${venue.name} menu`} className="max-w-full max-h-96 object-contain rounded-lg border border-white/20" />
+                </div>
+              )}
+
               <div className="flex flex-wrap gap-4">
                 {venue.phone && (
                   <a href={`tel:${venue.phone}`} className="flex items-center gap-2 text-blue-400 hover:text-blue-300">
@@ -154,6 +162,11 @@ export default function VenueDetailPage() {
                 {venue.email && (
                   <a href={`mailto:${venue.email}`} className="flex items-center gap-2 text-blue-400 hover:text-blue-300">
                     ✉️ {venue.email}
+                  </a>
+                )}
+                {venue.menuUrl && !venue.menuUrl.startsWith('data:image/') && (
+                  <a href={venue.menuUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-blue-400 hover:text-blue-300">
+                    📋 View Menu
                   </a>
                 )}
                 {venue.manager && (

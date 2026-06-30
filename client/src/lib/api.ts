@@ -155,6 +155,8 @@ export const venuesAPI = {
     fetchAPI<any[]>(`/venues${includeInactive ? '?includeInactive=true' : ''}`),
   
   getById: (id: string) => fetchAPI<any>(`/venues/${id}`),
+
+  getManaged: () => fetchAPI<any[]>('/venues/my/managed'),
   
   create: (data: { name: string; address: string; description?: string; phone?: string; email?: string; managerId?: string; imageUrl?: string | null; menuUrl?: string }) =>
     fetchAPI<any>('/venues', {

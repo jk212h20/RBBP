@@ -14,6 +14,7 @@ interface Venue {
   phone?: string;
   email?: string;
   imageUrl?: string;
+  menuUrl?: string;
   isActive: boolean;
   _count?: {
     events: number;
@@ -127,6 +128,11 @@ export default function VenuesPage() {
                     {venue.email && (
                       <p className="flex items-center gap-2">
                         ✉️ {venue.email}
+                      </p>
+                    )}
+                    {venue.menuUrl && (
+                      <p className="flex items-center gap-2">
+                        📋 Menu available
                       </p>
                     )}
                     {venue._count && (
