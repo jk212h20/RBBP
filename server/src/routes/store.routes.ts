@@ -3,6 +3,9 @@ import { authenticate, requireAdmin } from '../middleware/auth.middleware';
 import {
   createStoreLightningCheckout,
   createStoreOrder,
+  createStoreProduct,
+  createStorePromoCode,
+  createStoreVariant,
   ensureDefaultStore,
   getAdminStore,
   getMyStoreOrders,
@@ -121,6 +124,15 @@ router.post('/admin/ensure-defaults', authenticate, requireAdmin, async (_req: R
   }
 });
 
+router.post('/admin/products', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const product = await createStoreProduct(req.body);
+    res.status(201).json(product);
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Failed to create item' });
+  }
+});
+
 router.put('/admin/products/:productId', authenticate, requireAdmin, async (req: Request, res: Response) => {
   try {
     const product = await updateStoreProduct(req.params.productId, req.body);
@@ -130,12 +142,30 @@ router.put('/admin/products/:productId', authenticate, requireAdmin, async (req:
   }
 });
 
+router.post('/admin/products/:productId/variants', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const variant = await createStoreVariant(req.params.productId, req.body);
+    res.status(201).json(variant);
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Failed to add option' });
+  }
+});
+
 router.put('/admin/variants/:variantId', authenticate, requireAdmin, async (req: Request, res: Response) => {
   try {
     const variant = await updateStoreVariant(req.params.variantId, req.body);
     res.json(variant);
   } catch (error) {
     res.status(400).json({ error: error instanceof Error ? error.message : 'Failed to update size' });
+  }
+});
+
+router.post('/admin/products/:productId/promo-codes', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const promo = await createStorePromoCode(req.params.productId, req.body);
+    res.status(201).json(promo);
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : 'Failed to add promo code' });
   }
 });
 

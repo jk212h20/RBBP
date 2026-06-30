@@ -580,19 +580,37 @@ export const storeAPI = {
 
   getAdminStore: () => fetchAPI<{ products: StoreProduct[]; recentOrders: any[] }>('/store/admin'),
 
-  updateProduct: (productId: string, data: { description?: string; imageUrl?: string | null; priceSats?: number; isActive?: boolean }) =>
+  createProduct: (data: { name: string; description: string; imageUrl?: string | null; priceSats: number; isActive?: boolean; variants?: { size: string; quantityAvailable: number; sortOrder?: number }[] }) =>
+    fetchAPI<StoreProduct>('/store/admin/products', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateProduct: (productId: string, data: { name?: string; description?: string; imageUrl?: string | null; priceSats?: number; isActive?: boolean }) =>
     fetchAPI<StoreProduct>(`/store/admin/products/${productId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
 
-  updateVariant: (variantId: string, data: { quantityAvailable: number }) =>
+  createVariant: (productId: string, data: { size: string; quantityAvailable: number; sortOrder?: number }) =>
+    fetchAPI<StoreVariant>(`/store/admin/products/${productId}/variants`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateVariant: (variantId: string, data: { size?: string; quantityAvailable?: number; sortOrder?: number }) =>
     fetchAPI<StoreVariant>(`/store/admin/variants/${variantId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
 
-  updatePromoCode: (promoId: string, data: { priceSats?: number; maxUses?: number; isActive?: boolean }) =>
+  createPromoCode: (productId: string, data: { code: string; label?: string | null; priceSats: number; maxUses: number; isActive?: boolean }) =>
+    fetchAPI<any>(`/store/admin/products/${productId}/promo-codes`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updatePromoCode: (promoId: string, data: { code?: string; label?: string | null; priceSats?: number; maxUses?: number; isActive?: boolean }) =>
     fetchAPI<any>(`/store/admin/promo-codes/${promoId}`, {
       method: 'PUT',
       body: JSON.stringify(data),

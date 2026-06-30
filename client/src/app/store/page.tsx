@@ -9,6 +9,7 @@ import { balanceAPI, storeAPI, type StoreProduct } from '@/lib/api';
 export default function StorePage() {
   const { isAuthenticated } = useAuth();
   const [products, setProducts] = useState<StoreProduct[]>([]);
+  const [selectedProductId, setSelectedProductId] = useState('');
   const [selectedVariantId, setSelectedVariantId] = useState('');
   const [promoCode, setPromoCode] = useState('');
   const [promo, setPromo] = useState<{ code: string; priceSats: number; usesRemaining: number } | null>(null);
@@ -32,7 +33,7 @@ export default function StorePage() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
-  const product = products[0];
+  const product = products.find(p => p.id === selectedProductId) || products[0];
   const selectedVariant = product?.variants.find(v => v.id === selectedVariantId);
   const finalPrice = promo?.priceSats || product?.priceSats || 0;
 
@@ -76,7 +77,7 @@ export default function StorePage() {
         const result = await storeAPI.getOrderStatus(checkoutData.orderId);
         if (result.order.status === 'PAID' || result.order.status === 'FULFILLED') {
           setCheckoutStatus('paid');
-          setMessage(`Order paid! Your ${checkoutData.size} shirt order is confirmed.`);
+          setMessage(`Order paid! Your ${checkoutData.size} order is confirmed.`);
           await loadStore();
           await loadBalance();
         } else if (result.order.status === 'EXPIRED') {
@@ -98,8 +99,13 @@ export default function StorePage() {
     try {
       const data = await storeAPI.getStorefront();
       setProducts(data.products);
-      const firstAvailable = data.products[0]?.variants.find(v => !v.soldOut && v.quantityAvailable > 0);
-      if (firstAvailable) setSelectedVariantId(firstAvailable.id);
+      const nextProduct = data.products.find(p => p.id === selectedProductId) || data.products[0];
+      if (nextProduct) {
+        setSelectedProductId(nextProduct.id);
+        const currentStillValid = nextProduct.variants.some(v => v.id === selectedVariantId && !v.soldOut && v.quantityAvailable > 0);
+        const firstAvailable = nextProduct.variants.find(v => !v.soldOut && v.quantityAvailable > 0) || nextProduct.variants[0];
+        if (!currentStillValid && firstAvailable) setSelectedVariantId(firstAvailable.id);
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to load store');
     } finally {
@@ -143,7 +149,7 @@ export default function StorePage() {
     }
   };
 
-  const buyShirt = async () => {
+  const buyWithBalance = async () => {
     if (!product || !selectedVariant) return;
     setBuying(true);
     setError('');
@@ -156,7 +162,7 @@ export default function StorePage() {
         promoCode: promoCode.trim() || undefined,
       });
       setBalanceSats(result.balanceSats);
-      setMessage(`Order placed! You bought a ${selectedVariant.size} shirt for ${result.order.pricePaidSats.toLocaleString()} sats.`);
+      setMessage(`Order placed! You bought ${product.name} (${selectedVariant.size}) for ${result.order.pricePaidSats.toLocaleString()} sats.`);
       setPromo(null);
       await loadStore();
     } catch (err: any) {
@@ -193,6 +199,17 @@ export default function StorePage() {
     } finally {
       setCheckingOut(false);
     }
+  };
+
+  const selectProduct = (productId: string) => {
+    const nextProduct = products.find(p => p.id === productId);
+    if (!nextProduct) return;
+    const firstAvailable = nextProduct.variants.find(v => !v.soldOut && v.quantityAvailable > 0) || nextProduct.variants[0];
+    setSelectedProductId(nextProduct.id);
+    setSelectedVariantId(firstAvailable?.id || '');
+    setPromoCode('');
+    setPromo(null);
+    resetCheckout();
   };
 
   const copyInvoice = async () => {
@@ -239,7 +256,7 @@ export default function StorePage() {
                 ) : (
                   <div className="text-center">
                     <div className="text-8xl mb-3">👕</div>
-                    <p className="text-blue-100">Official RBBP Shirt</p>
+                    <p className="text-blue-100">Official RBBP Gear</p>
                   </div>
                 )}
               </div>
@@ -253,13 +270,36 @@ export default function StorePage() {
                   <p className="text-3xl font-bold text-yellow-300">{finalPrice.toLocaleString()} sats</p>
                 </div>
               </div>
-              <p className="text-sm text-blue-200">Inventory available: {totalInventory} shirts</p>
+              <p className="text-sm text-blue-200">Inventory available: {totalInventory}</p>
             </section>
 
             <aside className="min-w-0 bg-gray-950/70 backdrop-blur rounded-2xl border border-yellow-400/30 p-4 sm:p-6 text-white h-fit">
-              <h3 className="text-xl font-bold mb-4">Choose your shirt</h3>
+              <h3 className="text-xl font-bold mb-4">Choose your item</h3>
 
-              <label className="block text-sm text-yellow-100 mb-2">Size</label>
+              {products.length > 1 && (
+                <div className="mb-5">
+                  <label className="block text-sm text-yellow-100 mb-2">Item</label>
+                  <div className="space-y-2">
+                    {products.map(storeProduct => (
+                      <button
+                        key={storeProduct.id}
+                        type="button"
+                        onClick={() => selectProduct(storeProduct.id)}
+                        className={`w-full p-3 rounded-lg border text-left transition ${
+                          product.id === storeProduct.id
+                            ? 'bg-yellow-400 text-black border-yellow-300'
+                            : 'bg-white/10 border-white/20 hover:bg-white/20'
+                        }`}
+                      >
+                        <div className="font-bold">{storeProduct.name}</div>
+                        <div className="text-xs">{storeProduct.priceSats.toLocaleString()} sats</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <label className="block text-sm text-yellow-100 mb-2">Option / Size</label>
               <div className="grid grid-cols-2 gap-2 mb-5">
                 {product.variants.map(variant => (
                   <button
@@ -319,7 +359,7 @@ export default function StorePage() {
               {checkoutStatus === 'pending' && checkoutData ? (
                 <div className="mt-5 p-4 bg-black/30 rounded-xl border border-yellow-400/30 text-center">
                   <h4 className="font-bold text-yellow-200 mb-1">Lightning checkout</h4>
-                  <p className="text-sm text-gray-300 mb-2">Pay {checkoutData.pricePaidSats.toLocaleString()} sats for a {checkoutData.size} shirt</p>
+                  <p className="text-sm text-gray-300 mb-2">Pay {checkoutData.pricePaidSats.toLocaleString()} sats for {product.name} ({checkoutData.size})</p>
                   <p className="text-xs text-orange-300 mb-3">Expires in {checkoutCountdown || '...'}</p>
                   <div className="bg-white p-3 rounded-lg inline-block mb-3">
                     <img
@@ -358,7 +398,7 @@ export default function StorePage() {
                 </Link>
               ) : balanceSats !== null && balanceSats >= finalPrice ? (
                 <button
-                  onClick={buyShirt}
+                  onClick={buyWithBalance}
                   disabled={buying || !selectedVariant || selectedVariant.quantityAvailable <= 0}
                   className="mt-5 w-full bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-black font-bold px-5 py-3 rounded-lg transition"
                 >
