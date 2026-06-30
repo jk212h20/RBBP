@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import MobileNav from '@/components/MobileNav';
-import { venuesAPI, eventsAPI } from '@/lib/api';
+import { venuesAPI, eventsAPI, venueMediaAPI } from '@/lib/api';
 
 interface Venue {
   id: string;
@@ -17,6 +17,14 @@ interface Venue {
   email: string | null;
   isActive: boolean;
   manager?: { id: string; name: string } | null;
+}
+
+interface VenueMedia {
+  id: string;
+  imageUrl: string;
+  caption?: string | null;
+  isMenu: boolean;
+  sortOrder: number;
 }
 
 interface Event {
@@ -36,6 +44,7 @@ export default function VenueDetailPage() {
   
   const [venue, setVenue] = useState<Venue | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
+  const [media, setMedia] = useState<VenueMedia[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -43,6 +52,7 @@ export default function VenueDetailPage() {
     if (venueId) {
       loadVenue();
       loadEvents();
+      loadMedia();
     }
   }, [venueId]);
 
@@ -54,6 +64,15 @@ export default function VenueDetailPage() {
       setError(err.message || 'Failed to load venue');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMedia = async () => {
+    try {
+      const data = await venueMediaAPI.list(venueId);
+      setMedia(data.media);
+    } catch (err) {
+      console.error('Failed to load venue media:', err);
     }
   };
 
@@ -93,6 +112,8 @@ export default function VenueDetailPage() {
 
   const upcomingEvents = events.filter(e => new Date(e.dateTime) > new Date() && e.status !== 'CANCELLED');
   const pastEvents = events.filter(e => new Date(e.dateTime) <= new Date() || e.status === 'COMPLETED');
+  const venuePhotos = media.filter(item => !item.isMenu);
+  const menuImages = media.filter(item => item.isMenu);
 
   return (
     <div className="min-h-screen page-gradient-venues text-white">
@@ -178,6 +199,38 @@ export default function VenueDetailPage() {
             </div>
           </div>
         </div>
+
+        {(menuImages.length > 0 || venuePhotos.length > 0) && (
+          <div className="grid lg:grid-cols-2 gap-8 mb-8">
+            {menuImages.length > 0 && (
+              <section className="bg-white/10 backdrop-blur rounded-2xl p-6">
+                <h2 className="text-2xl font-bold mb-4">📋 Menu</h2>
+                <div className="space-y-4">
+                  {menuImages.map(item => (
+                    <figure key={item.id}>
+                      <img src={item.imageUrl} alt={item.caption || `${venue.name} menu`} className="w-full max-h-[520px] object-contain rounded-lg bg-black/30 border border-white/20" />
+                      {item.caption && <figcaption className="text-gray-300 text-sm mt-2">{item.caption}</figcaption>}
+                    </figure>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {venuePhotos.length > 0 && (
+              <section className="bg-white/10 backdrop-blur rounded-2xl p-6">
+                <h2 className="text-2xl font-bold mb-4">📸 Photos</h2>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {venuePhotos.map(item => (
+                    <figure key={item.id}>
+                      <img src={item.imageUrl} alt={item.caption || `${venue.name} photo`} className="w-full h-48 object-cover rounded-lg bg-black/30 border border-white/20" />
+                      {item.caption && <figcaption className="text-gray-300 text-sm mt-2">{item.caption}</figcaption>}
+                    </figure>
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">

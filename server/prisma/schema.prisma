@@ -154,8 +154,25 @@ model Venue {
   venueApplications  VenueApplication[]
   invoices           VenueInvoice[]
   ledgerTransactions VenueLedgerTransaction[]
+  media              VenueMedia[]
 
   @@map("venues")
+}
+
+model VenueMedia {
+  id        String   @id @default(cuid())
+  venueId   String
+  imageUrl  String
+  caption   String?
+  isMenu    Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@index([venueId, isMenu])
+  @@map("venue_media")
 }
 
 // ============================================

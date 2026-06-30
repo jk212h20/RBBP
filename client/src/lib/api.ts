@@ -115,6 +115,25 @@ export const getGoogleAuthUrl = () => `${API_URL}/auth/google`;
 // ============================================
 // VENUES API
 // ============================================
+export const venueMediaAPI = {
+  list: (venueId: string) => fetchAPI<{ media: any[] }>(`/venue-media/venues/${venueId}/media`),
+
+  create: (venueId: string, data: { imageUrl: string; caption?: string | null; isMenu?: boolean; sortOrder?: number }) =>
+    fetchAPI<any>(`/venue-media/venues/${venueId}/media`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  update: (mediaId: string, data: { imageUrl?: string; caption?: string | null; isMenu?: boolean; sortOrder?: number }) =>
+    fetchAPI<any>(`/venue-media/media/${mediaId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (mediaId: string) =>
+    fetchAPI<{ success: boolean }>(`/venue-media/media/${mediaId}`, { method: 'DELETE' }),
+};
+
 export const venueFinanceAPI = {
   getAdminInvoices: (params?: { status?: string; venueId?: string }) => {
     const search = new URLSearchParams();

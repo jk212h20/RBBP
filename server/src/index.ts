@@ -26,6 +26,7 @@ import blogRoutes from './routes/blog.routes';
 import announcementRoutes from './routes/announcement.routes';
 import storeRoutes from './routes/store.routes';
 import venueFinanceRoutes from './routes/venue-finance.routes';
+import venueMediaRoutes from './routes/venue-media.routes';
 import { checkPendingVenueInvoices } from './services/venue-finance.service';
 
 // Load environment variables
@@ -207,6 +208,7 @@ app.use('/api/blog', blogRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/store', storeRoutes);
 app.use('/api/venue-finance', venueFinanceRoutes);
+app.use('/api/venue-media', venueMediaRoutes);
 
 // ============================================
 // ERROR HANDLING
