@@ -253,6 +253,7 @@ export default function AdminPage() {
       fetchStats();
       fetchVenues();
       fetchSeasons();
+      fetchUsers();
     }
   }, [user]);
 
