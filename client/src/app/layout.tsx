@@ -13,9 +13,21 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteDescription = "Play poker in restaurants around Roatan to win free Bitcoin!";
+
 export const metadata: Metadata = {
   title: "Roatan Bitcoin Bar Poker",
-  description: "Pub poker league management for Roatan",
+  description: siteDescription,
+  openGraph: {
+    title: "Roatan Bitcoin Bar Poker",
+    description: siteDescription,
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Roatan Bitcoin Bar Poker",
+    description: siteDescription,
+  },
 };
 
 export default function RootLayout({
