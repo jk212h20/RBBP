@@ -92,6 +92,9 @@ model User {
   sideBetsWon                SideBet[]          @relation("SideBetWinner")
   sideBetEntries             SideBetEntry[]
   storeOrders                StoreOrder[]
+  venueInvoicesCreated       VenueInvoice[] @relation("VenueInvoiceCreator")
+  venueInvoicesManager       VenueInvoice[] @relation("VenueInvoiceManager")
+  venueLedgerTransactions    VenueLedgerTransaction[]
 
   @@map("users")
 }
@@ -149,6 +152,8 @@ model Venue {
   manager            User?               @relation("VenueManager", fields: [managerId], references: [id])
   events             Event[]
   venueApplications  VenueApplication[]
+  invoices           VenueInvoice[]
+  ledgerTransactions VenueLedgerTransaction[]
 
   @@map("venues")
 }
@@ -521,6 +526,69 @@ model Announcement {
 
   @@index([isActive, sortOrder])
   @@map("announcements")
+}
+
+// ============================================
+// VENUE FINANCE
+// ============================================
+
+enum VenueInvoiceStatus {
+  PENDING
+  PAID
+  EXPIRED
+  CANCELLED
+  WAIVED
+  FAILED
+}
+
+model VenueInvoice {
+  id             String             @id @default(cuid())
+  venueId        String
+  managerId      String?
+  createdById    String
+  amountSats     Int
+  memo           String
+  internalNote   String?
+  status         VenueInvoiceStatus @default(PENDING)
+  paymentRequest String?
+  paymentHash    String?            @unique
+  expiresAt      DateTime?
+  dueAt          DateTime?
+  paidAt         DateTime?
+  cancelledAt    DateTime?
+  waivedAt       DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  venue       Venue  @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  manager     User?  @relation("VenueInvoiceManager", fields: [managerId], references: [id], onDelete: SetNull)
+  createdBy   User   @relation("VenueInvoiceCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  ledgerTransactions VenueLedgerTransaction[]
+
+  @@index([venueId])
+  @@index([managerId])
+  @@index([status])
+  @@map("venue_invoices")
+}
+
+model VenueLedgerTransaction {
+  id          String   @id @default(cuid())
+  venueId     String
+  invoiceId   String?
+  userId      String?
+  amountSats  Int
+  type        String
+  reason      String?
+  createdAt   DateTime @default(now())
+
+  venue   Venue         @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  invoice VenueInvoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  user    User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([venueId])
+  @@index([invoiceId])
+  @@map("venue_ledger_transactions")
 }
 
 // ============================================

@@ -25,6 +25,8 @@ import { checkPendingSideBetEntries, sideBetService } from './services/side-bet.
 import blogRoutes from './routes/blog.routes';
 import announcementRoutes from './routes/announcement.routes';
 import storeRoutes from './routes/store.routes';
+import venueFinanceRoutes from './routes/venue-finance.routes';
+import { checkPendingVenueInvoices } from './services/venue-finance.service';
 
 // Load environment variables
 dotenv.config();
@@ -204,6 +206,7 @@ app.use('/api/blog', blogRoutes);
 // Announcement routes (top-bar marquee)
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/store', storeRoutes);
+app.use('/api/venue-finance', venueFinanceRoutes);
 
 // ============================================
 // ERROR HANDLING
@@ -250,6 +253,9 @@ setInterval(() => {
   );
   checkPendingStoreOrders().catch(err =>
     console.error('Store checkout settlement error:', err)
+  );
+  checkPendingVenueInvoices().catch(err =>
+    console.error('Venue invoice settlement error:', err)
   );
   checkPendingSideBetEntries().catch(err =>
     console.error('Side bet settlement error:', err)

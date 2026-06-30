@@ -115,6 +115,41 @@ export const getGoogleAuthUrl = () => `${API_URL}/auth/google`;
 // ============================================
 // VENUES API
 // ============================================
+export const venueFinanceAPI = {
+  getAdminInvoices: (params?: { status?: string; venueId?: string }) => {
+    const search = new URLSearchParams();
+    if (params?.status) search.set('status', params.status);
+    if (params?.venueId) search.set('venueId', params.venueId);
+    const suffix = search.toString() ? `?${search.toString()}` : '';
+    return fetchAPI<{ invoices: any[] }>(`/venue-finance/admin/invoices${suffix}`);
+  },
+
+  createInvoice: (data: { venueId: string; amountSats: number; memo: string; internalNote?: string; dueAt?: string }) =>
+    fetchAPI<any>('/venue-finance/admin/invoices', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  adminCheckInvoice: (invoiceId: string) =>
+    fetchAPI<any>(`/venue-finance/admin/invoices/${invoiceId}/check`, { method: 'POST' }),
+
+  cancelInvoice: (invoiceId: string) =>
+    fetchAPI<any>(`/venue-finance/admin/invoices/${invoiceId}/cancel`, { method: 'POST' }),
+
+  waiveInvoice: (invoiceId: string) =>
+    fetchAPI<any>(`/venue-finance/admin/invoices/${invoiceId}/waive`, { method: 'POST' }),
+
+  regenerateInvoice: (invoiceId: string) =>
+    fetchAPI<any>(`/venue-finance/admin/invoices/${invoiceId}/regenerate`, { method: 'POST' }),
+
+  getMyInvoices: () => fetchAPI<{ invoices: any[] }>('/venue-finance/my/invoices'),
+
+  getMyInvoice: (invoiceId: string) => fetchAPI<any>(`/venue-finance/my/invoices/${invoiceId}`),
+
+  checkMyInvoice: (invoiceId: string) =>
+    fetchAPI<any>(`/venue-finance/my/invoices/${invoiceId}/check`, { method: 'POST' }),
+};
+
 export const venuesAPI = {
   getAll: (includeInactive = false) => 
     fetchAPI<any[]>(`/venues${includeInactive ? '?includeInactive=true' : ''}`),

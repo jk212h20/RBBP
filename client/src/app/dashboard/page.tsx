@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import MobileNav from '@/components/MobileNav';
 import { standingsAPI } from '@/lib/api';
+import VenueInvoicesPanel from '@/components/VenueInvoicesPanel';
 
 interface SeasonStanding {
   season: {
@@ -238,6 +239,12 @@ function DashboardContent() {
             <p className="text-white/60 text-sm">Edit your details</p>
           </Link>
         </div>
+
+        {(user.role === 'VENUE_MANAGER' || user.role === 'ADMIN') && (
+          <div className="mt-8">
+            <VenueInvoicesPanel mode="manager" />
+          </div>
+        )}
 
         {/* Admin Quick Access */}
         {user.role === 'ADMIN' && (
