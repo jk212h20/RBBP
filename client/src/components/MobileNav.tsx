@@ -71,7 +71,7 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
 
   return (
     <>
-    <header className="bg-black/30 backdrop-blur-sm border-b border-blue-700/50">
+    <header className="sticky top-0 z-40 bg-black/40 backdrop-blur-md border-b border-white/10 shadow-lg shadow-black/20">
       <div className="max-w-7xl mx-auto px-4 py-4">
         <div className="flex justify-between items-center">
           {/* Logo */}

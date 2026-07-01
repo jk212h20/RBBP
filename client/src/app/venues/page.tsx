@@ -15,6 +15,7 @@ interface Venue {
   email?: string;
   imageUrl?: string;
   menuUrl?: string;
+  hasMenu?: boolean;
   isActive: boolean;
   _count?: {
     events: number;
@@ -91,7 +92,7 @@ export default function VenuesPage() {
               <Link
                 key={venue.id}
                 href={`/venues/${venue.id}`}
-                className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 overflow-hidden hover:border-blue-500/50 transition block"
+                className="card-lift bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 overflow-hidden hover:border-blue-400/60 block"
               >
                 {venue.imageUrl && (
                   <div className="h-40 overflow-hidden">
@@ -130,7 +131,7 @@ export default function VenuesPage() {
                         ✉️ {venue.email}
                       </p>
                     )}
-                    {venue.menuUrl && (
+                    {(venue.hasMenu || venue.menuUrl) && (
                       <p className="flex items-center gap-2">
                         📋 Menu available
                       </p>

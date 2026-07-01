@@ -1,6 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import session from 'express-session';
 import dotenv from 'dotenv';
@@ -37,6 +38,9 @@ const PORT = process.env.PORT || 3001;
 
 // Security middleware
 app.use(helmet());
+
+// Gzip compression — big win for JSON payloads (events, venues, base64 images)
+app.use(compression());
 
 // CORS - allow multiple origins for development and production
 const allowedOrigins = [

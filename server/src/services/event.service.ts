@@ -273,7 +273,8 @@ export class EventService {
             id: true,
             name: true,
             address: true,
-            imageUrl: true,
+            // imageUrl intentionally excluded: it can be a large base64 blob and
+            // no consumer of the upcoming-events list renders the venue image.
           },
         },
         season: {

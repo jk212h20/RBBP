@@ -74,42 +74,27 @@ export default function HomePage() {
   }, []);
 
   const loadHomeData = async () => {
-    try {
-      // Load upcoming events
-      const events = await eventsAPI.getUpcoming(3);
-      setUpcomingEvents(events);
+    // Fire all requests in parallel — each section fails quietly on its own so a
+    // slow/broken endpoint never blocks the rest of the home page.
+    const loadEvents = eventsAPI.getUpcoming(3)
+      .then(events => setUpcomingEvents(events))
+      .catch(err => console.error('Failed to load upcoming events:', err));
 
-      // Load current season standings
-      try {
-        const season = await seasonsAPI.getCurrent();
-        if (season) {
-          const standings = await seasonsAPI.getStandings(season.id, 5);
-          setTopPlayers(standings);
-        }
-      } catch (err) {
-        // No active season, that's okay
-      }
+    const loadStandings = seasonsAPI.getCurrent()
+      .then(season => season ? seasonsAPI.getStandings(season.id, 5) : [])
+      .then(standings => setTopPlayers(standings))
+      .catch(() => { /* no active season, that's okay */ });
 
-      // Load latest blog posts (top 3). Fail quiet — blog is optional.
-      try {
-        const posts = await blogAPI.list();
-        setLatestPosts(posts.slice(0, 3));
-      } catch (err) {
-        // ignore
-      }
+    const loadPosts = blogAPI.list()
+      .then(posts => setLatestPosts(posts.slice(0, 3)))
+      .catch(() => { /* blog is optional */ });
 
-      // Load all active side bets. Fail quiet — side bets should not block the home page.
-      try {
-        const bets = await sideBetsAPI.listOpen();
-        setActiveSideBets(bets);
-      } catch (err) {
-        setActiveSideBets([]);
-      }
-    } catch (err) {
-      console.error('Failed to load home data:', err);
-    } finally {
-      setLoadingData(false);
-    }
+    const loadBets = sideBetsAPI.listOpen()
+      .then(bets => setActiveSideBets(bets))
+      .catch(() => setActiveSideBets([]));
+
+    await Promise.allSettled([loadEvents, loadStandings, loadPosts, loadBets]);
+    setLoadingData(false);
   };
 
   const formatDate = (dateString: string) => {
@@ -140,7 +125,7 @@ export default function HomePage() {
             priority
           />
           <div className="text-center md:text-left">
-            <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold text-white mb-3">
+            <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold mb-3 text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-cyan-200">
               Welcome to Roatan Bitcoin Bar Poker
             </h1>
             <p className="text-lg sm:text-xl md:text-2xl text-white/80 max-w-2xl">
@@ -152,7 +137,7 @@ export default function HomePage() {
               <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
                 <Link
                   href="/register"
-                  className="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition text-base"
+                  className="inline-flex items-center justify-center bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-semibold px-6 py-3 rounded-lg transition text-base shadow-lg shadow-blue-900/40"
                 >
                   Join Free
                 </Link>
@@ -178,8 +163,9 @@ export default function HomePage() {
               </Link>
             </div>
             {loadingData ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto"></div>
+              <div className="space-y-4" aria-hidden="true">
+                <div className="skeleton h-28 w-full"></div>
+                <div className="skeleton h-28 w-full"></div>
               </div>
             ) : upcomingEvents.length === 0 ? (
               <p className="text-white/60 text-center py-8">No upcoming events</p>
@@ -191,7 +177,7 @@ export default function HomePage() {
                     <Link
                       key={event.id}
                       href={`/events/${event.slug || event.id}`}
-                      className="block bg-white/5 rounded-xl hover:bg-white/10 transition overflow-hidden"
+                      className="card-lift block bg-white/5 rounded-xl hover:bg-white/10 border border-white/5 hover:border-white/15 overflow-hidden"
                     >
                       {/* Thumbnail image if exists */}
                       {event.imageUrl && (
@@ -255,8 +241,10 @@ export default function HomePage() {
               </Link>
             </div>
             {loadingData ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto"></div>
+              <div className="space-y-3" aria-hidden="true">
+                <div className="skeleton h-12 w-full"></div>
+                <div className="skeleton h-12 w-full"></div>
+                <div className="skeleton h-12 w-full"></div>
               </div>
             ) : topPlayers.length === 0 ? (
               <p className="text-white/60 text-center py-8">No standings yet</p>
@@ -305,7 +293,7 @@ export default function HomePage() {
                 <Link
                   key={post.id}
                   href={`/blog/${post.slug}`}
-                  className="block bg-white/5 rounded-xl hover:bg-white/10 transition overflow-hidden"
+                  className="card-lift block bg-white/5 rounded-xl hover:bg-white/10 border border-white/5 hover:border-white/15 overflow-hidden"
                 >
                   {post.coverImage && (
                     <div className="relative w-full h-32">
@@ -340,9 +328,7 @@ export default function HomePage() {
             </div>
 
             {loadingData ? (
-              <div className="text-center py-6">
-                <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-blue-400 mx-auto"></div>
-              </div>
+              <div className="skeleton h-16 w-full" aria-hidden="true"></div>
             ) : activeSideBets.length === 0 ? (
               <p className="text-white/60 text-center py-4">No event side bets are within 15 minutes of starting.</p>
             ) : (
@@ -351,7 +337,7 @@ export default function HomePage() {
                   <Link
                     key={bet.id}
                     href={`/bets/${bet.id}`}
-                    className="block bg-white/5 rounded-xl hover:bg-white/10 transition p-4 border border-white/5"
+                    className="card-lift block bg-white/5 rounded-xl hover:bg-white/10 p-4 border border-white/5 hover:border-white/15"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                       <div>

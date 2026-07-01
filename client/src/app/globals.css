@@ -12,12 +12,46 @@
   --font-mono: var(--font-geist-mono);
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   background: linear-gradient(to bottom right, #3d7a94, #5595b0, #2a5f78);
-  background-attachment: fixed;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
   min-height: 100vh;
+  text-rendering: optimizeLegibility;
+}
+
+/* Modern, accessible focus rings (keyboard users only) */
+:focus-visible {
+  outline: 2px solid #7dd3fc;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: rgba(59, 130, 246, 0.45);
+  color: #fff;
+}
+
+/* Subtle scrollbar that matches the dark glass theme */
+@media (pointer: fine) {
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.15);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 6px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
+  }
 }
 
 /* Unified page gradients: same saturated, fixed gradient language with
@@ -37,21 +71,66 @@ body {
 .page-gradient-admin { background: linear-gradient(to bottom right, #111827, #1e3a5f, #123f4d); }
 .page-gradient-bets { background: linear-gradient(to bottom right, #25306f, #245f92, #1f7868); }
 
-.page-gradient-home,
-.page-gradient-dashboard,
-.page-gradient-events,
-.page-gradient-event-detail,
-.page-gradient-venues,
-.page-gradient-leaderboard,
-.page-gradient-profile,
-.page-gradient-store,
-.page-gradient-blog,
-.page-gradient-faq,
-.page-gradient-puzzle,
-.page-gradient-auth,
-.page-gradient-admin,
-.page-gradient-bets {
-  background-attachment: fixed;
+/* `background-attachment: fixed` forces full-page repaints on every scroll
+   frame on mobile browsers (major jank/slowness source), so only enable it
+   on devices with a fine pointer (desktop). Mobile scrolls the gradient. */
+@media (hover: hover) and (pointer: fine) {
+  .page-gradient-home,
+  .page-gradient-dashboard,
+  .page-gradient-events,
+  .page-gradient-event-detail,
+  .page-gradient-venues,
+  .page-gradient-leaderboard,
+  .page-gradient-profile,
+  .page-gradient-store,
+  .page-gradient-blog,
+  .page-gradient-faq,
+  .page-gradient-puzzle,
+  .page-gradient-auth,
+  .page-gradient-admin,
+  .page-gradient-bets {
+    background-attachment: fixed;
+  }
+}
+
+/* Gentle page-entry animation — makes navigation feel snappier/more modern.
+   Disabled for users who prefer reduced motion. */
+@keyframes page-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+main {
+  animation: page-fade-in 0.25s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  main {
+    animation: none;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* Skeleton shimmer used while content loads (nicer than spinners) */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 0.9; }
+}
+.skeleton {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 0.75rem;
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+/* Reusable card hover lift for interactive cards */
+.card-lift {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .card-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -8px rgba(0, 0, 0, 0.45);
+  }
 }
 
 /* Announcement bar: horizontal marquee.

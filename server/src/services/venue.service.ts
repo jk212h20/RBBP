@@ -7,8 +7,8 @@ export class VenueService {
    */
   async getAllVenues(includeInactive = false) {
     const where = includeInactive ? {} : { isActive: true };
-    
-    return prisma.venue.findMany({
+
+    const venues = await prisma.venue.findMany({
       where,
       include: {
         manager: {
@@ -27,6 +27,18 @@ export class VenueService {
       orderBy: {
         name: 'asc',
       },
+    });
+
+    // Keep list payloads small: legacy menuUrl values can be multi-MB base64
+    // images. Lists only need to know a menu exists — the detail endpoint
+    // returns the full value.
+    return venues.map(venue => {
+      const isInlineMenu = !!venue.menuUrl && venue.menuUrl.startsWith('data:image/');
+      return {
+        ...venue,
+        menuUrl: isInlineMenu ? null : venue.menuUrl,
+        hasMenu: !!venue.menuUrl,
+      };
     });
   }
 

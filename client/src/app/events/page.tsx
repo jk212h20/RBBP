@@ -228,7 +228,7 @@ export default function EventsPage() {
     return (
       <div
         key={event.id}
-        className="bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 overflow-hidden hover:border-blue-500/50 transition"
+        className="card-lift bg-white/10 backdrop-blur-sm rounded-xl border border-blue-600/30 overflow-hidden hover:border-blue-400/60"
       >
         {/* Thumbnail image */}
         {event.imageUrl && (
