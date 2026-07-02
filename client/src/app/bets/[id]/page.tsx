@@ -24,6 +24,7 @@ interface SideBetDetail {
   totalPot: number;
   feeAmount: number;
   prizeAmount: number;
+  payouts: { userId: string; userName: string; position: number; place: 1 | 2 | 3; amountSats: number }[] | null;
   entries: { id: string; userId: string; userName: string; entryCount: number; paidAt: string | null }[];
 }
 
@@ -212,8 +213,27 @@ export default function SideBetDetailPage() {
           </div>
         </div>
 
-        {/* Winner Display */}
-        {bet.status === 'SETTLED' && bet.winner && (
+        {/* Settled payouts — event side bets can pay multiple places, so show
+            the actual breakdown instead of implying the winner took the pot. */}
+        {bet.status === 'SETTLED' && bet.payouts && bet.payouts.length > 0 ? (
+          <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-xl border border-yellow-500/30 p-5 mb-4">
+            <p className="text-yellow-300 text-sm font-medium mb-3 text-center">🏆 Payouts</p>
+            <div className="space-y-2">
+              {bet.payouts.map((p) => (
+                <div key={p.userId} className="flex items-center justify-between bg-black/20 rounded-lg px-4 py-2">
+                  <span className="text-white font-medium">
+                    {p.place === 1 ? '🥇' : p.place === 2 ? '🥈' : '🥉'} {p.userName}
+                    <span className="text-white/50 text-xs ml-2">finished #{p.position}</span>
+                  </span>
+                  <span className="text-yellow-300 font-bold">⚡ {p.amountSats.toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
+            {bet.feeAmount > 0 && (
+              <p className="text-yellow-200/60 text-xs mt-2 text-center">({bet.feePct}% fee: {bet.feeAmount.toLocaleString()} sats)</p>
+            )}
+          </div>
+        ) : bet.status === 'SETTLED' && bet.winner && (
           <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-xl border border-yellow-500/30 p-5 mb-4 text-center">
             <p className="text-yellow-300 text-sm font-medium mb-1">🏆 Winner</p>
             <p className="text-2xl font-bold text-white">{bet.winner.name}</p>

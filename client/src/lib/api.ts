@@ -1237,6 +1237,9 @@ export const sideBetsAPI = {
 
   adminCancel: (id: string) =>
     fetchAPI<any>(`/side-bets/admin/${id}/cancel`, { method: 'POST' }),
+
+  adminReopen: (id: string) =>
+    fetchAPI<any>(`/side-bets/admin/${id}/reopen`, { method: 'POST' }),
 };
 
 // Profile API (authenticated user's own profile)

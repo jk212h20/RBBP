@@ -547,6 +547,22 @@ export class SideBetService {
     });
     if (!sb) throw new Error('Side bet not found');
 
+    // For settled automatic event side bets, reconstruct the multi-place payout
+    // breakdown from the event results so the UI can show exactly who got paid
+    // what (instead of implying the "winner" took the whole pot).
+    let payouts: EventSideBetPreviewPayout[] | null = null;
+    if (sb.status === 'SETTLED' && sb.eventId && sb.creator.name === SIDE_BET_SYSTEM_ACCOUNT_NAME) {
+      const results = await prisma.result.findMany({
+        where: { eventId: sb.eventId },
+        orderBy: { position: 'asc' },
+        include: { user: { select: { id: true, name: true } } },
+      });
+      const preview = buildEventSideBetPreview(sb, results);
+      if (preview.ready && preview.payouts.length > 0) {
+        payouts = preview.payouts;
+      }
+    }
+
     const totalPot = sb.entries.reduce((sum, e) => sum + e.amountSats, 0);
     const feeAmount = Math.floor(totalPot * sb.feePct / 100);
     const prizeAmount = totalPot - feeAmount;
@@ -591,6 +607,7 @@ export class SideBetService {
       totalPot,
       feeAmount,
       prizeAmount,
+      payouts,
       entries: participants.map(p => ({
         id: p.userId,
         userId: p.userId,
@@ -845,6 +862,44 @@ export class SideBetService {
       totalPot,
       feeAmount,
       payouts: positivePayouts,
+    };
+  }
+
+  /**
+   * Admin reopen — restore a cancelled side bet so people can enter again.
+   * Entries were refunded at cancellation, so they are removed and the pot
+   * restarts at zero (players must re-enter and pay again).
+   */
+  async adminReopenSideBet(sideBetId: string) {
+    const sideBet = await prisma.sideBet.findUnique({
+      where: { id: sideBetId },
+      include: {
+        entries: { select: { id: true } },
+        event: { select: { id: true, name: true, status: true } },
+      },
+    });
+
+    if (!sideBet) throw new Error('Side bet not found');
+    if (sideBet.status !== 'CANCELLED') throw new Error('Only cancelled bets can be reopened');
+    if (sideBet.event && (sideBet.event.status === EventStatus.COMPLETED || sideBet.event.status === EventStatus.CANCELLED)) {
+      throw new Error('Cannot reopen a side bet for a completed or cancelled event');
+    }
+
+    // Remove old entries: they were refunded when the bet was cancelled, so
+    // leaving them would recreate a pot nobody has paid for. Deleting (rather
+    // than un-paying) also keeps the pending-payment checker from re-settling
+    // their already-paid invoices.
+    await prisma.$transaction([
+      prisma.sideBetEntry.deleteMany({ where: { sideBetId } }),
+      prisma.sideBet.update({
+        where: { id: sideBetId },
+        data: { status: 'OPEN', winnerId: null, settledAt: null },
+      }),
+    ]);
+
+    console.log(`[SideBet] Admin reopened cancelled side bet: sideBet=${sideBetId} clearedEntries=${sideBet.entries.length}`);
+    return {
+      message: `Side bet reopened. ${sideBet.entries.length > 0 ? `The ${sideBet.entries.length} previous entries were refunded at cancellation, so players need to enter again.` : 'Players can now enter.'}`,
     };
   }
 

@@ -90,6 +90,16 @@ router.post('/admin/:id/cancel', authenticate, requireAdmin, async (req: Request
   }
 });
 
+// Admin: reopen a cancelled side bet (entries were refunded, pot restarts empty)
+router.post('/admin/:id/reopen', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const result = await sideBetService.adminReopenSideBet(req.params.id);
+    res.json(result);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 // Get side bet details (after all named routes)
 router.get('/:id', async (req: Request, res: Response) => {
   try {

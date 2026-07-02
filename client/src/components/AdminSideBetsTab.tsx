@@ -92,6 +92,21 @@ export default function AdminSideBetsTab() {
     }
   };
 
+  const handleReopen = async (betId: string) => {
+    if (!confirm('Reopen this bet? Previous entries were refunded when it was cancelled, so the pot restarts empty and players must enter again.')) return;
+    setActionLoading(betId);
+    setError('');
+    try {
+      const result = await sideBetsAPI.adminReopen(betId);
+      setSuccess(result.message);
+      loadBets();
+    } catch (err: any) {
+      setError(err.message || 'Failed to reopen');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleUpdateFee = async () => {
     const val = parseFloat(feeInput);
     if (isNaN(val) || val < 0 || val > 50) {
@@ -338,6 +353,22 @@ export default function AdminSideBetsTab() {
                         >
                           ✕ Cancel & Refund
                         </button>
+                      </div>
+                    )}
+
+                    {/* Reopen a cancelled bet (only if its event hasn't finished) */}
+                    {bet.status === 'CANCELLED' && (
+                      <div className="pt-2 border-t border-white/10">
+                        <button
+                          onClick={() => handleReopen(bet.id)}
+                          disabled={isActioning}
+                          className="bg-green-600/20 hover:bg-green-600/30 text-green-300 px-3 py-1.5 rounded text-xs font-medium border border-green-500/30"
+                        >
+                          {isActioning ? '...' : '↺ Reopen Bet'}
+                        </button>
+                        <p className="text-blue-300/50 text-xs mt-1">
+                          Entries were refunded at cancellation — reopening restarts the pot at zero.
+                        </p>
                       </div>
                     )}
 
