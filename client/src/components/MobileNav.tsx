@@ -40,6 +40,18 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Lock page scroll while the mobile menu is open so swipes scroll the menu
+  // itself (it has its own scrollbar) instead of the page behind it.
+  useEffect(() => {
+    if (isOpen) {
+      const previous = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = previous;
+      };
+    }
+  }, [isOpen]);
+
   // Top-level links shown directly in the bar.
   const topLinks: NavItem[] = [
     { href: '/leaderboard', label: 'Leaderboard', key: 'leaderboard' },
@@ -47,11 +59,12 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
   ];
 
   // Grouped dropdown menus to reduce clutter.
+  // "Sign Up" only makes sense for logged-out visitors.
   const groups: { title: string; items: NavItem[] }[] = [
     {
       title: 'Find A Game',
       items: [
-        { href: '/register', label: 'Sign Up' },
+        ...(!isAuthenticated ? [{ href: '/register', label: 'Sign Up' }] : []),
         { href: '/events', label: 'Events', key: 'events' },
         { href: '/puzzle', label: '🧩 Daily Puzzle', key: 'puzzle' },
         { href: 'https://btcpokerchamp.com', label: 'BTC Poker Champ August', external: true },
@@ -219,9 +232,10 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
           </button>
         </div>
 
-        {/* Mobile Menu */}
+        {/* Mobile Menu — scrolls within itself (capped below the header) so
+            Logout is always reachable without scrolling the page behind. */}
         {isOpen && (
-          <nav className="md:hidden mt-4 pb-4 border-t border-blue-700/50 pt-4">
+          <nav className="md:hidden mt-4 pb-4 border-t border-blue-700/50 pt-4 max-h-[calc(100dvh-96px)] overflow-y-auto overscroll-contain">
             <div className="flex flex-col space-y-3">
               {/* Home */}
               <Link
