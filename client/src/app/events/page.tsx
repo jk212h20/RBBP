@@ -49,7 +49,12 @@ function formatCountdown(targetDate: Date): string {
   const now = new Date();
   const diff = targetDate.getTime() - now.getTime();
 
-  if (diff <= 0) return 'Starting now';
+  if (diff <= 0) {
+    // Event already started — still listed during the grace window.
+    const elapsedMin = Math.floor(-diff / (1000 * 60));
+    if (elapsedMin < 5) return 'Starting now';
+    return '🔴 Live now';
+  }
 
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -189,7 +194,14 @@ export default function EventsPage() {
     return badges[status] || 'bg-gray-100 text-gray-800';
   };
 
-  const isUpcoming = (event: Event) => new Date(event.dateTime) > new Date() && event.status !== 'COMPLETED';
+  // Treat an event as "upcoming" (prominent) until 6h after start, unless it
+  // has been completed/cancelled. Keeps the current event visible for players
+  // arriving at the venue to sign up or enter the last-longer.
+  const EVENT_GRACE_MS = 6 * 60 * 60 * 1000;
+  const isUpcoming = (event: Event) =>
+    new Date(event.dateTime).getTime() + EVENT_GRACE_MS > Date.now() &&
+    event.status !== 'COMPLETED' &&
+    event.status !== 'CANCELLED';
 
   // Sort events: upcoming first (soonest first), then completed/past (most recent first)
   const sortedEvents = [...events].sort((a, b) => {

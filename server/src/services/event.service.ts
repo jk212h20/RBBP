@@ -260,11 +260,17 @@ export class EventService {
    * Get upcoming events
    */
   async getUpcomingEvents(limit = 10) {
+    // Keep the current event visible for a grace window after it starts so
+    // players can still sign up / enter the last-longer at the venue. The
+    // event only drops off once completed/cancelled or the window passes.
+    const graceHours = parseInt(process.env.EVENT_HOME_GRACE_HOURS || '6', 10);
+    const windowStart = new Date(Date.now() - graceHours * 60 * 60 * 1000);
+
     const events = await prisma.event.findMany({
       where: {
-        dateTime: { gte: new Date() },
+        dateTime: { gte: windowStart },
         status: {
-          in: [EventStatus.SCHEDULED, EventStatus.REGISTRATION_OPEN],
+          in: [EventStatus.SCHEDULED, EventStatus.REGISTRATION_OPEN, EventStatus.IN_PROGRESS],
         },
       },
       include: {

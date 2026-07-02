@@ -33,11 +33,6 @@ const statusStyles: Record<VenueInvoice['status'], string> = {
   FAILED: 'bg-red-900/50 text-red-200 border-red-600/50',
 };
 
-function isMobileDevice() {
-  if (typeof window === 'undefined') return false;
-  return /Android|iPhone|iPad|iPod/i.test(window.navigator.userAgent || '');
-}
-
 export default function VenueInvoicesPanel({ mode }: Props) {
   const isAdmin = mode === 'admin';
   const [invoices, setInvoices] = useState<VenueInvoice[]>([]);
@@ -171,7 +166,6 @@ export default function VenueInvoicesPanel({ mode }: Props) {
           <div className="divide-y divide-gray-700">
             {invoices.map(invoice => {
               const expanded = expandedId === invoice.id;
-              const lightningHref = isMobileDevice() && invoice.paymentRequest ? `phoenix:lightning:${invoice.paymentRequest}` : `lightning:${invoice.paymentRequest}`;
               return (
                 <div key={invoice.id} className="p-4">
                   <button onClick={() => setExpandedId(expanded ? null : invoice.id)} className="w-full text-left flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -202,8 +196,11 @@ export default function VenueInvoicesPanel({ mode }: Props) {
                         <div className="flex flex-wrap gap-2 pt-2">
                           {invoice.status === 'PENDING' && invoice.paymentRequest && (
                             <>
-                              <a href={lightningHref} className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-4 py-2 rounded-lg">
-                                Open Phoenix and Pay
+                              <a href={`phoenix:lightning:${invoice.paymentRequest}`} className="bg-orange-500 hover:bg-orange-600 text-black font-bold px-4 py-2 rounded-lg">
+                                📱 Open in Phoenix
+                              </a>
+                              <a href={`lightning:${invoice.paymentRequest}`} className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-4 py-2 rounded-lg">
+                                ⚡ Open in Other Wallet
                               </a>
                               <button onClick={() => copyInvoice(invoice)} className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg">
                                 {copiedId === invoice.id ? 'Copied!' : 'Copy Invoice'}

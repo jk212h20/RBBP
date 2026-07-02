@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import MobileNav from '@/components/MobileNav';
 import { eventsAPI, authAPI, standingsAPI, balanceAPI, withdrawalsAPI, playersAPI, sideBetsAPI } from '@/lib/api';
 import ReferralTab from '@/components/ReferralTab';
+import InvoiceActions from '@/components/InvoiceActions';
 
 interface UserEvent {
   id: string;
@@ -161,7 +162,6 @@ export default function ProfilePage() {
   } | null>(null);
   const [depositStatus, setDepositStatus] = useState<'amount' | 'pending' | 'settled' | 'expired' | 'failed' | 'error'>('amount');
   const [depositError, setDepositError] = useState('');
-  const [copiedDepositInvoice, setCopiedDepositInvoice] = useState(false);
   const [depositCountdown, setDepositCountdown] = useState('');
   const [depositLimits, setDepositLimits] = useState({
     minDepositSats: 100,
@@ -407,7 +407,6 @@ export default function ProfilePage() {
     setDepositData(null);
     setDepositStatus('amount');
     setDepositError('');
-    setCopiedDepositInvoice(false);
     setDepositCountdown('');
   };
 
@@ -428,7 +427,6 @@ export default function ProfilePage() {
 
     setDepositing(true);
     setDepositError('');
-    setCopiedDepositInvoice(false);
     try {
       const result = await balanceAPI.deposit(amountSats);
       setDepositData({
@@ -445,17 +443,6 @@ export default function ProfilePage() {
       setDepositStatus('error');
     } finally {
       setDepositing(false);
-    }
-  };
-
-  const copyDepositInvoice = async () => {
-    if (!depositData) return;
-    try {
-      await navigator.clipboard.writeText(depositData.paymentRequest);
-      setCopiedDepositInvoice(true);
-      setTimeout(() => setCopiedDepositInvoice(false), 2000);
-    } catch (err) {
-      setDepositError('Could not copy invoice. Select and copy it manually.');
     }
   };
 
@@ -1586,20 +1573,7 @@ export default function ProfilePage() {
                       className="w-52 h-52"
                     />
                   </div>
-                  <div className="flex flex-col sm:flex-row gap-3 w-full max-w-md">
-                    <a
-                      href={depositData.lightningUri}
-                      className="flex-1 text-center bg-orange-500 hover:bg-orange-600 text-black font-bold px-4 py-3 rounded-lg transition"
-                    >
-                      📱 Open in Wallet
-                    </a>
-                    <button
-                      onClick={copyDepositInvoice}
-                      className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold px-4 py-3 rounded-lg transition"
-                    >
-                      {copiedDepositInvoice ? '✅ Copied' : '📋 Copy Invoice'}
-                    </button>
-                  </div>
+                  <InvoiceActions value={depositData.paymentRequest} />
                   <div className="flex items-center gap-2 text-yellow-200 text-sm">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-400"></div>
                     Waiting for payment...
@@ -1757,16 +1731,11 @@ export default function ProfilePage() {
                         className="w-48 h-48"
                       />
                     </div>
-                    <div className="text-center">
+                    <div className="text-center w-full">
                       <p className="text-yellow-200 text-sm mb-2">
-                        Scan with your Lightning wallet or click below:
+                        Scan with your Lightning wallet or use the buttons below:
                       </p>
-                      <a
-                        href={withdrawalData.lightningUri}
-                        className="inline-block bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-4 py-2 rounded-lg transition"
-                      >
-                        📱 Open in Wallet
-                      </a>
+                      <InvoiceActions value={withdrawalData.qrData} copyLabel="Copy Withdraw Code" />
                     </div>
                     <div className="text-center text-xs text-gray-300 mt-2">
                       <p>If you don't complete the withdrawal, you can cancel it now or it will be refunded when it expires (24 hours).</p>

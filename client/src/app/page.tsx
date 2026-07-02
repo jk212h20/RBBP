@@ -43,7 +43,13 @@ function formatCountdown(dateString: string): string {
   const eventTime = new Date(dateString).getTime();
   const diff = eventTime - now;
 
-  if (diff <= 0) return 'Starting now!';
+  if (diff <= 0) {
+    // Event already started — still shown during the grace window so people
+    // at the venue can register / join the last-longer.
+    const elapsedMin = Math.floor(-diff / (1000 * 60));
+    if (elapsedMin < 5) return 'Starting now!';
+    return '🔴 Live now';
+  }
 
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import MobileNav from '@/components/MobileNav';
 import { useAuth } from '@/context/AuthContext';
 import { sideBetsAPI, eventsAPI } from '@/lib/api';
+import InvoiceActions from '@/components/InvoiceActions';
 
 export default function CreateSideBetPage() {
   const { isAuthenticated, loading } = useAuth();
@@ -180,14 +181,7 @@ export default function CreateSideBetPage() {
                     className="w-48 h-48"
                   />
                 </div>
-                <div>
-                  <button
-                    onClick={() => navigator.clipboard.writeText(invoice.paymentRequest)}
-                    className="text-blue-300 hover:text-blue-200 text-xs"
-                  >
-                    📋 Copy Invoice
-                  </button>
-                </div>
+                <InvoiceActions value={invoice.paymentRequest} />
                 <button
                   onClick={() => { setInvoice(null); setBetId(''); }}
                   className="text-gray-400 hover:text-white text-sm mt-4"

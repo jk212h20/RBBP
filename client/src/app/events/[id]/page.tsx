@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import MobileNav from '@/components/MobileNav';
 import RegistrantsPanel from '@/components/RegistrantsPanel';
+import InvoiceActions from '@/components/InvoiceActions';
 import { eventsAPI, sideBetsAPI } from '@/lib/api';
 
 interface EventDetail {
@@ -1254,13 +1255,10 @@ export default function EventDetailPage() {
                         <p className="text-gray-800 text-xs font-mono break-all select-all mb-2">
                           {lastLongerInvoice.paymentRequest.slice(0, 60)}...
                         </p>
-                        <button
-                          onClick={() => navigator.clipboard.writeText(lastLongerInvoice.paymentRequest)}
-                          className="text-purple-600 text-sm hover:text-purple-800 font-medium"
-                        >
-                          📋 Copy Invoice
-                        </button>
                       </div>
+                    </div>
+                    <div className="mt-3">
+                      <InvoiceActions value={lastLongerInvoice.paymentRequest} />
                     </div>
                     {paymentPolling && (
                       <div className="flex items-center justify-center gap-2 mt-3">
@@ -2162,12 +2160,7 @@ export default function EventDetailPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <button
-                    onClick={() => navigator.clipboard.writeText(sideBetInvoice.paymentRequest)}
-                    className="text-blue-300 hover:text-blue-200 text-xs underline"
-                  >
-                    Copy invoice
-                  </button>
+                  <InvoiceActions value={sideBetInvoice.paymentRequest} />
                   <button
                     onClick={() => setSideBetInvoice(null)}
                     className="block mx-auto text-gray-400 hover:text-white text-sm"
@@ -2230,14 +2223,9 @@ export default function EventDetailPage() {
                     className="w-full h-auto"
                   />
                 </div>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(payInvoice.paymentRequest).catch(() => {});
-                  }}
-                  className="mt-3 w-full text-blue-300 hover:text-blue-200 text-xs underline"
-                >
-                  Copy invoice
-                </button>
+                <div className="mt-3">
+                  <InvoiceActions value={payInvoice.paymentRequest} />
+                </div>
                 <p className="text-center text-white/60 text-xs mt-3">
                   {paymentChecking ? 'Checking for payment…' : 'Waiting for payment…'}
                 </p>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { withdrawalsAPI } from '@/lib/api';
+import InvoiceActions from './InvoiceActions';
 
 interface User {
   id: string;
@@ -367,14 +368,11 @@ export default function WithdrawalsTab({ users, fetchUsers, setMessage, setError
               <p className="text-yellow-200/70 text-xs">Tap <strong className="text-yellow-300">SEND</strong> first, then scan this QR code to receive your sats.</p>
             </div>
             
-            {/* Mobile Link */}
-            <a
-              href={newWithdrawal.lightningUri}
-              className="block w-full bg-yellow-600 hover:bg-yellow-700 text-white py-3 rounded font-semibold mb-3"
-            >
-              📱 Open in Wallet
-            </a>
-            
+            {/* Wallet links + copy */}
+            <div className="mb-3">
+              <InvoiceActions value={newWithdrawal.qrData} copyLabel="Copy Withdraw Code" />
+            </div>
+
             <button
               onClick={() => setNewWithdrawal(null)}
               className="w-full bg-gray-600 hover:bg-gray-500 text-white py-2 rounded"
@@ -417,14 +415,11 @@ export default function WithdrawalsTab({ users, fetchUsers, setMessage, setError
                   <p className="text-yellow-200/70 text-xs">Tap <strong className="text-yellow-300">SEND</strong> first, then scan this QR code to receive your sats.</p>
                 </div>
                 
-                {/* Mobile Link */}
-                {selectedWithdrawal.lightningUri && (
-                  <a
-                    href={selectedWithdrawal.lightningUri}
-                    className="block w-full bg-yellow-600 hover:bg-yellow-700 text-white py-3 rounded font-semibold mb-3"
-                  >
-                    📱 Open in Wallet
-                  </a>
+                {/* Wallet links + copy */}
+                {selectedWithdrawal.qrData && (
+                  <div className="mb-3">
+                    <InvoiceActions value={selectedWithdrawal.qrData} copyLabel="Copy Withdraw Code" />
+                  </div>
                 )}
               </>
             ) : (

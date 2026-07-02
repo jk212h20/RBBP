@@ -5,6 +5,7 @@ import Link from 'next/link';
 import MobileNav from '@/components/MobileNav';
 import { useAuth } from '@/context/AuthContext';
 import { balanceAPI, storeAPI, type StoreProduct } from '@/lib/api';
+import InvoiceActions from '@/components/InvoiceActions';
 
 export default function StorePage() {
   const { isAuthenticated } = useAuth();
@@ -29,7 +30,6 @@ export default function StorePage() {
   } | null>(null);
   const [checkoutStatus, setCheckoutStatus] = useState<'idle' | 'pending' | 'paid' | 'expired' | 'failed'>('idle');
   const [checkoutCountdown, setCheckoutCountdown] = useState('');
-  const [copiedInvoice, setCopiedInvoice] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -126,7 +126,6 @@ export default function StorePage() {
     setCheckoutData(null);
     setCheckoutStatus('idle');
     setCheckoutCountdown('');
-    setCopiedInvoice(false);
   };
 
   const applyPromo = async () => {
@@ -210,17 +209,6 @@ export default function StorePage() {
     setPromoCode('');
     setPromo(null);
     resetCheckout();
-  };
-
-  const copyInvoice = async () => {
-    if (!checkoutData) return;
-    try {
-      await navigator.clipboard.writeText(checkoutData.paymentRequest);
-      setCopiedInvoice(true);
-      setTimeout(() => setCopiedInvoice(false), 2000);
-    } catch (err) {
-      setError('Could not copy invoice. Select and copy it manually.');
-    }
   };
 
   return (
@@ -368,14 +356,7 @@ export default function StorePage() {
                       className="w-48 h-48"
                     />
                   </div>
-                  <div className="grid gap-2">
-                    <a href={checkoutData.lightningUri} className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-4 py-3 rounded-lg transition">
-                      Open in Wallet
-                    </a>
-                    <button onClick={copyInvoice} className="bg-white/10 hover:bg-white/20 px-4 py-3 rounded-lg font-semibold">
-                      {copiedInvoice ? 'Copied!' : 'Copy Invoice'}
-                    </button>
-                  </div>
+                  <InvoiceActions value={checkoutData.paymentRequest} />
                   <div className="flex items-center justify-center gap-2 text-sm text-yellow-100 mt-3">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-300"></div>
                     Waiting for payment...

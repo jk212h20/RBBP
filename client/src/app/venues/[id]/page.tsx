@@ -110,8 +110,15 @@ export default function VenueDetailPage() {
     );
   }
 
-  const upcomingEvents = events.filter(e => new Date(e.dateTime) > new Date() && e.status !== 'CANCELLED');
-  const pastEvents = events.filter(e => new Date(e.dateTime) <= new Date() || e.status === 'COMPLETED');
+  // Keep events "upcoming" for 6h after start (unless completed/cancelled)
+  // so the current event stays visible while it's running.
+  const EVENT_GRACE_MS = 6 * 60 * 60 * 1000;
+  const isUpcomingEvent = (e: Event) =>
+    new Date(e.dateTime).getTime() + EVENT_GRACE_MS > Date.now() &&
+    e.status !== 'COMPLETED' &&
+    e.status !== 'CANCELLED';
+  const upcomingEvents = events.filter(isUpcomingEvent);
+  const pastEvents = events.filter(e => !isUpcomingEvent(e));
   const venuePhotos = media.filter(item => !item.isMenu);
   const menuImages = media.filter(item => item.isMenu);
 
