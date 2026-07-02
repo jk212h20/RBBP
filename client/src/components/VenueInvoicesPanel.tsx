@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { venueFinanceAPI, venuesAPI } from '@/lib/api';
+import InvoiceActions from './InvoiceActions';
 
 type VenueInvoice = {
   id: string;
@@ -42,7 +43,6 @@ export default function VenueInvoicesPanel({ mode }: Props) {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [form, setForm] = useState({ venueId: '', amountSats: '', memo: '', internalNote: '', dueAt: '' });
 
   useEffect(() => {
@@ -97,13 +97,6 @@ export default function VenueInvoicesPanel({ mode }: Props) {
     if (isAdmin) await venueFinanceAPI.adminCheckInvoice(invoice.id);
     else await venueFinanceAPI.checkMyInvoice(invoice.id);
   }, 'Invoice status checked');
-
-  const copyInvoice = async (invoice: VenueInvoice) => {
-    if (!invoice.paymentRequest) return;
-    await navigator.clipboard.writeText(invoice.paymentRequest);
-    setCopiedId(invoice.id);
-    setTimeout(() => setCopiedId(null), 1800);
-  };
 
   if (loading) return <div className="text-gray-400 py-8">Loading venue bills...</div>;
 
@@ -194,19 +187,6 @@ export default function VenueInvoicesPanel({ mode }: Props) {
                         {invoice.internalNote && isAdmin && <div><span className="text-gray-400">Internal note:</span> {invoice.internalNote}</div>}
 
                         <div className="flex flex-wrap gap-2 pt-2">
-                          {invoice.status === 'PENDING' && invoice.paymentRequest && (
-                            <>
-                              <a href={`phoenix:lightning:${invoice.paymentRequest}`} className="bg-orange-500 hover:bg-orange-600 text-black font-bold px-4 py-2 rounded-lg">
-                                📱 Open in Phoenix
-                              </a>
-                              <a href={`lightning:${invoice.paymentRequest}`} className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-4 py-2 rounded-lg">
-                                ⚡ Open in Other Wallet
-                              </a>
-                              <button onClick={() => copyInvoice(invoice)} className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg">
-                                {copiedId === invoice.id ? 'Copied!' : 'Copy Invoice'}
-                              </button>
-                            </>
-                          )}
                           {invoice.status === 'PENDING' && <button onClick={() => checkInvoice(invoice)} disabled={saving} className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg">Check Payment</button>}
                           {isAdmin && invoice.status === 'PENDING' && <button onClick={() => withAction(() => venueFinanceAPI.cancelInvoice(invoice.id), 'Invoice cancelled')} disabled={saving} className="bg-gray-600 hover:bg-gray-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg">Cancel</button>}
                           {isAdmin && invoice.status === 'PENDING' && <button onClick={() => withAction(() => venueFinanceAPI.waiveInvoice(invoice.id), 'Invoice waived')} disabled={saving} className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg">Waive</button>}
@@ -219,12 +199,15 @@ export default function VenueInvoicesPanel({ mode }: Props) {
                       </div>
 
                       {invoice.status === 'PENDING' && invoice.paymentRequest && (
-                        <div className="flex flex-col items-center justify-center bg-white rounded-lg p-4">
-                          <img
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(invoice.paymentRequest)}`}
-                            alt="Venue invoice QR"
-                            className="w-56 h-56"
-                          />
+                        <div className="flex flex-col items-center gap-3">
+                          <div className="flex flex-col items-center justify-center bg-white rounded-lg p-4">
+                            <img
+                              src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(invoice.paymentRequest)}`}
+                              alt="Venue invoice QR"
+                              className="w-56 h-56"
+                            />
+                          </div>
+                          <InvoiceActions value={invoice.paymentRequest} />
                         </div>
                       )}
                     </div>

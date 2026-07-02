@@ -1,16 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+
+function isMobileDevice() {
+  if (typeof window === 'undefined') return false;
+  const ua = window.navigator.userAgent || '';
+  if (/Android|iPhone|iPod/i.test(ua)) return true;
+  // iPadOS 13+ reports as MacIntel but has touch support
+  return navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+}
 
 /**
- * Standard action row shown under every Lightning invoice / LNURL QR code:
- *  - Open in Phoenix (phoenix:lightning:<code>) — works on iOS + Android
- *  - Open in another wallet (lightning:<code>)
- *  - Copy — always copies the raw BOLT11 invoice / LNURL text, never a URL.
+ * Standard action row shown under every Lightning invoice / LNURL QR code.
  *
- * Users long-pressing the QR image on mobile end up copying the QR image URL
- * (api.qrserver.com/...), which wallets reject. This component gives them a
- * reliable copy button instead.
+ * Mobile-first: on a phone the user can't scan the QR they're looking at, so
+ * the design assumes and encourages ONE action — a single big button that
+ * opens the invoice directly in Phoenix. Other wallets and copy are small
+ * secondary options.
+ *
+ * Desktop: QR scanning is the primary flow, so buttons are compact fallbacks
+ * (generic lightning: link + copy).
  */
 export default function InvoiceActions({
   value,
@@ -21,6 +30,11 @@ export default function InvoiceActions({
   copyLabel?: string;
 }) {
   const [copied, setCopied] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(isMobileDevice());
+  }, []);
 
   const copy = async () => {
     try {
@@ -46,19 +60,38 @@ export default function InvoiceActions({
 
   if (!value) return null;
 
+  if (isMobile) {
+    return (
+      <div className="flex flex-col gap-2 w-full max-w-xs mx-auto">
+        {/* THE button — one tap opens the invoice in Phoenix */}
+        <a
+          href={`phoenix:lightning:${value}`}
+          className="block text-center bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-black font-extrabold text-lg px-6 py-4 rounded-xl shadow-lg shadow-orange-900/40 transition active:scale-[0.98]"
+        >
+          ⚡ Pay with Phoenix
+        </a>
+        {/* Secondary options, deliberately quiet */}
+        <div className="flex items-center justify-center gap-4 text-sm">
+          <a href={`lightning:${value}`} className="text-blue-300 hover:text-blue-200 underline underline-offset-2">
+            Other wallet
+          </a>
+          <span className="text-white/20">|</span>
+          <button type="button" onClick={copy} className="text-blue-300 hover:text-blue-200 underline underline-offset-2">
+            {copied ? '✅ Copied!' : copyLabel}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop: scanning the QR is the primary flow; compact fallbacks below.
   return (
     <div className="flex flex-col gap-2 w-full max-w-xs mx-auto">
-      <a
-        href={`phoenix:lightning:${value}`}
-        className="block text-center bg-orange-500 hover:bg-orange-600 text-black font-bold px-4 py-2.5 rounded-lg transition"
-      >
-        📱 Open in Phoenix
-      </a>
       <a
         href={`lightning:${value}`}
         className="block text-center bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-4 py-2.5 rounded-lg transition"
       >
-        ⚡ Open in Other Wallet
+        ⚡ Open in Wallet
       </a>
       <button
         type="button"
