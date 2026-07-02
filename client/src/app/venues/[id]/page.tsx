@@ -110,11 +110,12 @@ export default function VenueDetailPage() {
     );
   }
 
-  // Keep events "upcoming" for 6h after start (unless completed/cancelled)
-  // so the current event stays visible while it's running.
-  const EVENT_GRACE_MS = 6 * 60 * 60 * 1000;
+  // Events stay "upcoming" until results are submitted (COMPLETED) or the
+  // event is cancelled — not merely because the start time passed — so the
+  // running event stays easy to find. 7-day cap for result-less events.
+  const EVENT_STALE_MS = 7 * 24 * 60 * 60 * 1000;
   const isUpcomingEvent = (e: Event) =>
-    new Date(e.dateTime).getTime() + EVENT_GRACE_MS > Date.now() &&
+    new Date(e.dateTime).getTime() + EVENT_STALE_MS > Date.now() &&
     e.status !== 'COMPLETED' &&
     e.status !== 'CANCELLED';
   const upcomingEvents = events.filter(isUpcomingEvent);

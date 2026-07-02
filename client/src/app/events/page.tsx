@@ -194,12 +194,15 @@ export default function EventsPage() {
     return badges[status] || 'bg-gray-100 text-gray-800';
   };
 
-  // Treat an event as "upcoming" (prominent) until 6h after start, unless it
-  // has been completed/cancelled. Keeps the current event visible for players
-  // arriving at the venue to sign up or enter the last-longer.
-  const EVENT_GRACE_MS = 6 * 60 * 60 * 1000;
+  // An event stays in the "Upcoming" section until its results are submitted
+  // (status becomes COMPLETED) or it is cancelled — not merely because its
+  // start time passed. This keeps the current event easy to find for players
+  // wanting to rebuy, sign up late, or enter the last-longer. A 7-day safety
+  // cap prevents events whose results were never entered from lingering
+  // forever.
+  const EVENT_STALE_MS = 7 * 24 * 60 * 60 * 1000;
   const isUpcoming = (event: Event) =>
-    new Date(event.dateTime).getTime() + EVENT_GRACE_MS > Date.now() &&
+    new Date(event.dateTime).getTime() + EVENT_STALE_MS > Date.now() &&
     event.status !== 'COMPLETED' &&
     event.status !== 'CANCELLED';
 

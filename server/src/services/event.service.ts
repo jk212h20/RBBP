@@ -204,7 +204,15 @@ export class EventService {
       where.status = filters.status;
     }
     if (filters?.upcoming) {
-      where.dateTime = { gte: new Date() };
+      // "Upcoming" keeps events visible after their start time until results
+      // are submitted (COMPLETED) or the event is cancelled, so players can
+      // still find the running event to rebuy / enter the last-longer.
+      // A 7-day cap stops result-less events from lingering forever.
+      const staleCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      where.dateTime = { gte: staleCutoff };
+      where.status = where.status || {
+        in: [EventStatus.SCHEDULED, EventStatus.REGISTRATION_OPEN, EventStatus.IN_PROGRESS],
+      };
     }
 
     const events = await prisma.event.findMany({
