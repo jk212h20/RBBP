@@ -20,21 +20,11 @@ export default function LoginPage() {
   } | null>(null);
   const [pollingLightning, setPollingLightning] = useState(false);
   const [copiedLnurl, setCopiedLnurl] = useState(false);
-  const [usePhoenixLink, setUsePhoenixLink] = useState(false);
 
   const { login, loginWithToken, isAuthenticated } = useAuth();
   const router = useRouter();
 
   const [lightningError, setLightningError] = useState('');
-
-  useEffect(() => {
-    const ua = window.navigator.userAgent || '';
-    const platform = window.navigator.platform || '';
-    const maxTouchPoints = window.navigator.maxTouchPoints || 0;
-    const isIOS = /iPad|iPhone|iPod/.test(ua) || (platform === 'MacIntel' && maxTouchPoints > 1);
-    const isAndroid = /Android/i.test(ua);
-    setUsePhoenixLink(isIOS || isAndroid);
-  }, []);
 
   // Auto-load Lightning QR code on mount
   useEffect(() => {
@@ -142,7 +132,7 @@ export default function LoginPage() {
             <div className="mb-6 p-4 bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl border-2 border-yellow-300">
               <div className="text-center">
                 <p className="text-sm font-medium text-gray-700 mb-3">
-                  ⚡ Scan with Lightning Wallet for instant login
+                  ⚡ Log in with Phoenix
                 </p>
                 <div className="flex justify-center mb-3">
                   <img
@@ -152,14 +142,14 @@ export default function LoginPage() {
                   />
                 </div>
                 <a
-                  href={usePhoenixLink ? `phoenix:lightning:${lightningData.lnurl}` : `lightning:${lightningData.lnurl}`}
-                  className="block text-center text-sm text-yellow-600 hover:text-yellow-700 font-medium mb-2 underline"
+                  href={`phoenix:lightning:${lightningData.lnurl}`}
+                  className="block text-center bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-black font-extrabold px-5 py-3 rounded-xl shadow-md mb-3 transition active:scale-[0.98]"
                 >
-                  {usePhoenixLink ? '📱 Open Phoenix and Log in' : '📱 Tap to open wallet (mobile)'}
+                  📱 Open Phoenix and Log in
                 </a>
                 {/* Explicit copy button: copies the lnurl TEXT, not the QR image.
                     On Android, tapping the QR image copies the base64 data URL
-                    instead of the login code, which does not work in wallets. */}
+                    instead of the login code, which does not open Phoenix. */}
                 <button
                   type="button"
                   onClick={async () => {
@@ -179,14 +169,14 @@ export default function LoginPage() {
                   }}
                   className="w-full mb-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg text-sm font-semibold transition"
                 >
-                  {copiedLnurl ? '✓ Copied login code' : '📋 Copy login code (paste into wallet)'}
+                  {copiedLnurl ? '✓ Copied login code' : '📋 Copy login code'}
                 </button>
                 <p className="text-xs text-gray-500 mb-1">
-                  <a href="https://phoenix.acinq.co" target="_blank" rel="noopener noreferrer" className="text-yellow-600 hover:text-yellow-700 underline">Phoenix</a> • Wallet of Satoshi • Zeus • Blue Wallet
+                  Need Phoenix? <a href="https://phoenix.acinq.co" target="_blank" rel="noopener noreferrer" className="text-yellow-600 hover:text-yellow-700 underline">Download it here</a>.
                 </p>
                 {pollingLightning && (
                   <p className="text-sm text-yellow-600 animate-pulse font-medium">
-                    ⚡ Waiting for wallet...
+                    ⚡ Waiting for Phoenix...
                   </p>
                 )}
                 <button

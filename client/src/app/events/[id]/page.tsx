@@ -2206,7 +2206,7 @@ export default function EventDetailPage() {
             ) : payInvoice ? (
               <>
                 <p className="text-center text-white mb-1">
-                  Scan with any Lightning wallet to pay
+                  Open Phoenix to pay, or scan this QR from another device
                 </p>
                 <p className="text-center text-yellow-400 font-bold text-2xl mb-4">
                   {payInvoice.amountSats.toLocaleString()} sats

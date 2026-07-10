@@ -1257,7 +1257,7 @@ export default function AdminPage() {
                             u.authProvider === 'LIGHTNING' ? 'bg-yellow-600/20 text-yellow-400' :
                             'bg-gray-600/20 text-gray-400'
                           }`}>
-                            {u.authProvider === 'GOOGLE' ? '🔵 Google' :
+                            {u.authProvider === 'GOOGLE' ? '🔵 Connected' :
                              u.authProvider === 'LIGHTNING' ? '⚡ Lightning' :
                              '✉️ Email'}
                           </span>

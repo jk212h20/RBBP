@@ -360,15 +360,15 @@ export default function WithdrawalsTab({ users, fetchUsers, setMessage, setError
             </div>
             
             <p className="text-gray-400 text-sm mb-2">
-              Scan with any Lightning wallet to receive sats
+              Open Phoenix to receive sats, or scan this QR from another device
             </p>
 
             <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-center">
-              <p className="text-yellow-300 text-xs font-medium mb-1">📱 Using Phoenix Wallet?</p>
+              <p className="text-yellow-300 text-xs font-medium mb-1">📱 Phoenix</p>
               <p className="text-yellow-200/70 text-xs">Tap <strong className="text-yellow-300">SEND</strong> first, then scan this QR code to receive your sats.</p>
             </div>
             
-            {/* Wallet links + copy */}
+            {/* Phoenix + copy */}
             <div className="mb-3">
               <InvoiceActions value={newWithdrawal.qrData} copyLabel="Copy Withdraw Code" />
             </div>
@@ -407,15 +407,15 @@ export default function WithdrawalsTab({ users, fetchUsers, setMessage, setError
                 </div>
                 
                 <p className="text-gray-400 text-sm mb-2">
-                  Scan with any Lightning wallet to receive sats
+                  Open Phoenix to receive sats, or scan this QR from another device
                 </p>
 
                 <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-center">
-                  <p className="text-yellow-300 text-xs font-medium mb-1">📱 Using Phoenix Wallet?</p>
+                  <p className="text-yellow-300 text-xs font-medium mb-1">📱 Phoenix</p>
                   <p className="text-yellow-200/70 text-xs">Tap <strong className="text-yellow-300">SEND</strong> first, then scan this QR code to receive your sats.</p>
                 </div>
                 
-                {/* Wallet links + copy */}
+                {/* Phoenix + copy */}
                 {selectedWithdrawal.qrData && (
                   <div className="mb-3">
                     <InvoiceActions value={selectedWithdrawal.qrData} copyLabel="Copy Withdraw Code" />

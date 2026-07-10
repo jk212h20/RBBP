@@ -90,8 +90,7 @@ function DashboardContent() {
   const isLightningWithoutName = user.authProvider === 'LIGHTNING' && 
     (user.name.startsWith('Lightning User') || user.name.startsWith('Player'));
   const isEmailOnlyAccount = user.authProvider === 'EMAIL' && !user.lightningPubkey;
-  const isGoogleOnlyAccount = user.authProvider === 'GOOGLE' && !user.lightningPubkey;
-  const needsLightning = isEmailOnlyAccount || isGoogleOnlyAccount;
+  const needsLightning = isEmailOnlyAccount;
 
   // Format role display - only show for non-players
   const getRoleDisplay = () => {
@@ -147,7 +146,7 @@ function DashboardContent() {
               )}
               {needsLightning && (
                 <Link href="/profile" className="text-yellow-600 hover:text-yellow-700 text-sm flex items-center gap-1 mt-1">
-                  ⚡ Link a Lightning wallet in Profile to earn 1 bonus point!
+                  📱 Link Phoenix in Profile to earn 1 bonus point!
                 </Link>
               )}
             </div>

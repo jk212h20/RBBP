@@ -169,13 +169,15 @@ export default function ProfilePage() {
     invoiceExpirySeconds: 600,
   });
 
-  // Link Lightning wallet state
+  // Link Phoenix / Lightning login state
   const [linkingLightning, setLinkingLightning] = useState(false);
   const [linkLightningData, setLinkLightningData] = useState<{
     k1: string;
+    lnurl: string;
     qrCode: string;
   } | null>(null);
   const [linkLightningStatus, setLinkLightningStatus] = useState<'idle' | 'pending' | 'linked' | 'error'>('idle');
+  const [copiedLinkLnurl, setCopiedLinkLnurl] = useState(false);
   const [showLightningBonus, setShowLightningBonus] = useState(false);
 
   // Withdrawal history state
@@ -355,7 +357,7 @@ export default function ProfilePage() {
             setShowLightningBonus(true);
             setTimeout(() => setShowLightningBonus(false), 5000);
           }
-          setSaveMessage({ type: 'success', text: 'Lightning wallet linked successfully!' });
+          setSaveMessage({ type: 'success', text: 'Phoenix login linked successfully!' });
           // Auto-close after showing success
           setTimeout(() => {
             setLinkLightningData(null);
@@ -373,7 +375,7 @@ export default function ProfilePage() {
         console.error('[LinkLightning] Poll error:', err);
         // Show ALL errors, not just "already linked"
         setLinkLightningStatus('error');
-        setSaveMessage({ type: 'error', text: err.message || 'Failed to link Lightning wallet' });
+        setSaveMessage({ type: 'error', text: err.message || 'Failed to link Phoenix login' });
         setLinkLightningData(null);
       }
     }, 2000); // Poll every 2 seconds
@@ -653,7 +655,7 @@ export default function ProfilePage() {
     if (!user) return '';
     switch (user.authProvider) {
       case 'GOOGLE':
-        return '🔵 Google';
+        return '🔵 Connected';
       case 'LIGHTNING':
         return '⚡ Lightning';
       default:
@@ -1336,30 +1338,12 @@ export default function ProfilePage() {
               ) : null}
             </div>
 
-            {/* Google Status */}
-            <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">🔵</span>
-                <div>
-                  <p className="text-white font-medium">Google</p>
-                  <p className="text-blue-300 text-sm">
-                    {user.googleId ? 'Connected' : 'Not connected'}
-                  </p>
-                </div>
-              </div>
-              {user.googleId ? (
-                <span className="text-blue-300 text-sm">✓ Linked</span>
-              ) : (
-                <span className="text-gray-300 text-sm">Coming soon</span>
-              )}
-            </div>
-
             {/* Lightning Status */}
             <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
               <div className="flex items-center gap-3">
                 <span className="text-2xl">⚡</span>
                 <div>
-                  <p className="text-white font-medium">Lightning Wallet</p>
+                  <p className="text-white font-medium">Phoenix Login</p>
                   <p className="text-blue-300 text-sm">
                     {user.lightningPubkey ? `${user.lightningPubkey.slice(0, 8)}...${user.lightningPubkey.slice(-8)}` : 'Not connected'}
                   </p>
@@ -1374,7 +1358,7 @@ export default function ProfilePage() {
                     setLinkLightningStatus('pending');
                     try {
                       const challenge = await authAPI.linkLightningChallenge();
-                      setLinkLightningData({ k1: challenge.k1, qrCode: challenge.qrCode });
+                      setLinkLightningData({ k1: challenge.k1, lnurl: challenge.lnurl, qrCode: challenge.qrCode });
                     } catch (err: any) {
                       setSaveMessage({ type: 'error', text: err.message || 'Failed to start linking' });
                       setLinkLightningStatus('error');
@@ -1385,22 +1369,42 @@ export default function ProfilePage() {
                   disabled={linkingLightning}
                   className="bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-600 text-black px-3 py-1.5 rounded-lg text-sm font-bold transition"
                 >
-                  {linkingLightning ? '...' : '⚡ Link Wallet'}
+                  {linkingLightning ? '...' : '📱 Link Phoenix'}
                 </button>
               )}
             </div>
           </div>
 
-          {/* Link Lightning QR Modal */}
+          {/* Link Phoenix Login Modal */}
           {linkLightningData && linkLightningStatus === 'pending' && (
             <div className="mt-4 p-4 bg-black/30 rounded-lg">
-              <h3 className="text-white font-bold mb-2 text-center">⚡ Scan to Link Lightning Wallet</h3>
-              <p className="text-yellow-400 text-xs text-center mb-4">
-                Scan this QR code with your Lightning wallet to link it to your account.
+              <h3 className="text-white font-bold mb-2 text-center">📱 Link Phoenix Login</h3>
+              <p className="text-yellow-400 text-sm text-center mb-4">
+                Tap the button below, approve the login in Phoenix, then come back here.
               </p>
               <div className="flex flex-col items-center gap-4">
-                <div className="bg-white p-4 rounded-lg">
-                  <img src={linkLightningData.qrCode} alt="Link Lightning QR" className="w-48 h-48" />
+                <a
+                  href={`phoenix:lightning:${linkLightningData.lnurl}`}
+                  className="w-full max-w-xs text-center bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-black font-extrabold text-lg px-6 py-4 rounded-xl shadow-lg shadow-orange-900/40 transition active:scale-[0.98]"
+                >
+                  📱 Open Phoenix and Link
+                </a>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(linkLightningData.lnurl);
+                    setCopiedLinkLnurl(true);
+                    setTimeout(() => setCopiedLinkLnurl(false), 2000);
+                  }}
+                  className="text-blue-300 hover:text-blue-200 underline underline-offset-2 text-sm"
+                >
+                  {copiedLinkLnurl ? '✅ Copied!' : '📋 Copy login code'}
+                </button>
+                <div className="hidden sm:flex flex-col items-center gap-2">
+                  <p className="text-gray-400 text-xs text-center">Desktop option: scan with Phoenix.</p>
+                  <div className="bg-white p-4 rounded-lg">
+                    <img src={linkLightningData.qrCode} alt="Link Phoenix QR" className="w-48 h-48" />
+                  </div>
                 </div>
                 <button
                   onClick={() => {
@@ -1618,7 +1622,7 @@ export default function ProfilePage() {
                   <div className="flex items-center justify-between mb-4">
                     <div>
                       <h3 className="text-white font-bold text-lg">⚡ Deposit with Lightning</h3>
-                      <p className="text-yellow-200 text-sm">Choose an amount and pay from any Lightning wallet.</p>
+                      <p className="text-yellow-200 text-sm">Choose an amount and pay with Phoenix.</p>
                     </div>
                     <button
                       onClick={() => {
@@ -1690,7 +1694,7 @@ export default function ProfilePage() {
                     Withdrawal Complete!
                   </h3>
                   <p className="text-blue-100 text-center">
-                    {withdrawalData.amountSats.toLocaleString()} sats sent to your wallet
+                    {withdrawalData.amountSats.toLocaleString()} sats ready to collect in Phoenix
                   </p>
                 </div>
               ) : withdrawalStatus === 'FAILED' || withdrawalStatus === 'EXPIRED' ? (
@@ -1721,7 +1725,7 @@ export default function ProfilePage() {
                     ⚡ Pending Withdrawal: {withdrawalData.amountSats.toLocaleString()} sats
                   </h3>
                   <p className="text-yellow-400 text-xs text-center mb-4">
-                    Your balance is reserved for this cashout. Scan this QR with your Lightning wallet to collect it, or cancel below to return the sats to your site balance.
+                    Your balance is reserved for this cashout. Open Phoenix to collect it, or cancel below to return the sats to your site balance.
                   </p>
                   <div className="flex flex-col items-center gap-4">
                     <div className="bg-white p-4 rounded-lg">
@@ -1733,7 +1737,7 @@ export default function ProfilePage() {
                     </div>
                     <div className="text-center w-full">
                       <p className="text-yellow-200 text-sm mb-2">
-                        Scan with your Lightning wallet or use the buttons below:
+                        Open Phoenix to collect, or scan this QR from another device:
                       </p>
                       <InvoiceActions value={withdrawalData.qrData} copyLabel="Copy Withdraw Code" />
                     </div>
@@ -1741,7 +1745,7 @@ export default function ProfilePage() {
                       <p>If you don't complete the withdrawal, you can cancel it now or it will be refunded when it expires (24 hours).</p>
                     </div>
                     <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-center max-w-xs">
-                      <p className="text-yellow-300 text-xs font-medium mb-1">📱 Using Phoenix Wallet?</p>
+                      <p className="text-yellow-300 text-xs font-medium mb-1">📱 Phoenix</p>
                       <p className="text-yellow-200 text-xs">Tap <strong className="text-yellow-300">SEND</strong> first, then scan this QR code to receive your sats.</p>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-3 mt-2">
@@ -1770,7 +1774,7 @@ export default function ProfilePage() {
           )}
           
           <p className="text-yellow-200 text-xs mt-4 text-center">
-            💡 Winnings are credited to your balance. Withdraw anytime to your Lightning wallet!
+            💡 Winnings are credited to your balance. Withdraw anytime with Phoenix!
           </p>
         </div>
 

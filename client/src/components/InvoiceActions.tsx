@@ -11,15 +11,13 @@ function isMobileDevice() {
 }
 
 /**
- * Standard action row shown under every Lightning invoice / LNURL QR code.
+ * Standard action controls shown under every Lightning invoice / LNURL QR code.
  *
  * Mobile-first: on a phone the user can't scan the QR they're looking at, so
  * the design assumes and encourages ONE action — a single big button that
- * opens the invoice directly in Phoenix. Other wallets and copy are small
- * secondary options.
+ * opens the invoice directly in Phoenix. Copy is secondary.
  *
- * Desktop: QR scanning is the primary flow, so buttons are compact fallbacks
- * (generic lightning: link + copy).
+ * Desktop: QR scanning is available; Phoenix and copy are compact fallbacks.
  */
 export default function InvoiceActions({
   value,
@@ -70,28 +68,21 @@ export default function InvoiceActions({
         >
           ⚡ Pay with Phoenix
         </a>
-        {/* Secondary options, deliberately quiet */}
-        <div className="flex items-center justify-center gap-4 text-sm">
-          <a href={`lightning:${value}`} className="text-blue-300 hover:text-blue-200 underline underline-offset-2">
-            Other wallet
-          </a>
-          <span className="text-white/20">|</span>
-          <button type="button" onClick={copy} className="text-blue-300 hover:text-blue-200 underline underline-offset-2">
-            {copied ? '✅ Copied!' : copyLabel}
-          </button>
-        </div>
+        <button type="button" onClick={copy} className="text-blue-300 hover:text-blue-200 underline underline-offset-2 text-sm">
+          {copied ? '✅ Copied!' : copyLabel}
+        </button>
       </div>
     );
   }
 
-  // Desktop: scanning the QR is the primary flow; compact fallbacks below.
+  // Desktop: scanning the QR is available; Phoenix/copy are fallbacks below.
   return (
     <div className="flex flex-col gap-2 w-full max-w-xs mx-auto">
       <a
-        href={`lightning:${value}`}
-        className="block text-center bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-4 py-2.5 rounded-lg transition"
+        href={`phoenix:lightning:${value}`}
+        className="block text-center bg-orange-500 hover:bg-orange-600 text-black font-bold px-4 py-2.5 rounded-lg transition"
       >
-        ⚡ Open in Wallet
+        📱 Open in Phoenix
       </a>
       <button
         type="button"

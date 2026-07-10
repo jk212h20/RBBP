@@ -75,7 +75,7 @@ export const authAPI = {
       body: JSON.stringify(data),
     }),
 
-  // Link Lightning wallet to existing account
+  // Link Phoenix login to existing account
   linkLightningChallenge: () =>
     fetchAPI<{ k1: string; lnurl: string; qrCode: string; expiresIn: number }>(
       '/auth/link-lightning/challenge'
@@ -109,8 +109,6 @@ export const authAPI = {
     }),
 };
 
-// Google OAuth URL
-export const getGoogleAuthUrl = () => `${API_URL}/auth/google`;
 
 // ============================================
 // VENUES API
