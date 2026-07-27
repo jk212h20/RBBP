@@ -11,6 +11,9 @@ and this project adheres to loose semantic versioning (we're in continuous-deplo
 
 ## [Unreleased]
 
+### Added
+- `docs/DAILY_WORKFLOW.md` — personal start-to-ship checklist covering clean shutdown, spin-up (both terminals), feature work, verify, push, PR, Railway auto-deploy, verify prod, and end-of-day cleanup
+
 ### Changed
 - Landing page hero subtitle now ends with an exclamation point ("Play in free tournaments, win real bitcoin!")
 

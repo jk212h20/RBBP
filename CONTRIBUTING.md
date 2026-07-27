@@ -276,7 +276,8 @@ Go to **https://github.com/jk212h20/RBBP/settings** → **General** → **Pull R
 
 - Repo: https://github.com/jk212h20/RBBP
 - Live site: https://www.rbbp.fun/
-- **Local dev setup:** `docs/LOCAL_DEV.md`
+- **Daily start-to-ship checklist:** `docs/DAILY_WORKFLOW.md`
+- **First-time local dev setup:** `docs/LOCAL_DEV.md`
 - Architecture docs: `memory-bank/systemPatterns.md`
 - Setup (deploy): `README.md`
 - Running notes / gotchas: `docs/DEV_NOTES.md`
