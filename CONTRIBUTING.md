@@ -149,7 +149,14 @@ If both partners need to touch these at the same time, consider pairing instead 
 
 ## 8. Local Testing Before Push
 
-At minimum, before every push:
+**One-command check** (recommended — runs the same steps as CI):
+
+```powershell
+# From repo root
+pwsh -File scripts/verify.ps1
+```
+
+**Or manually:**
 
 ```bash
 cd server && npm run build   # catches TS errors
@@ -163,6 +170,25 @@ npx prisma studio  # sanity-check the DB
 ```
 
 For UI changes: click through affected pages in dev server before pushing.
+
+### First-time local build setup (Windows)
+
+If `node_modules` doesn't exist yet:
+
+```powershell
+cd server; npm install
+# npm 12+ blocks postinstall scripts by default. Approve Prisma:
+npm install-scripts approve @prisma/client @prisma/engines prisma
+
+cd ../client; npm install
+npm install-scripts approve sharp unrs-resolver
+```
+
+Then run `pwsh -File scripts/verify.ps1` from the repo root to confirm both build.
+
+### Full local dev (running the app)
+
+Requires PostgreSQL. See **`docs/LOCAL_DEV.md`** for the complete Docker-based setup guide (env files, migrations, dev servers, troubleshooting). Deeper gotchas live in `docs/DEV_NOTES.md`.
 
 ---
 
@@ -249,7 +275,8 @@ Go to **https://github.com/jk212h20/RBBP/settings** → **General** → **Pull R
 ## Questions?
 
 - Repo: https://github.com/jk212h20/RBBP
-- Live site: https://client-production-41b3.up.railway.app
+- Live site: https://www.rbbp.fun/
+- **Local dev setup:** `docs/LOCAL_DEV.md`
 - Architecture docs: `memory-bank/systemPatterns.md`
-- Setup: `README.md`
-- Running notes: `docs/DEV_NOTES.md`
+- Setup (deploy): `README.md`
+- Running notes / gotchas: `docs/DEV_NOTES.md`

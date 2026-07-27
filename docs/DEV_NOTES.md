@@ -22,6 +22,62 @@ Copy and paste at the top of the entries section:
 
 # Entries (newest first)
 
+## 2026-07-27 — jk — Local dev environment setup on Windows
+
+> **Full step-by-step guide:** `docs/LOCAL_DEV.md`. The section below captures the *decisions and gotchas* behind that guide.
+
+Documenting the setup so future partners/agents don't rediscover it. All commands run from `C:\Users\ASUS\Documents\NEWRBBP\RBBP`.
+
+### Prerequisites
+- Node 20+ (tested with v24.18.0)
+- npm 10+ (tested with 12.0.1)
+- Docker Desktop (for local Postgres)
+- Git for Windows with credential manager
+
+### Install dependencies
+```powershell
+cd server; npm install
+# npm 12+ blocks postinstall scripts by default. Approve Prisma:
+npm install-scripts approve @prisma/client @prisma/engines prisma
+npx prisma generate
+
+cd ../client; npm install
+npm install-scripts approve sharp unrs-resolver
+```
+
+### Fast pre-push verification
+`pwsh -File scripts/verify.ps1` from repo root — same steps as CI. No DB required. Catches TS errors and Next.js build errors.
+
+### Full local dev (with database)
+1. Ensure Docker Desktop is running (whale icon in system tray)
+2. Start Postgres:
+   ```powershell
+   docker run --name rbbp-postgres -e POSTGRES_PASSWORD=password -e POSTGRES_DB=roatan_poker -p 5432:5432 -d postgres:16
+   ```
+   To stop/start later: `docker stop rbbp-postgres` / `docker start rbbp-postgres`
+3. Create `server/.env` from `server/.env.example`, keep the default `DATABASE_URL` (matches the container above)
+4. Sync schema to DB: `cd server; npx prisma db push` **(not `migrate dev` — see gotcha below)**
+5. Create `client/.env.local` with `NEXT_PUBLIC_API_URL=http://localhost:3001/api`
+6. Run both dev servers (in separate terminals — each blocks its terminal):
+   - Terminal 1: `cd server; npm run dev` → http://localhost:3001
+   - Terminal 2: `cd client; npm run dev` → http://localhost:3000
+
+### ⚠️ Prisma migration gotcha for local dev
+`npx prisma migrate deploy` **fails** on a fresh local DB because the first migration in the repo (`20260201220000_add_name_set_at`) alters a `users` table that doesn't exist yet — there is no initial baseline migration that creates the base schema. The production DB was seeded with `prisma db push` before migrations were adopted.
+
+**For local dev:** use `npx prisma db push` — syncs the schema from `schema.prisma` directly, bypassing the migration history. Fast and works every time.
+
+**For production changes:** continue using proper migrations (`prisma migrate dev` to create a new one, Prisma applies it in production). Don't `db push` to production.
+
+**Optional cleanup for the future:** someone should write a squashed baseline migration and re-baseline the production DB using `prisma migrate resolve`. Not urgent — current setup works.
+
+### Gotchas
+- Newer Node (v24) works despite CI running Node 20. If you hit strange errors, fall back to Node 20 via `nvm-windows`.
+- PowerShell in this repo often prints "NativeCommandError" wrappers around benign stderr output (e.g., npm progress, git remote messages). If the exit code is 0 and there's no explicit error text, ignore the wrapper.
+- `.env` files are gitignored and must never be committed.
+
+---
+
 ## 2026-04-17 — setup — Coordination docs bootstrapped
 
 Created `CONTRIBUTING.md`, `CHANGELOG.md`, this file, a PR template, and a CI workflow. Branch: `feature/docs-coordination-setup`. This file itself is the first entry and the template lives above.
