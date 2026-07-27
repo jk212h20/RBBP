@@ -176,9 +176,11 @@ Nick reviews → approves → click **Squash and merge** on GitHub. Delete the b
 
 ### 4.5 Railway auto-deploys — no manual step needed
 
-Unlike btcpokerchamp, RBBP's GitHub → Railway auto-deploy is working. On merge:
-- Railway auto-builds both `client` (service `2157daaa`) and `server` (service `88b52535`)
-- Deploy takes 2–4 min per service, in parallel
+On merge, Railway auto-builds both services in parallel:
+- `client` (service `2157daaa`) — Next.js frontend
+- `server` (service `88b52535`) — Express backend
+
+Deploy takes 2–4 min per service.
 
 Watch progress: https://railway.com (find the RBBP project in Nick's workspace).
 
