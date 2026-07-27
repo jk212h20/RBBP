@@ -11,9 +11,16 @@ and this project adheres to loose semantic versioning (we're in continuous-deplo
 
 ## [Unreleased]
 
+### Changed
+- Landing page hero subtitle now ends with an exclamation point ("Play in free tournaments, win real bitcoin!")
+
+---
+
+## [2026-07-27] — Coordination docs + CI
+
 ### Added
 - `CONTRIBUTING.md` — contributor workflow, branching, commit, PR, and agent rules
-- `CHANGELOG.md` — this file, seeded from git history
+- `CHANGELOG.md` — seeded from git history
 - `docs/DEV_NOTES.md` — running partner-to-partner log of decisions and gotchas
 - `.github/PULL_REQUEST_TEMPLATE.md` — PR checklist
 - `.github/workflows/ci.yml` — CI that builds client + server on every PR and push to `main`

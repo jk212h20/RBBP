@@ -135,7 +135,7 @@ export default function HomePage() {
               Welcome to Roatan Bitcoin Bar Poker
             </h1>
             <p className="text-lg sm:text-xl md:text-2xl text-white/80 max-w-2xl">
-              Play in free tournaments, win real bitcoin
+              Play in free tournaments, win real bitcoin!
             </p>
 
             {/* Above-the-fold call to action (only for logged-out visitors) */}
