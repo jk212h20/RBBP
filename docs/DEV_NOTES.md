@@ -26,7 +26,7 @@ Copy and paste at the top of the entries section:
 
 > **Full step-by-step guide:** `docs/LOCAL_DEV.md`. The section below captures the *decisions and gotchas* behind that guide.
 
-Documenting the setup so future partners/agents don't rediscover it. All commands run from `C:\Users\ASUS\Documents\NEWRBBP\RBBP`.
+Documenting the setup so future partners/agents don't rediscover it. All commands run from the repo root (whatever path you cloned to — e.g. `C:\Users\ASUS\Documents\repos\NEWRBBP\RBBP` on Windows, or `~/repos/RBBP` on macOS/Linux).
 
 ### Prerequisites
 - Node 20+ (tested with v24.18.0)
