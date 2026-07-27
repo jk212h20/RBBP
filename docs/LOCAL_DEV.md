@@ -117,16 +117,16 @@ You should now have ~27 tables in the `roatan_poker` database.
 
 Open **two** PowerShell terminals. Each blocks its terminal — that's expected.
 
-**Terminal 1 — server:**
+**Terminal 1 — server** (from repo root):
 ```powershell
-cd C:\Users\ASUS\Documents\NEWRBBP\RBBP\server
+cd server
 npm run dev
 ```
 Backend live at http://localhost:3001
 
-**Terminal 2 — client:**
+**Terminal 2 — client** (from repo root):
 ```powershell
-cd C:\Users\ASUS\Documents\NEWRBBP\RBBP\client
+cd client
 npm run dev
 ```
 Frontend live at http://localhost:3000
