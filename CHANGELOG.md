@@ -20,6 +20,143 @@ and this project adheres to loose semantic versioning (we're in continuous-deplo
 
 ---
 
+## [2026-07-10] — Phoenix account linking, mobile-first
+
+### Added
+- Mobile-first Phoenix account linking flow (`9a0b3f8`)
+- Mobile-first one-tap Phoenix payment on all invoices (`f8c7205`)
+
+### Changed
+- Events remain listed until results are submitted (previously hid too early) (`ecce359`)
+- Side bets: admin reopen action, multi-place payout display (`877d650`)
+
+### Fixed
+- Mobile menu scrolling; "Sign Up" hidden when already logged in (`fdbc422`)
+
+---
+
+## [2026-07-01] — Phoenix invoices + UI modernization
+
+### Added
+- Phoenix wallet links on all Lightning invoices; live events kept prominent (`6649881`)
+
+### Changed
+- Modernized UI and improved page load performance (`7268021`)
+
+---
+
+## [2026-06-30] — Venues + admin store
+
+### Added
+- Tagged venue media uploads (`774b0fc`)
+- Venue managers can now edit their own venue profiles (`b4b56fe`)
+- Admin: load users for venue manager assignment (`4ef78f2`)
+- Venue invoice billing (`ca3e59d`)
+- Admin store item management (`6d1e8c8`)
+
+### Changed
+- Updated site link preview description (Open Graph) (`aee5511`)
+
+---
+
+## [2026-06-26] — iOS/Android Phoenix login
+
+### Changed
+- Use Phoenix login links on iOS and Android (`8709052`)
+- Force Phoenix LNURL login on iOS (`3529637`)
+
+---
+
+## [2026-06-24] — League points toggle
+
+### Added
+- League points toggle and side bet preview safeguards (`3d4de66`)
+
+---
+
+## [2026-06-22] — Admin UX + mobile fixes
+
+### Added
+- Admin user panel: searchable, alphabetical by default, with filters (`12ae01c`)
+- Homepage hero/CTA, grouped nav menus, venue menu + event rules links (`1ea5039`)
+- Mobile QA test suite (`a8c429a`)
+
+### Fixed
+- Login copy-code fix (`1ea5039`)
+- Mobile layout bugs on profile and store pages (`a8c429a`)
+
+---
+
+## [2026-06-19] — Automatic event side bets
+
+### Added
+- Automatic event side bets (`fcf78a2`)
+
+### Fixed
+- Attendance points and side bet entry amount (`bbce407`)
+- Side bet invoice settlement (`1678618`)
+
+---
+
+## [2026-06-09] — Cashouts + side bet balance source
+
+### Added
+- Allow cancelling pending cashouts (`f31430f`)
+
+### Changed
+- Simplified cancelled cashout UX (`84d32cb`)
+- Side bets now funded from site balance (previously separate flow) (`a4cd5ef`)
+
+### Removed
+- Duplicate home page stubs (`6e246f6`)
+
+---
+
+## [2026-05-19] — Shirt store + Lightning checkout
+
+### Added
+- Basic shirt store (`6a90952`)
+- Lightning checkout for store purchases (`dd298ca`)
+- Store item image upload (`48e484d`)
+
+### Changed
+- Unified page gradients across the app (`638c825`)
+
+---
+
+## [2026-05-18] — Lightning deposits + event result editing
+
+### Added
+- Lightning deposit flow (users can top up site balance) (`415b447`)
+- Railway deploy watcher note (`7ac0fc9`)
+
+### Fixed
+- Allow editing completed event results (`0dc1f8a`)
+
+---
+
+## [2026-05-12] — Sats buy-ins + blog
+
+### Added
+- Buy-in in sats with Lightning + pay-on-arrival flow (`b28cd97`)
+- Blog + announcement bar + homepage tweaks (`71a0e1b`)
+
+### Removed
+- Unused `Season.pointsStructure` field (`b815993`)
+
+---
+
+## [2026-05-07] — Slugs + registration points toggle
+
+### Added
+- Human-readable event URLs (slugs) (`5dc2638`)
+- Per-event toggle to disable registration points (`4b3de95`)
+
+### Fixed
+- Server: install devDependencies during Railway build (`59ff57b`)
+
+---
+
 ## [2026-04-09] — Side Bets: admin tab + multi-entry + descriptions
 
 ### Added
