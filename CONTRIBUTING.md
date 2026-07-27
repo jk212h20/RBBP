@@ -149,7 +149,14 @@ If both partners need to touch these at the same time, consider pairing instead 
 
 ## 8. Local Testing Before Push
 
-At minimum, before every push:
+**One-command check** (recommended — runs the same steps as CI):
+
+```powershell
+# From repo root
+pwsh -File scripts/verify.ps1
+```
+
+**Or manually:**
 
 ```bash
 cd server && npm run build   # catches TS errors
@@ -163,6 +170,25 @@ npx prisma studio  # sanity-check the DB
 ```
 
 For UI changes: click through affected pages in dev server before pushing.
+
+### First-time local build setup (Windows)
+
+If `node_modules` doesn't exist yet:
+
+```powershell
+cd server; npm install
+# npm 12+ blocks postinstall scripts by default. Approve Prisma:
+npm install-scripts approve @prisma/client @prisma/engines prisma
+
+cd ../client; npm install
+npm install-scripts approve sharp unrs-resolver
+```
+
+Then run `pwsh -File scripts/verify.ps1` from the repo root to confirm both build.
+
+### Full local dev (running the app)
+
+Requires PostgreSQL. See `docs/DEV_NOTES.md` → "Local dev environment" for the Docker-based setup.
 
 ---
 

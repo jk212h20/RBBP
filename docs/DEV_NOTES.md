@@ -22,6 +22,51 @@ Copy and paste at the top of the entries section:
 
 # Entries (newest first)
 
+## 2026-07-27 — jk — Local dev environment setup on Windows
+
+Documenting the setup so future partners/agents don't rediscover it. All commands run from `C:\Users\ASUS\Documents\NEWRBBP\RBBP`.
+
+### Prerequisites
+- Node 20+ (tested with v24.18.0)
+- npm 10+ (tested with 12.0.1)
+- Docker Desktop (for local Postgres)
+- Git for Windows with credential manager
+
+### Install dependencies
+```powershell
+cd server; npm install
+# npm 12+ blocks postinstall scripts by default. Approve Prisma:
+npm install-scripts approve @prisma/client @prisma/engines prisma
+npx prisma generate
+
+cd ../client; npm install
+npm install-scripts approve sharp unrs-resolver
+```
+
+### Fast pre-push verification
+`pwsh -File scripts/verify.ps1` from repo root — same steps as CI. No DB required. Catches TS errors and Next.js build errors.
+
+### Full local dev (with database)
+1. Ensure Docker Desktop is running (whale icon in system tray)
+2. Start Postgres:
+   ```powershell
+   docker run --name rbbp-postgres -e POSTGRES_PASSWORD=password -e POSTGRES_DB=roatan_poker -p 5432:5432 -d postgres:16
+   ```
+   To stop/start later: `docker stop rbbp-postgres` / `docker start rbbp-postgres`
+3. Create `server/.env` from `server/.env.example`, keep the default `DATABASE_URL` (matches the container above)
+4. Apply migrations: `cd server; npx prisma migrate dev`
+5. Create `client/.env.local` with `NEXT_PUBLIC_API_URL=http://localhost:3001/api`
+6. Run both dev servers (in separate terminals):
+   - `cd server; npm run dev` → http://localhost:3001
+   - `cd client; npm run dev` → http://localhost:3000
+
+### Gotchas
+- Newer Node (v24) works despite CI running Node 20. If you hit strange errors, fall back to Node 20 via `nvm-windows`.
+- PowerShell in this repo often prints "NativeCommandError" wrappers around benign stderr output (e.g., npm progress, git remote messages). If the exit code is 0 and there's no explicit error text, ignore the wrapper.
+- `.env` files are gitignored and must never be committed.
+
+---
+
 ## 2026-04-17 — setup — Coordination docs bootstrapped
 
 Created `CONTRIBUTING.md`, `CHANGELOG.md`, this file, a PR template, and a CI workflow. Branch: `feature/docs-coordination-setup`. This file itself is the first entry and the template lives above.
