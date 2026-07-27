@@ -188,7 +188,7 @@ Then run `pwsh -File scripts/verify.ps1` from the repo root to confirm both buil
 
 ### Full local dev (running the app)
 
-Requires PostgreSQL. See `docs/DEV_NOTES.md` → "Local dev environment" for the Docker-based setup.
+Requires PostgreSQL. See **`docs/LOCAL_DEV.md`** for the complete Docker-based setup guide (env files, migrations, dev servers, troubleshooting). Deeper gotchas live in `docs/DEV_NOTES.md`.
 
 ---
 
@@ -275,7 +275,8 @@ Go to **https://github.com/jk212h20/RBBP/settings** → **General** → **Pull R
 ## Questions?
 
 - Repo: https://github.com/jk212h20/RBBP
-- Live site: https://client-production-41b3.up.railway.app
+- Live site: https://www.rbbp.fun/
+- **Local dev setup:** `docs/LOCAL_DEV.md`
 - Architecture docs: `memory-bank/systemPatterns.md`
-- Setup: `README.md`
-- Running notes: `docs/DEV_NOTES.md`
+- Setup (deploy): `README.md`
+- Running notes / gotchas: `docs/DEV_NOTES.md`

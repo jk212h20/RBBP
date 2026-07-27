@@ -24,6 +24,8 @@ Copy and paste at the top of the entries section:
 
 ## 2026-07-27 — jk — Local dev environment setup on Windows
 
+> **Full step-by-step guide:** `docs/LOCAL_DEV.md`. The section below captures the *decisions and gotchas* behind that guide.
+
 Documenting the setup so future partners/agents don't rediscover it. All commands run from `C:\Users\ASUS\Documents\NEWRBBP\RBBP`.
 
 ### Prerequisites
