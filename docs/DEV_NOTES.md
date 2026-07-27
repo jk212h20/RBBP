@@ -54,11 +54,20 @@ npm install-scripts approve sharp unrs-resolver
    ```
    To stop/start later: `docker stop rbbp-postgres` / `docker start rbbp-postgres`
 3. Create `server/.env` from `server/.env.example`, keep the default `DATABASE_URL` (matches the container above)
-4. Apply migrations: `cd server; npx prisma migrate dev`
+4. Sync schema to DB: `cd server; npx prisma db push` **(not `migrate dev` — see gotcha below)**
 5. Create `client/.env.local` with `NEXT_PUBLIC_API_URL=http://localhost:3001/api`
-6. Run both dev servers (in separate terminals):
-   - `cd server; npm run dev` → http://localhost:3001
-   - `cd client; npm run dev` → http://localhost:3000
+6. Run both dev servers (in separate terminals — each blocks its terminal):
+   - Terminal 1: `cd server; npm run dev` → http://localhost:3001
+   - Terminal 2: `cd client; npm run dev` → http://localhost:3000
+
+### ⚠️ Prisma migration gotcha for local dev
+`npx prisma migrate deploy` **fails** on a fresh local DB because the first migration in the repo (`20260201220000_add_name_set_at`) alters a `users` table that doesn't exist yet — there is no initial baseline migration that creates the base schema. The production DB was seeded with `prisma db push` before migrations were adopted.
+
+**For local dev:** use `npx prisma db push` — syncs the schema from `schema.prisma` directly, bypassing the migration history. Fast and works every time.
+
+**For production changes:** continue using proper migrations (`prisma migrate dev` to create a new one, Prisma applies it in production). Don't `db push` to production.
+
+**Optional cleanup for the future:** someone should write a squashed baseline migration and re-baseline the production DB using `prisma migrate resolve`. Not urgent — current setup works.
 
 ### Gotchas
 - Newer Node (v24) works despite CI running Node 20. If you hit strange errors, fall back to Node 20 via `nvm-windows`.
